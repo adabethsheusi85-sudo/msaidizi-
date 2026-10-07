@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -5387,5 +5388,250 @@ function saveExamToBank(){
   }
 })();
 </script>
+<style id="msAdminCss">
+#msBadge,#msAdmBtn{display:none}
+#fbBar button#msBadge{background:#2f6f8f}
+#fbBar button#msBadge.ACTIVE{background:#2e7d32}
+#fbBar button#msBadge.EXPIRED{background:#b3261e}
+#fbBar button#msBadge.warn{background:#c77700}
+#fbBar button#msAdmBtn{background:#6a4a9c}
+#msPay,#msAdm{position:fixed;inset:0;display:none;overflow:auto;font-family:'Helvetica Neue',Arial,sans-serif;color:#222}
+#msPay{z-index:8500;background:var(--board-dark,#15291F);align-items:center;justify-content:center;padding:16px}
+#msPay .msc{background:var(--chalk,#F4EFE1);border-radius:12px;padding:22px;width:100%;max-width:440px;box-shadow:0 10px 40px rgba(0,0,0,.4);margin-top:50px}
+#msPay h2{margin:0 0 8px;font-size:19px;color:#b3261e}
+#msPay p,#msPay li{font-size:14px;line-height:1.5}
+#msPay ol{padding-left:20px;margin:8px 0}
+.msbtn{border:0;border-radius:6px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;color:#fff;background:var(--board-dark,#15291F);margin:4px 6px 0 0}
+.msbtn.alt{background:#d9932f}.msbtn.red{background:#b3261e}.msbtn:disabled{opacity:.55;cursor:wait}
+.msbox{background:#fff;border:1px solid #d8cfb4;border-radius:8px;padding:10px 12px;font-size:13.5px;margin:8px 0;word-break:break-word}
+#msAdm{z-index:8600;background:var(--chalk,#F4EFE1)}
+#msAdm .msa-in{max-width:1100px;margin:0 auto;padding:14px 14px 40px}
+#msAdm .msa-h{display:flex;align-items:center;gap:10px;padding-right:170px;flex-wrap:wrap}
+#msAdm h2{margin:0;font-size:19px}
+#msAdm .msa-note{background:#fff3d6;border:1px solid #e3c470;border-radius:8px;padding:8px 12px;font-size:13px;margin:10px 0}
+#msAdm .msa-tools{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+#msAdm .msa-tools input{flex:1;min-width:200px;padding:9px 12px;border:1px solid #bbb;border-radius:6px;font-size:14px;box-sizing:border-box}
+#msaStats{font-size:13px;margin:6px 0}
+#msaMsg{font-size:13px;min-height:18px;margin:4px 0}#msaMsg.err{color:#b3261e}#msaMsg.ok{color:#2e7d32}
+.msa-wrap{overflow-x:auto;background:#fff;border:1px solid #d8cfb4;border-radius:8px}
+#msaTbl{border-collapse:collapse;width:100%;min-width:820px;font-size:13px}
+#msaTbl th{background:#15291F;color:#F4EFE1;text-align:left;padding:8px 10px;white-space:nowrap}
+#msaTbl td{padding:8px 10px;border-top:1px solid #eadfc2;vertical-align:top}
+.mst{display:inline-block;padding:2px 9px;border-radius:12px;color:#fff;font-weight:700;font-size:12px;background:#777}
+.mst.TRIAL{background:#2f6f8f}.mst.ACTIVE{background:#2e7d32}.mst.EXPIRED{background:#b3261e}
+#msModal{position:fixed;inset:0;z-index:8700;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:14px;font-family:'Helvetica Neue',Arial,sans-serif;color:#222}
+#msModal .msm{background:#F4EFE1;border-radius:12px;padding:18px;width:100%;max-width:640px;max-height:85vh;overflow:auto}
+#msModal h3{margin:0 0 8px;font-size:17px}
+#msModal table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:520px}
+#msModal th,#msModal td{border:1px solid #d8cfb4;padding:5px 7px;text-align:left;background:#fff}
+@media print{#msPay,#msAdm,#msModal{display:none!important}}
+</style>
+<script>
+/* ===== USAJILI (TRIAL/ACTIVE/EXPIRED) + ADMIN PANEL — kipengele cha ongezeko, hakibadilishi code iliyopo =====
+   MUHIMU: Ulinzi halisi wa Admin uko kwenye Firestore Security Rules (faili firestore.rules).
+   Code ya browser hapa ni kiolesura tu; mtumiaji akibadilisha JavaScript, Firestore bado itakataa kuandika. */
+(function(){
+  var TRIAL_DAYS=7;      // siku za majaribio tangu mwalimu ajisajili (badilisha hapa)
+  var SUB_DAYS=30;       // siku za usajili kwa kila ACTIVATE / EXTEND
+  var WARN_DAYS=3;       // onyo siku zikiwa chache
+  var PAY={number:'',name:'',amount:'',contact:''}; // WEKA maelezo ya malipo hapa (acha tupu kama bado)
+  var DAY=86400000, BASE='https://www.gstatic.com/firebasejs/10.12.5/';
+  var db=null,user=null,isAdmin=false,myDoc=null,users=[],tries=0,lastFetch=0;
+  var $=function(i){return document.getElementById(i)};
+  function pad(n){return n<10?'0'+n:''+n}
+  function fmt(d){return d?pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes()):'—'}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function toDate(v){return v&&typeof v.toDate==='function'?v.toDate():(v instanceof Date?v:null)}
+
+  /* Hali ya usajili inahesabiwa kutoka tarehe — kwa hiyo EXPIRED inatokea yenyewe muda ukipita. */
+  function calc(d,fallbackCreated){
+    var now=Date.now(),sub=(d&&d.subscription)||{};
+    var s=toDate(sub.startDate),e=toDate(sub.expiryDate);
+    var created=toDate(d&&d.createdAt)||fallbackCreated||null;
+    var r;
+    if(e){r={status:e.getTime()>now?'ACTIVE':'EXPIRED',start:s,end:e,paid:true};}
+    else if(created){var te=new Date(created.getTime()+TRIAL_DAYS*DAY);r={status:te.getTime()>now?'TRIAL':'EXPIRED',start:created,end:te,paid:false};}
+    else r={status:'UNKNOWN',start:null,end:null,paid:false};
+    r.days=r.end?Math.max(0,Math.ceil((r.end.getTime()-now)/DAY)):null;
+    return r;
+  }
+  function payText(email){
+    var h='<ol><li>Lipia usajili wa siku '+SUB_DAYS+' kwa M-Pesa';
+    if(PAY.number||PAY.name||PAY.amount){h+=':<div class="msbox">'+(PAY.number?'Namba: <b>'+esc(PAY.number)+'</b><br>':'')+(PAY.name?'Jina: <b>'+esc(PAY.name)+'</b><br>':'')+(PAY.amount?'Kiasi: <b>'+esc(PAY.amount)+'</b>':'')+'</div>';}
+    else h+=' (wasiliana na msimamizi kupata maelezo ya malipo).';
+    h+='</li><li>Mjulishe msimamizi umelipa'+(PAY.contact?' ('+esc(PAY.contact)+')':'')+', ukitaja barua pepe yako: <b>'+esc(email||'')+'</b></li>';
+    h+='<li>Msimamizi akithibitisha malipo, atawasha usajili wako. Kisha bonyeza "Angalia tena".</li></ol>';
+    return h;
+  }
+
+  /* ---------- Upande wa mwalimu ---------- */
+  function ensureUI(){
+    var bar=$('fbBar');if(!bar||$('msBadge'))return;
+    var out=$('fbOut');
+    var b=document.createElement('button');b.type='button';b.id='msBadge';bar.insertBefore(b,out);
+    b.onclick=showMyInfo;
+    var a=document.createElement('button');a.type='button';a.id='msAdmBtn';a.textContent='Admin';bar.insertBefore(a,out);
+    a.onclick=openAdmin;
+    var pay=document.createElement('div');pay.id='msPay';document.body.appendChild(pay);
+    var m=document.createElement('div');m.id='msModal';m.innerHTML='<div class="msm"><h3 id="msmT"></h3><div id="msmB"></div><button type="button" class="msbtn" id="msmX">Funga</button></div>';document.body.appendChild(m);
+    $('msmX').onclick=function(){m.style.display='none'};
+    m.addEventListener('click',function(e){if(e.target===m)m.style.display='none'});
+  }
+  function modal(t,h){$('msmT').textContent=t;$('msmB').innerHTML=h;$('msModal').style.display='flex'}
+  function myCalc(){var c=user&&user.metadata&&user.metadata.creationTime?new Date(user.metadata.creationTime):null;return calc(myDoc||{},c)}
+  function render(){
+    if(!user||!db)return;
+    ensureUI();
+    var badge=$('msBadge'),pay=$('msPay'),c=myCalc();
+    $('msAdmBtn').style.display=isAdmin?'inline-block':'none';
+    if(c.status==='UNKNOWN'){badge.style.display='none';pay.style.display='none';return;}
+    badge.style.display='inline-block';
+    badge.className=c.status+((c.status!=='EXPIRED'&&c.days<=WARN_DAYS)?' warn':'');
+    badge.textContent=c.status+(c.status==='EXPIRED'?'':' • siku '+c.days);
+    if(c.status==='EXPIRED'&&!isAdmin){
+      pay.innerHTML='<div class="msc"><h2>'+(c.paid?'Usajili wako umeisha':'Muda wa majaribio umeisha')+'</h2>'
+        +'<p>Ili kuendelea kutumia Msaidizi wa Mwalimu, tafadhali lipia usajili.</p>'+payText(user.email)
+        +'<button type="button" class="msbtn alt" id="msRe">Angalia tena</button><div id="msReMsg" style="font-size:13px;margin-top:8px"></div></div>';
+      pay.style.display='flex';
+      $('msRe').onclick=function(){var bt=this;bt.disabled=true;$('msReMsg').textContent='Inaangalia...';refreshMine(true).then(function(){var cc=myCalc();if(cc.status==='EXPIRED')$('msReMsg').textContent='Bado haujawashiwa usajili. Subiri msimamizi athibitishe malipo.';}).catch(function(){$('msReMsg').textContent='Imeshindwa kuangalia. Angalia intaneti.';}).then(function(){bt.disabled=false});};
+    }else pay.style.display='none';
+  }
+  function showMyInfo(){
+    var c=myCalc();
+    var h='<div class="msbox">Hali: <b>'+c.status+'</b><br>'+(c.paid?'Tarehe ya kuanza usajili: ':'Tarehe ya kuanza majaribio: ')+'<b>'+fmt(c.start)+'</b><br>Tarehe ya kuisha: <b>'+fmt(c.end)+'</b><br>Siku zilizobaki: <b>'+(c.days==null?'—':c.days)+'</b></div>';
+    if(c.status!=='ACTIVE')h+=payText(user.email);
+    modal('Usajili wangu',h);
+  }
+  function refreshMine(force){
+    if(!user||!db)return Promise.resolve();
+    if(!force&&Date.now()-lastFetch<30000)return Promise.resolve();
+    lastFetch=Date.now();
+    return db.collection('users').doc(user.uid).get().then(function(s){if(s.exists)myDoc=s.data();render();});
+  }
+  function ensureUserDoc(u){
+    var ref=db.collection('users').doc(u.uid);
+    return ref.get().then(function(s){
+      if(s.exists){myDoc=s.data();return;}
+      /* Hati ya mtumiaji hutengenezwa MARA MOJA tu, akishaingia. Haiandikwi tena juu ya iliyopo. */
+      return ref.set({email:u.email||'',name:u.displayName||'',createdAt:firebase.firestore.FieldValue.serverTimestamp()})
+        .then(function(){return ref.get()}).then(function(s2){myDoc=s2.data()||null;});
+    });
+  }
+  function checkAdmin(u){
+    /* Hii ni kwa ajili ya kuonyesha kitufe tu. Ruhusa halisi inakaguliwa na Firestore Rules. */
+    var p1=u.getIdTokenResult().then(function(r){return r.claims&&r.claims.admin===true}).catch(function(){return false});
+    var p2=db.collection('admins').doc(u.uid).get().then(function(s){return s.exists}).catch(function(){return false});
+    return Promise.all([p1,p2]).then(function(a){return a[0]||a[1]});
+  }
+  function onUser(u){
+    user=u;isAdmin=false;myDoc=null;lastFetch=Date.now();
+    ensureUI();
+    if(!u){$('msBadge').style.display='none';$('msAdmBtn').style.display='none';$('msPay').style.display='none';$('msAdm')&&($('msAdm').style.display='none');return;}
+    ensureUserDoc(u).catch(function(e){console.warn('Usajili: imeshindwa kusoma/kuunda hati ya mtumiaji',e);})
+      .then(function(){return checkAdmin(u)}).then(function(a){isAdmin=a;render();});
+  }
+
+  /* ---------- Admin Panel ---------- */
+  function openAdmin(){
+    if(!isAdmin)return;
+    var p=$('msAdm');
+    if(!p){
+      p=document.createElement('div');p.id='msAdm';
+      p.innerHTML='<div class="msa-in"><div class="msa-h"><h2>Admin — Usimamizi wa Usajili</h2><button type="button" class="msbtn red" id="msaClose">Funga</button></div>'
+        +'<div class="msa-note">Thibitisha kwanza kuwa malipo ya M-Pesa yamepokelewa, kisha bonyeza <b>ACTIVATE 30 DAYS</b>. Mfumo haujui malipo moja kwa moja. Tarehe ya kuanza ni saa ya kubonyeza ACTIVATE.</div>'
+        +'<div class="msa-tools"><input id="msaSearch" type="search" placeholder="Tafuta kwa barua pepe au jina..." autocomplete="off"><button type="button" class="msbtn" id="msaRef">Onyesha upya</button></div>'
+        +'<div id="msaStats"></div><div id="msaMsg"></div>'
+        +'<div class="msa-wrap"><table id="msaTbl"><thead><tr><th>Mtumiaji</th><th>Hali</th><th>Tarehe ya kuanza</th><th>Tarehe ya kuisha</th><th>Siku zilizobaki</th><th>Vitendo</th></tr></thead><tbody id="msaBody"></tbody></table></div></div>';
+      document.body.appendChild(p);
+      $('msaClose').onclick=function(){p.style.display='none'};
+      $('msaRef').onclick=loadUsers;
+      $('msaSearch').addEventListener('input',drawRows);
+      $('msaBody').addEventListener('click',function(e){
+        var t=e.target;if(!t||!t.getAttribute)return;
+        var uid=t.getAttribute('data-uid'),k=t.getAttribute('data-act');
+        if(!uid||!k)return;
+        if(k==='hist')showHistory(uid);else act(uid,k,t);
+      });
+    }
+    p.style.display='block';
+    loadUsers();
+  }
+  function amsg(t,c){var m=$('msaMsg');m.textContent=t||'';m.className=c||''}
+  function loadUsers(){
+    amsg('Inapakia watumiaji...');
+    return db.collection('users').limit(1000).get().then(function(q){
+      users=[];q.forEach(function(d){users.push({id:d.id,data:d.data()||{}})});
+      users.sort(function(a,b){var x=toDate(a.data.createdAt),y=toDate(b.data.createdAt);return (y?y.getTime():0)-(x?x.getTime():0)});
+      amsg('');drawRows();
+    }).catch(function(e){
+      amsg((e&&e.code==='permission-denied')?'Huna ruhusa ya Admin kwenye Firestore (angalia Security Rules na hati ya admins/UID yako).':'Imeshindwa kupakia: '+(e.message||e),'err');
+    });
+  }
+  function drawRows(){
+    var q=($('msaSearch').value||'').trim().toLowerCase(),n={TRIAL:0,ACTIVE:0,EXPIRED:0},h='',shown=0;
+    users.forEach(function(u){
+      var c=calc(u.data,null);if(n[c.status]!=null)n[c.status]++;
+      var em=u.data.email||'',nm=u.data.name||'';
+      if(q&&(em+' '+nm).toLowerCase().indexOf(q)<0)return;
+      shown++;
+      var act=(c.status==='ACTIVE')?'<button type="button" class="msbtn alt" data-uid="'+esc(u.id)+'" data-act="extend">EXTEND 30 DAYS</button>':'<button type="button" class="msbtn alt" data-uid="'+esc(u.id)+'" data-act="activate">ACTIVATE 30 DAYS</button>';
+      act+='<button type="button" class="msbtn" data-uid="'+esc(u.id)+'" data-act="hist">Historia</button>';
+      h+='<tr><td><b>'+esc(em||'(hakuna barua pepe)')+'</b>'+(nm?'<br>'+esc(nm):'')+'</td><td><span class="mst '+c.status+'">'+(c.status==='UNKNOWN'?'HAIJULIKANI':c.status)+'</span>'+(c.status!=='UNKNOWN'&&!c.paid?'<br><small>majaribio</small>':'')+'</td><td>'+fmt(c.start)+'</td><td>'+fmt(c.end)+'</td><td>'+(c.days==null?'—':c.days)+'</td><td>'+act+'</td></tr>';
+    });
+    $('msaBody').innerHTML=h||'<tr><td colspan="6" style="text-align:center;padding:16px">Hakuna mtumiaji aliyepatikana.</td></tr>';
+    $('msaStats').innerHTML='Jumla: <b>'+users.length+'</b> • TRIAL: <b>'+n.TRIAL+'</b> • ACTIVE: <b>'+n.ACTIVE+'</b> • EXPIRED: <b>'+n.EXPIRED+'</b>'+(q?' • Zilizopatikana: <b>'+shown+'</b>':'');
+  }
+  function act(uid,kind,btn){
+    var u=null;users.forEach(function(x){if(x.id===uid)u=x});if(!u)return;
+    var label=kind==='extend'?'EXTEND 30 DAYS':'ACTIVATE 30 DAYS';
+    if(!window.confirm('Je, umethibitisha kuwa malipo ya M-Pesa ya '+(u.data.email||uid)+' yamepokelewa?\n\nBonyeza OK kufanya: '+label))return;
+    var all=document.querySelectorAll('#msaBody button');for(var i=0;i<all.length;i++)all[i].disabled=true;
+    amsg('Inatekeleza '+label+'...');
+    var ref=db.collection('users').doc(uid),hRef=ref.collection('subscriptionHistory').doc(),T=firebase.firestore.Timestamp,SV=firebase.firestore.FieldValue.serverTimestamp(),out={};
+    db.runTransaction(function(tx){
+      return tx.get(ref).then(function(s){
+        if(!s.exists)throw new Error('Mtumiaji huyu hayupo kwenye Firestore.');
+        var d=s.data()||{},sub=d.subscription||{},now=new Date(),oldEnd=toDate(sub.expiryDate),oldStart=toDate(sub.startDate),type,start,base;
+        if(kind==='extend'&&oldEnd&&oldEnd.getTime()>now.getTime()){type='extend';start=oldStart||now;base=oldEnd;}
+        else{type='activate';start=now;base=now;}   /* ACTIVATE: startDate = saa ya Admin kubonyeza */
+        var newEnd=new Date(base.getTime()+SUB_DAYS*DAY);
+        var ns={};for(var k in sub)ns[k]=sub[k];
+        ns.startDate=T.fromDate(start);ns.expiryDate=T.fromDate(newEnd);ns.days=SUB_DAYS;ns.lastAction=type;ns.lastActionAt=SV;ns.activatedBy=user.email||'';ns.activatedByUid=user.uid;
+        tx.update(ref,{subscription:ns});
+        tx.set(hRef,{type:type,days:SUB_DAYS,at:SV,adminEmail:user.email||'',adminUid:user.uid,startDate:T.fromDate(start),previousExpiry:oldEnd?T.fromDate(oldEnd):null,newExpiry:T.fromDate(newEnd)});
+        out.end=newEnd;out.type=type;
+      });
+    }).then(function(){
+      return loadUsers().then(function(){amsg((out.type==='extend'?'Imeongezwa siku 30. ':'Imewashwa siku 30. ')+(u.data.email||'')+' — inaisha: '+fmt(out.end),'ok');});
+    }).catch(function(e){
+      amsg((e&&e.code==='permission-denied')?'Imekataliwa na Firestore: huna ruhusa ya Admin.':'Imeshindwa: '+(e.message||e),'err');drawRows();
+    });
+  }
+  function showHistory(uid){
+    var u=null;users.forEach(function(x){if(x.id===uid)u=x});
+    modal('Historia — '+((u&&u.data.email)||uid),'Inapakia...');
+    db.collection('users').doc(uid).collection('subscriptionHistory').orderBy('at','desc').limit(100).get().then(function(q){
+      if(q.empty){$('msmB').innerHTML='<div class="msbox">Bado hakuna historia ya ACTIVATE/EXTEND.</div>';return;}
+      var h='<div style="overflow-x:auto"><table><tr><th>Lini ilifanyika</th><th>Kitendo</th><th>Kuanza</th><th>Ilikuwa inaisha</th><th>Sasa inaisha</th><th>Admin</th></tr>';
+      q.forEach(function(d){var x=d.data();h+='<tr><td>'+fmt(toDate(x.at))+'</td><td>'+(x.type==='extend'?'EXTEND 30':'ACTIVATE 30')+'</td><td>'+fmt(toDate(x.startDate))+'</td><td>'+fmt(toDate(x.previousExpiry))+'</td><td>'+fmt(toDate(x.newExpiry))+'</td><td>'+esc(x.adminEmail||'')+'</td></tr>'});
+      $('msmB').innerHTML=h+'</table></div>';
+    }).catch(function(e){$('msmB').innerHTML='<div class="msbox">Imeshindwa kupakia historia: '+esc(e.message||e)+'</div>';});
+  }
+
+  /* ---------- Kuanzisha: subiri Firebase ya login iwe tayari, kisha pakia Firestore bila kugusa login ---------- */
+  function loadScript(src){return new Promise(function(res,rej){var t=document.createElement('script');t.src=src;t.onload=res;t.onerror=function(){rej(new Error('load'))};document.head.appendChild(t)})}
+  function boot(){
+    if(typeof firebase==='undefined'||!firebase.apps||!firebase.apps.length){if(++tries<200)setTimeout(boot,300);return;}
+    loadScript(BASE+'firebase-firestore-compat.js').then(function(){
+      db=firebase.firestore();
+      firebase.auth().onAuthStateChanged(onUser);
+      setInterval(render,60000);   /* hali inasasishwa yenyewe: usajili ukipita muda, unakuwa EXPIRED */
+      document.addEventListener('visibilitychange',function(){if(!document.hidden)refreshMine(false).catch(function(){})});
+    }).catch(function(){console.warn('Usajili: Firestore SDK haikupakia. App inaendelea kufanya kazi bila ukaguzi wa usajili.');});
+  }
+  boot();
+})();
+</script>
+
 </body>
 </html>
