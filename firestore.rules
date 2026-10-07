@@ -1,0 +1,54 @@
+rules_version = '2';
+// ============================================================
+// Firestore Security Rules — Msaidizi wa Mwalimu (usajili + Admin)
+// ONYO: Kama una rules zingine zinazotumika sasa, UNGANISHA (usizibadilishe kabisa).
+//
+// JINSI YA KUMFANYA MTU KUWA ADMIN (mara moja, kwenye Firebase Console):
+//   Firestore Database > Start collection "admins" > Document ID = UID ya admin
+//   (UID iko kwenye Authentication > Users) > weka field yoyote, mfano  role: "admin"
+//   Hati hizi haziwezi kuandikwa kutoka kwenye app — Console tu.
+// ============================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    // Admin = ana custom claim admin:true AU ana hati admins/{uid}
+    function isAdmin() {
+      return signedIn() && (
+        request.auth.token.get('admin', false) == true ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    match /admins/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;  // mtu aone hati yake tu
+      allow list, write: if false;
+    }
+
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+
+      // Mwalimu anaweza kutengeneza hati yake MARA MOJA, bila subscription,
+      // na createdAt lazima iwe saa ya server (hawezi kuongeza trial kwa kubadilisha tarehe).
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['email', 'name', 'createdAt'])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.createdAt == request.time;
+
+      // Ni Admin tu anayeweza kubadilisha 'subscription'. Mwalimu hawezi kuhariri chochote.
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['subscription']);
+
+      allow delete: if false;
+
+      // Historia: inaongezwa tu (append-only), haifutwi wala kubadilishwa.
+      match /subscriptionHistory/{hid} {
+        allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+        allow create: if isAdmin();
+        allow update, delete: if false;
+      }
+    }
+  }
+}
