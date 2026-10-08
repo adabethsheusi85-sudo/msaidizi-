@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -5389,18 +5388,20 @@ function saveExamToBank(){
 })();
 </script>
 <style id="msAdminCss">
-#msBadge,#msAdmBtn{display:none}
+#msBadge,#msAdmBtn,#msPayBtn{display:none}
 #fbBar button#msBadge{background:#2f6f8f}
 #fbBar button#msBadge.ACTIVE{background:#2e7d32}
 #fbBar button#msBadge.EXPIRED{background:#b3261e}
 #fbBar button#msBadge.warn{background:#c77700}
 #fbBar button#msAdmBtn{background:#6a4a9c}
-#msPay,#msAdm{position:fixed;inset:0;display:none;overflow:auto;font-family:'Helvetica Neue',Arial,sans-serif;color:#222}
+#fbBar button#msPayBtn{background:#d9932f}
+#fbBar button#msBadge.PAYMENT_PENDING{background:#8a5cc0}
+#msPay,#msAdm,#msPP{position:fixed;inset:0;display:none;overflow:auto;font-family:'Helvetica Neue',Arial,sans-serif;color:#222}
 #msPay{z-index:8500;background:var(--board-dark,#15291F);align-items:center;justify-content:center;padding:16px}
-#msPay .msc{background:var(--chalk,#F4EFE1);border-radius:12px;padding:22px;width:100%;max-width:440px;box-shadow:0 10px 40px rgba(0,0,0,.4);margin-top:50px}
-#msPay h2{margin:0 0 8px;font-size:19px;color:#b3261e}
-#msPay p,#msPay li{font-size:14px;line-height:1.5}
-#msPay ol{padding-left:20px;margin:8px 0}
+#msPay .msc,#msPP .msc{background:var(--chalk,#F4EFE1);border-radius:12px;padding:22px;width:100%;max-width:440px;box-shadow:0 10px 40px rgba(0,0,0,.4);margin-top:50px}
+#msPay h2,#msPP h2{margin:0 0 8px;font-size:19px;color:#b3261e}
+#msPay p,#msPay li,#msPP p,#msPP li{font-size:14px;line-height:1.5}
+#msPay ol,#msPP ol{padding-left:20px;margin:8px 0}
 .msbtn{border:0;border-radius:6px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;color:#fff;background:var(--board-dark,#15291F);margin:4px 6px 0 0}
 .msbtn.alt{background:#d9932f}.msbtn.red{background:#b3261e}.msbtn:disabled{opacity:.55;cursor:wait}
 .msbox{background:#fff;border:1px solid #d8cfb4;border-radius:8px;padding:10px 12px;font-size:13.5px;margin:8px 0;word-break:break-word}
@@ -5414,17 +5415,30 @@ function saveExamToBank(){
 #msaStats{font-size:13px;margin:6px 0}
 #msaMsg{font-size:13px;min-height:18px;margin:4px 0}#msaMsg.err{color:#b3261e}#msaMsg.ok{color:#2e7d32}
 .msa-wrap{overflow-x:auto;background:#fff;border:1px solid #d8cfb4;border-radius:8px}
-#msaTbl{border-collapse:collapse;width:100%;min-width:820px;font-size:13px}
+#msaTbl{border-collapse:collapse;width:100%;min-width:1100px;font-size:13px}
 #msaTbl th{background:#15291F;color:#F4EFE1;text-align:left;padding:8px 10px;white-space:nowrap}
 #msaTbl td{padding:8px 10px;border-top:1px solid #eadfc2;vertical-align:top}
 .mst{display:inline-block;padding:2px 9px;border-radius:12px;color:#fff;font-weight:700;font-size:12px;background:#777}
+.mst.PAYMENT_PENDING,.mst.PENDING{background:#8a5cc0}.mst.PAID{background:#2e7d32}.mst.NONE{background:#777}
 .mst.TRIAL{background:#2f6f8f}.mst.ACTIVE{background:#2e7d32}.mst.EXPIRED{background:#b3261e}
 #msModal{position:fixed;inset:0;z-index:8700;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:14px;font-family:'Helvetica Neue',Arial,sans-serif;color:#222}
 #msModal .msm{background:#F4EFE1;border-radius:12px;padding:18px;width:100%;max-width:640px;max-height:85vh;overflow:auto}
 #msModal h3{margin:0 0 8px;font-size:17px}
 #msModal table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:520px}
 #msModal th,#msModal td{border:1px solid #d8cfb4;padding:5px 7px;text-align:left;background:#fff}
-@media print{#msPay,#msAdm,#msModal{display:none!important}}
+#msaCards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:8px 0}
+@media(max-width:560px){#msaCards{grid-template-columns:repeat(2,1fr)}}
+.msac{background:#fff;border:1px solid #d8cfb4;border-radius:8px;padding:8px 10px;text-align:center}
+.msac b{display:block;font-size:22px}.msac span{font-size:12px;color:#555}
+.msac.p b{color:#8a5cc0}.msac.t b{color:#2f6f8f}.msac.a b{color:#2e7d32}.msac.e b{color:#b3261e}
+#msaTbl small.msd{display:block;color:#666;font-size:11.5px;line-height:1.35;margin-top:2px;word-break:break-all}
+#msPP{z-index:8550;background:var(--board-dark,#15291F);align-items:center;justify-content:center;padding:16px}
+.mspk-t{font-size:13px;font-weight:700;letter-spacing:.5px;color:#555}
+.mspk-p{font-size:28px;font-weight:800;color:#15291F;margin:2px 0 8px}
+.mspk-n{font-size:13px;min-height:18px;margin-top:8px;color:#15291F}
+.msbox.pend{background:#efe6fa;border-color:#b79ad8}
+.msrow-p td{background:#f6f0fc}
+@media print{#msPay,#msAdm,#msModal,#msPP{display:none!important}}
 </style>
 <script>
 /* ===== USAJILI (TRIAL/ACTIVE/EXPIRED) + ADMIN PANEL — kipengele cha ongezeko, hakibadilishi code iliyopo =====
@@ -5434,9 +5448,13 @@ function saveExamToBank(){
   var TRIAL_DAYS=7;      // siku za majaribio tangu mwalimu ajisajili (badilisha hapa)
   var SUB_DAYS=30;       // siku za usajili kwa kila ACTIVATE / EXTEND
   var WARN_DAYS=3;       // onyo siku zikiwa chache
-  var PAY={number:'',name:'',amount:'',contact:''}; // WEKA maelezo ya malipo hapa (acha tupu kama bado)
+  /* ===== MIPANGILIO YA MALIPO — badilisha HAPA tu ===== */
+  var MONTHLY_PRICE=3000;                       // bei kwa mwezi (TZS)
+  var PAYMENT_NUMBER="WEKA NAMBA YA M-PESA HAPA"; // namba ya M-Pesa ya kupokea malipo
+  var PAY={name:'',contact:''};                 // hiari: jina la akaunti ya M-Pesa na njia ya mawasiliano
+  var PENDING_MSG='Maombi yako ya malipo yametumwa. Subiri Admin athibitishe malipo yako.';
   var DAY=86400000, BASE='https://www.gstatic.com/firebasejs/10.12.5/';
-  var db=null,user=null,isAdmin=false,myDoc=null,users=[],tries=0,lastFetch=0;
+  var db=null,user=null,isAdmin=false,myDoc=null,users=[],tries=0,lastFetch=0,payNote='',modalKind='';
   var $=function(i){return document.getElementById(i)};
   function pad(n){return n<10?'0'+n:''+n}
   function fmt(d){return d?pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes()):'—'}
@@ -5448,20 +5466,80 @@ function saveExamToBank(){
     var now=Date.now(),sub=(d&&d.subscription)||{};
     var s=toDate(sub.startDate),e=toDate(sub.expiryDate);
     var created=toDate(d&&d.createdAt)||fallbackCreated||null;
+    /* Trial: tumia trialStartDate/trialExpiryDate kama zipo; la sivyo createdAt + TRIAL_DAYS (mfumo uleule wa awali) */
+    var ts=toDate(d&&d.trialStartDate)||created;
+    var te=toDate(d&&d.trialExpiryDate)||(ts?new Date(ts.getTime()+TRIAL_DAYS*DAY):null);
     var r;
     if(e){r={status:e.getTime()>now?'ACTIVE':'EXPIRED',start:s,end:e,paid:true};}
-    else if(created){var te=new Date(created.getTime()+TRIAL_DAYS*DAY);r={status:te.getTime()>now?'TRIAL':'EXPIRED',start:created,end:te,paid:false};}
+    else if(te){r={status:te.getTime()>now?'TRIAL':'EXPIRED',start:ts,end:te,paid:false};}
     else r={status:'UNKNOWN',start:null,end:null,paid:false};
+    r.trialStart=ts;r.trialEnd=te;r.subStart=s;r.subEnd=e;
     r.days=r.end?Math.max(0,Math.ceil((r.end.getTime()-now)/DAY)):null;
+    /* Malipo: status ya msingi (base) haibadiliki; PAYMENT_PENDING ni juu yake pale TRIAL/EXPIRED + ombi la malipo */
+    r.base=r.status;r.pay=(d&&d.paymentStatus)||'NONE';r.payAt=toDate(d&&d.paymentRequestedAt);
+    if(r.pay==='PENDING'&&(r.status==='TRIAL'||r.status==='EXPIRED'))r.status='PAYMENT_PENDING';
     return r;
   }
-  function payText(email){
-    var h='<ol><li>Lipia usajili wa siku '+SUB_DAYS+' kwa M-Pesa';
-    if(PAY.number||PAY.name||PAY.amount){h+=':<div class="msbox">'+(PAY.number?'Namba: <b>'+esc(PAY.number)+'</b><br>':'')+(PAY.name?'Jina: <b>'+esc(PAY.name)+'</b><br>':'')+(PAY.amount?'Kiasi: <b>'+esc(PAY.amount)+'</b>':'')+'</div>';}
-    else h+=' (wasiliana na msimamizi kupata maelezo ya malipo).';
-    h+='</li><li>Mjulishe msimamizi umelipa'+(PAY.contact?' ('+esc(PAY.contact)+')':'')+', ukitaja barua pepe yako: <b>'+esc(email||'')+'</b></li>';
-    h+='<li>Msimamizi akithibitisha malipo, atawasha usajili wako. Kisha bonyeza "Angalia tena".</li></ol>';
+  function money(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+  function numSet(){return !!PAYMENT_NUMBER&&!/WEKA/i.test(String(PAYMENT_NUMBER))}
+  function stMsg(c){
+    if(c.status==='ACTIVE')return 'Akaunti ni ACTIVE. Zimebaki siku '+c.days+' (hadi '+fmt(c.end)+').';
+    if(c.status==='PAYMENT_PENDING')return PENDING_MSG;
+    if(c.status==='EXPIRED')return 'Muda wa akaunti umeisha. Lipa kisha bonyeza NIMELIPA.';
+    return 'Uko kwenye majaribio (TRIAL), zimebaki siku '+c.days+'. Hujatuma ombi la malipo.';
+  }
+  /* Kisanduku cha malipo — kinatumika kwenye ukurasa wa Malipo, kwenye "Usajili wangu" na kwenye skrini ya EXPIRED */
+  function payBlock(c){
+    var h='<div class="mspk"><div class="mspk-t">USALAMA WA HUDUMA</div><div class="mspk-p">'+money(MONTHLY_PRICE)+' TZS / MWEZI</div>';
+    h+='<div class="msbox">Package: <b>Monthly</b> (bei ya utambulisho)<br>Hali ya akaunti: <b>'+c.status+'</b>'
+      +(c.base==='EXPIRED'?' &bull; muda umeisha':(c.days==null?'':' &bull; zimebaki siku <b>'+c.days+'</b> (hadi '+fmt(c.end)+')'))+'</div>';
+    h+='<div class="msbox">Namba ya M-Pesa: <b>'+esc(PAYMENT_NUMBER)+'</b>'+(PAY.name?'<br>Jina: <b>'+esc(PAY.name)+'</b>':'')+(numSet()?'':'<br><small>(Namba bado haijawekwa)</small>')+'</div>';
+    h+='<ol><li>Tuma <b>'+money(MONTHLY_PRICE)+' TZS</b> kwa M-Pesa kwenda namba hapo juu.</li><li>Ukimaliza kulipa, bonyeza <b>NIMELIPA</b>.</li><li>Subiri Admin athibitishe — akaunti yako itawashwa kwa siku '+SUB_DAYS+'.</li></ol>';
+    if(PAY.contact)h+='<p style="font-size:12.5px">Msaada: '+esc(PAY.contact)+'</p>';
+    if(c.pay==='PENDING')h+='<div class="msbox pend">'+PENDING_MSG+'</div>';
+    h+='<button type="button" class="msbtn alt" data-pay="now">LIPA SASA</button>'
+      +'<button type="button" class="msbtn"'+(c.pay==='PENDING'?' disabled':'')+' data-pay="paid">NIMELIPA</button>'
+      +'<button type="button" class="msbtn" data-pay="status">HALI YA MALIPO</button>';
+    h+='<div class="mspk-n">'+esc(payNote)+'</div></div>';
     return h;
+  }
+  function repaint(){
+    render();
+    var pp=$('msPP');if(pp&&pp.style.display==='flex')drawPP();
+    var m=$('msModal');if(m&&m.style.display==='flex'&&modalKind==='mine')showMyInfo(true);
+  }
+  function payNow(){
+    if(!numSet()){payNote='Namba ya malipo bado haijawekwa. Wasiliana na msimamizi.';repaint();return;}
+    var done=function(cp){payNote='Tuma '+money(MONTHLY_PRICE)+' TZS kwa M-Pesa namba '+PAYMENT_NUMBER+(cp?' (namba imenakiliwa)':'')+'. Ukimaliza kulipa, bonyeza NIMELIPA.';repaint();};
+    try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(String(PAYMENT_NUMBER)).then(function(){done(true)},function(){done(false)});return;}}catch(_e){}
+    done(false);
+  }
+  function sendPaid(btn){
+    var c=myCalc();
+    if(c.pay==='PENDING'){payNote=PENDING_MSG;repaint();return;}
+    if(!window.confirm('Bonyeza OK kama umeshatuma '+money(MONTHLY_PRICE)+' TZS kwa M-Pesa.\n\nMfumo haujui kama malipo yamefika; Admin ndiye atakayethibitisha.'))return;
+    btn.disabled=true;
+    var ref=db.collection('users').doc(user.uid),SV=firebase.firestore.FieldValue.serverTimestamp();
+    var upd={paymentStatus:'PENDING',paymentRequestedAt:SV,updatedAt:SV};
+    if(!myDoc||myDoc.status!=='ACTIVE')upd.status='PAYMENT_PENDING';
+    ref.update(upd).then(function(){return ref.get()}).then(function(s){if(s.exists)myDoc=s.data();payNote=PENDING_MSG;repaint();})
+      .catch(function(e){payNote=(e&&e.code==='permission-denied')?'Imekataliwa na Firestore: Security Rules za malipo bado hazijawekwa.':'Imeshindwa kutuma ombi. Angalia intaneti kisha jaribu tena.';repaint();});
+  }
+  function payStatus(btn){
+    btn.disabled=true;
+    refreshMine(true).then(function(){payNote=stMsg(myCalc());repaint();}).catch(function(){payNote='Imeshindwa kuangalia. Angalia intaneti.';repaint();});
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target&&e.target.closest?e.target.closest('[data-pay]'):null;
+    if(!b||!user||!db)return;
+    var k=b.getAttribute('data-pay');
+    if(k==='now')payNow();else if(k==='paid')sendPaid(b);else if(k==='status')payStatus(b);
+  });
+  function openPP(){payNote='';var p=$('msPP');p.style.display='flex';drawPP();}
+  function drawPP(){
+    var p=$('msPP');
+    p.innerHTML='<div class="msc"><h2>USALAMA / SUBSCRIPTION &amp; PAYMENT</h2>'+payBlock(myCalc())+'<button type="button" class="msbtn red" id="msPPx">Funga</button></div>';
+    $('msPPx').onclick=function(){p.style.display='none'};
   }
 
   /* ---------- Upande wa mwalimu ---------- */
@@ -5472,35 +5550,37 @@ function saveExamToBank(){
     b.onclick=showMyInfo;
     var a=document.createElement('button');a.type='button';a.id='msAdmBtn';a.textContent='Admin';bar.insertBefore(a,out);
     a.onclick=openAdmin;
+    var pb=document.createElement('button');pb.type='button';pb.id='msPayBtn';pb.textContent='Malipo';bar.insertBefore(pb,out);pb.onclick=openPP;
+    var pp=document.createElement('div');pp.id='msPP';document.body.appendChild(pp);
     var pay=document.createElement('div');pay.id='msPay';document.body.appendChild(pay);
     var m=document.createElement('div');m.id='msModal';m.innerHTML='<div class="msm"><h3 id="msmT"></h3><div id="msmB"></div><button type="button" class="msbtn" id="msmX">Funga</button></div>';document.body.appendChild(m);
     $('msmX').onclick=function(){m.style.display='none'};
     m.addEventListener('click',function(e){if(e.target===m)m.style.display='none'});
   }
-  function modal(t,h){$('msmT').textContent=t;$('msmB').innerHTML=h;$('msModal').style.display='flex'}
+  function modal(t,h,kind){$('msmT').textContent=t;$('msmB').innerHTML=h;modalKind=kind||'';$('msModal').style.display='flex'}
   function myCalc(){var c=user&&user.metadata&&user.metadata.creationTime?new Date(user.metadata.creationTime):null;return calc(myDoc||{},c)}
   function render(){
     if(!user||!db)return;
     ensureUI();
     var badge=$('msBadge'),pay=$('msPay'),c=myCalc();
     $('msAdmBtn').style.display=isAdmin?'inline-block':'none';
-    if(c.status==='UNKNOWN'){badge.style.display='none';pay.style.display='none';return;}
-    badge.style.display='inline-block';
-    badge.className=c.status+((c.status!=='EXPIRED'&&c.days<=WARN_DAYS)?' warn':'');
-    badge.textContent=c.status+(c.status==='EXPIRED'?'':' • siku '+c.days);
-    if(c.status==='EXPIRED'&&!isAdmin){
+    if(c.status==='UNKNOWN'){badge.style.display='none';$('msPayBtn').style.display='none';pay.style.display='none';return;}
+    badge.style.display='inline-block';$('msPayBtn').style.display='inline-block';
+    badge.className=c.status+((c.base!=='EXPIRED'&&c.days<=WARN_DAYS)?' warn':'');
+    badge.textContent=c.status+(c.base==='EXPIRED'?'':' • siku '+c.days);
+    /* Kufunga app kunategemea hali ya msingi (EXPIRED) — PAYMENT_PENDING haifungui wala kufungua; Admin pekee ndiye anayewasha */
+    if(c.base==='EXPIRED'&&!isAdmin){
       pay.innerHTML='<div class="msc"><h2>'+(c.paid?'Usajili wako umeisha':'Muda wa majaribio umeisha')+'</h2>'
-        +'<p>Ili kuendelea kutumia Msaidizi wa Mwalimu, tafadhali lipia usajili.</p>'+payText(user.email)
-        +'<button type="button" class="msbtn alt" id="msRe">Angalia tena</button><div id="msReMsg" style="font-size:13px;margin-top:8px"></div></div>';
+        +'<p>Ili kuendelea kutumia Msaidizi wa Mwalimu, tafadhali lipia usajili.</p>'+payBlock(c)+'</div>';
       pay.style.display='flex';
-      $('msRe').onclick=function(){var bt=this;bt.disabled=true;$('msReMsg').textContent='Inaangalia...';refreshMine(true).then(function(){var cc=myCalc();if(cc.status==='EXPIRED')$('msReMsg').textContent='Bado haujawashiwa usajili. Subiri msimamizi athibitishe malipo.';}).catch(function(){$('msReMsg').textContent='Imeshindwa kuangalia. Angalia intaneti.';}).then(function(){bt.disabled=false});};
     }else pay.style.display='none';
   }
-  function showMyInfo(){
+  function showMyInfo(keep){
     var c=myCalc();
+    if(keep!==true)payNote='';
     var h='<div class="msbox">Hali: <b>'+c.status+'</b><br>'+(c.paid?'Tarehe ya kuanza usajili: ':'Tarehe ya kuanza majaribio: ')+'<b>'+fmt(c.start)+'</b><br>Tarehe ya kuisha: <b>'+fmt(c.end)+'</b><br>Siku zilizobaki: <b>'+(c.days==null?'—':c.days)+'</b></div>';
-    if(c.status!=='ACTIVE')h+=payText(user.email);
-    modal('Usajili wangu',h);
+    if(c.status!=='ACTIVE')h+=payBlock(c);
+    modal('Usajili wangu',h,'mine');
   }
   function refreshMine(force){
     if(!user||!db)return Promise.resolve();
@@ -5508,13 +5588,23 @@ function saveExamToBank(){
     lastFetch=Date.now();
     return db.collection('users').doc(user.uid).get().then(function(s){if(s.exists)myDoc=s.data();render();});
   }
+  function backfillTrial(ref,d){
+    /* Inaongeza trialStartDate/trialExpiryDate MARA MOJA kutoka createdAt ya seva. Firestore Rules zinakagua thamani kamili. */
+    var c=d&&d.createdAt;
+    if(!d||d.trialExpiryDate||d.subscription||!c||typeof c.seconds!=='number')return Promise.resolve();
+    var T=firebase.firestore.Timestamp,SV=firebase.firestore.FieldValue.serverTimestamp();
+    return ref.update({trialStartDate:c,trialExpiryDate:new T(c.seconds+TRIAL_DAYS*86400,c.nanoseconds),status:'TRIAL',plan:'trial',updatedAt:SV})
+      .then(function(){return ref.get()}).then(function(s2){if(s2.exists)myDoc=s2.data();})
+      .catch(function(e){console.warn('Usajili: backfill ya trial imeshindwa (si tatizo, tarehe zinahesabiwa kutoka createdAt)',e);});
+  }
   function ensureUserDoc(u){
     var ref=db.collection('users').doc(u.uid);
     return ref.get().then(function(s){
-      if(s.exists){myDoc=s.data();return;}
-      /* Hati ya mtumiaji hutengenezwa MARA MOJA tu, akishaingia. Haiandikwi tena juu ya iliyopo. */
-      return ref.set({email:u.email||'',name:u.displayName||'',createdAt:firebase.firestore.FieldValue.serverTimestamp()})
-        .then(function(){return ref.get()}).then(function(s2){myDoc=s2.data()||null;});
+      if(s.exists){myDoc=s.data();return backfillTrial(ref,myDoc);}
+      /* Hati ya mtumiaji hutengenezwa MARA MOJA tu. Hali/plan huanza kama TRIAL; Rules zinakataa thamani nyingine. */
+      var SV=firebase.firestore.FieldValue.serverTimestamp();
+      return ref.set({email:u.email||'',name:u.displayName||'',createdAt:SV,updatedAt:SV,status:'TRIAL',plan:'trial'})
+        .then(function(){return ref.get()}).then(function(s2){myDoc=s2.data()||null;return backfillTrial(ref,myDoc);});
     });
   }
   function checkAdmin(u){
@@ -5537,11 +5627,11 @@ function saveExamToBank(){
     var p=$('msAdm');
     if(!p){
       p=document.createElement('div');p.id='msAdm';
-      p.innerHTML='<div class="msa-in"><div class="msa-h"><h2>Admin — Usimamizi wa Usajili</h2><button type="button" class="msbtn red" id="msaClose">Funga</button></div>'
+      p.innerHTML='<div class="msa-in"><div class="msa-h"><h2>ADMIN DASHBOARD</h2><button type="button" class="msbtn red" id="msaClose">Funga</button></div>'
         +'<div class="msa-note">Thibitisha kwanza kuwa malipo ya M-Pesa yamepokelewa, kisha bonyeza <b>ACTIVATE 30 DAYS</b>. Mfumo haujui malipo moja kwa moja. Tarehe ya kuanza ni saa ya kubonyeza ACTIVATE.</div>'
-        +'<div class="msa-tools"><input id="msaSearch" type="search" placeholder="Tafuta kwa barua pepe au jina..." autocomplete="off"><button type="button" class="msbtn" id="msaRef">Onyesha upya</button></div>'
+        +'<div class="msa-tools"><input id="msaSearch" type="search" placeholder="Tafuta kwa email, jina au UID..." autocomplete="off"><button type="button" class="msbtn" id="msaRef">Onyesha upya</button></div>'
         +'<div id="msaStats"></div><div id="msaMsg"></div>'
-        +'<div class="msa-wrap"><table id="msaTbl"><thead><tr><th>Mtumiaji</th><th>Hali</th><th>Tarehe ya kuanza</th><th>Tarehe ya kuisha</th><th>Siku zilizobaki</th><th>Vitendo</th></tr></thead><tbody id="msaBody"></tbody></table></div></div>';
+        +'<div class="msa-wrap"><table id="msaTbl"><thead><tr><th>Mwalimu</th><th>Email</th><th>Status</th><th>Payment</th><th>Start</th><th>Days</th><th>Expiry</th><th>Action</th></tr></thead><tbody id="msaBody"></tbody></table></div></div>';
       document.body.appendChild(p);
       $('msaClose').onclick=function(){p.style.display='none'};
       $('msaRef').onclick=loadUsers;
@@ -5561,30 +5651,38 @@ function saveExamToBank(){
     amsg('Inapakia watumiaji...');
     return db.collection('users').limit(1000).get().then(function(q){
       users=[];q.forEach(function(d){users.push({id:d.id,data:d.data()||{}})});
-      users.sort(function(a,b){var x=toDate(a.data.createdAt),y=toDate(b.data.createdAt);return (y?y.getTime():0)-(x?x.getTime():0)});
+      users.sort(function(a,b){var pa=a.data.paymentStatus==='PENDING'?1:0,pb=b.data.paymentStatus==='PENDING'?1:0;if(pa!==pb)return pb-pa;var x=toDate(a.data.createdAt),y=toDate(b.data.createdAt);return (y?y.getTime():0)-(x?x.getTime():0)});
       amsg('');drawRows();
     }).catch(function(e){
       amsg((e&&e.code==='permission-denied')?'Huna ruhusa ya Admin kwenye Firestore (angalia Security Rules na hati ya admins/UID yako).':'Imeshindwa kupakia: '+(e.message||e),'err');
     });
   }
   function drawRows(){
-    var q=($('msaSearch').value||'').trim().toLowerCase(),n={TRIAL:0,ACTIVE:0,EXPIRED:0},h='',shown=0;
+    var q=($('msaSearch').value||'').trim().toLowerCase(),n={TRIAL:0,PAYMENT_PENDING:0,ACTIVE:0,EXPIRED:0},h='',shown=0;
     users.forEach(function(u){
       var c=calc(u.data,null);if(n[c.status]!=null)n[c.status]++;
-      var em=u.data.email||'',nm=u.data.name||'';
-      if(q&&(em+' '+nm).toLowerCase().indexOf(q)<0)return;
+      var em=u.data.email||'',nm=u.data.name||u.data.displayName||'';
+      if(q&&(em+' '+nm+' '+u.id).toLowerCase().indexOf(q)<0)return;
       shown++;
       var act=(c.status==='ACTIVE')?'<button type="button" class="msbtn alt" data-uid="'+esc(u.id)+'" data-act="extend">EXTEND 30 DAYS</button>':'<button type="button" class="msbtn alt" data-uid="'+esc(u.id)+'" data-act="activate">ACTIVATE 30 DAYS</button>';
       act+='<button type="button" class="msbtn" data-uid="'+esc(u.id)+'" data-act="hist">Historia</button>';
-      h+='<tr><td><b>'+esc(em||'(hakuna barua pepe)')+'</b>'+(nm?'<br>'+esc(nm):'')+'</td><td><span class="mst '+c.status+'">'+(c.status==='UNKNOWN'?'HAIJULIKANI':c.status)+'</span>'+(c.status!=='UNKNOWN'&&!c.paid?'<br><small>majaribio</small>':'')+'</td><td>'+fmt(c.start)+'</td><td>'+fmt(c.end)+'</td><td>'+(c.days==null?'—':c.days)+'</td><td>'+act+'</td></tr>';
+      var det='<small class="msd">UID: '+esc(u.id)+'</small>'
+        +'<small class="msd">Trial: '+fmt(c.trialStart)+' \u2192 '+fmt(c.trialEnd)+'</small>'
+        +'<small class="msd">Usajili: '+(c.subEnd?fmt(c.subStart)+' \u2192 '+fmt(c.subEnd):'\u2014')+'</small>';
+      var sm='';
+      if(c.status==='PAYMENT_PENDING')sm='<br><small>'+(c.base==='EXPIRED'?(c.paid?'usajili umeisha':'majaribio yameisha'):'majaribio')+'</small>';
+      else if(c.status!=='UNKNOWN'&&!c.paid)sm='<br><small>majaribio</small>';
+      var pl=(c.pay==='PENDING'||c.pay==='PAID')?c.pay:'NONE';
+      var pc='<span class="mst '+pl+'">'+pl+'</span>'+(c.pay==='PENDING'&&c.payAt?'<small class="msd">Aliomba: '+fmt(c.payAt)+'</small>':'');
+      h+='<tr'+(c.pay==='PENDING'?' class="msrow-p"':'')+'><td><b>'+esc(nm||'\u2014')+'</b>'+det+'</td><td style="word-break:break-all">'+esc(em||'(hakuna email)')+'</td><td><span class="mst '+c.status+'">'+(c.status==='UNKNOWN'?'HAIJULIKANI':c.status)+'</span>'+sm+'</td><td>'+pc+'</td><td>'+fmt(c.start)+'</td><td>'+(c.days==null?'\u2014':c.days)+'</td><td>'+fmt(c.end)+'</td><td>'+act+'</td></tr>';
     });
-    $('msaBody').innerHTML=h||'<tr><td colspan="6" style="text-align:center;padding:16px">Hakuna mtumiaji aliyepatikana.</td></tr>';
-    $('msaStats').innerHTML='Jumla: <b>'+users.length+'</b> • TRIAL: <b>'+n.TRIAL+'</b> • ACTIVE: <b>'+n.ACTIVE+'</b> • EXPIRED: <b>'+n.EXPIRED+'</b>'+(q?' • Zilizopatikana: <b>'+shown+'</b>':'');
+    $('msaBody').innerHTML=h||'<tr><td colspan="8" style="text-align:center;padding:16px">Hakuna mwalimu aliyepatikana.</td></tr>';
+    $('msaStats').innerHTML='<div id="msaCards"><div class="msac"><b>'+users.length+'</b><span>Jumla ya Walimu</span></div><div class="msac t"><b>'+n.TRIAL+'</b><span>TRIAL</span></div><div class="msac p"><b>'+n.PAYMENT_PENDING+'</b><span>PAYMENT_PENDING</span></div><div class="msac a"><b>'+n.ACTIVE+'</b><span>ACTIVE</span></div><div class="msac e"><b>'+n.EXPIRED+'</b><span>EXPIRED</span></div></div>'+(q?'Zilizopatikana: <b>'+shown+'</b>':'');
   }
   function act(uid,kind,btn){
     var u=null;users.forEach(function(x){if(x.id===uid)u=x});if(!u)return;
     var label=kind==='extend'?'EXTEND 30 DAYS':'ACTIVATE 30 DAYS';
-    if(!window.confirm('Je, umethibitisha kuwa malipo ya M-Pesa ya '+(u.data.email||uid)+' yamepokelewa?\n\nBonyeza OK kufanya: '+label))return;
+    if(!window.confirm((kind==='extend'?'Una uhakika unataka ku-extend account hii kwa siku 30?':'Una uhakika unataka ku-activate account hii kwa siku 30?')+'\n\n'+(u.data.email||uid)+'\nHakikisha malipo ya M-Pesa yamepokelewa.'))return;
     var all=document.querySelectorAll('#msaBody button');for(var i=0;i<all.length;i++)all[i].disabled=true;
     amsg('Inatekeleza '+label+'...');
     var ref=db.collection('users').doc(uid),hRef=ref.collection('subscriptionHistory').doc(),T=firebase.firestore.Timestamp,SV=firebase.firestore.FieldValue.serverTimestamp(),out={};
@@ -5597,12 +5695,12 @@ function saveExamToBank(){
         var newEnd=new Date(base.getTime()+SUB_DAYS*DAY);
         var ns={};for(var k in sub)ns[k]=sub[k];
         ns.startDate=T.fromDate(start);ns.expiryDate=T.fromDate(newEnd);ns.days=SUB_DAYS;ns.lastAction=type;ns.lastActionAt=SV;ns.activatedBy=user.email||'';ns.activatedByUid=user.uid;
-        tx.update(ref,{subscription:ns});
+        tx.update(ref,{subscription:ns,status:'ACTIVE',plan:'monthly',paymentStatus:'PAID',paymentConfirmedAt:SV,updatedAt:SV});
         tx.set(hRef,{type:type,days:SUB_DAYS,at:SV,adminEmail:user.email||'',adminUid:user.uid,startDate:T.fromDate(start),previousExpiry:oldEnd?T.fromDate(oldEnd):null,newExpiry:T.fromDate(newEnd)});
         out.end=newEnd;out.type=type;
       });
     }).then(function(){
-      return loadUsers().then(function(){amsg((out.type==='extend'?'Imeongezwa siku 30. ':'Imewashwa siku 30. ')+(u.data.email||'')+' — inaisha: '+fmt(out.end),'ok');});
+      return loadUsers().then(function(){var okm=(out.type==='extend'?'Account imeongezwa siku 30 hadi ':'Account ime-activate hadi ')+fmt(out.end)+' ('+(u.data.email||'')+').';amsg(okm,'ok');try{window.alert(okm)}catch(_e){}});
     }).catch(function(e){
       amsg((e&&e.code==='permission-denied')?'Imekataliwa na Firestore: huna ruhusa ya Admin.':'Imeshindwa: '+(e.message||e),'err');drawRows();
     });
@@ -5635,3 +5733,4 @@ function saveExamToBank(){
 
 </body>
 </html>
+
