@@ -5751,6 +5751,7 @@ const PH_PROMPT = 'This is a photo of a handwritten Tanzanian school exam result
  'Transcribe ONLY what is written. NEVER invent or complete names or marks. If a name or number is unclear give your best reading and set "hakika":"chini"; if unreadable use "". '+
  'Keep every student in order, do not skip or add students. Header text goes into somo (subject), mtihani (exam name/date), darasa. '+
  'Reply ONLY with JSON: {"somo":"","mtihani":"","darasa":"","rows":[{"no":1,"jina":"","alama":"","hakika":"juu|kati|chini"}]}. "alama" = digits exactly as written.';
+const PH_PROXY_URL = 'https://msaidizi-seva.adabethsheusi.workers.dev'; // anwani ya seva ya Cloudflare (ukiiweka, walimu hawahitaji ufunguo wa Groq)
 let ph = {rot:0, bmp:null, rows:[], roster:[], max:100, batches:[], done:false};
 
 function phParse(txt){
@@ -5810,15 +5811,16 @@ function phDraw(){
 }
 function phRot(d){ ph.rot=(ph.rot+d+360)%360; phDraw(); }
 async function phVision(dataUrl){
-  const key=(document.getElementById('groqApiKey').value||'').replace(/[^\x20-\x7E]/g,'').trim();
-  if(!key) throw new Error('Weka Groq API key juu ya ukurasa kwanza.');
+  let url='https://api.groq.com/openai/v1/chat/completions', auth;
+  if(PH_PROXY_URL){ url=PH_PROXY_URL; try{ auth=await firebase.auth().currentUser.getIdToken(); }catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); } }
+  else { auth=(document.getElementById('groqApiKey').value||'').replace(/[^\x20-\x7E]/g,'').trim(); if(!auth) throw new Error('Weka Groq API key juu ya ukurasa kwanza.'); }
   const body={model:PH_MODELS[0],temperature:0,max_tokens:4000,response_format:{type:'json_object'},
     messages:[{role:'user',content:[{type:'text',text:PH_PROMPT},{type:'image_url',image_url:{url:dataUrl}}]}]};
   let res;
   for(const m of PH_MODELS){
     body.model=m; body.response_format={type:'json_object'};
     for(let t=0;t<2;t++){
-      try{ res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)}); }
+      try{ res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+auth},body:JSON.stringify(body)}); }
       catch(e){ throw new Error('Imeshindwa kuunganisha na seva. Angalia mtandao.'); }
       if(res.status===400&&t===0){ delete body.response_format; continue; } break;
     }
@@ -5826,7 +5828,7 @@ async function phVision(dataUrl){
   }
   if(res.status===404||res.status===410){ let d=''; try{ d=(await res.clone().json()).error.message; }catch(e){}
     throw new Error('Modeli za picha ('+PH_MODELS.join(', ')+') hazipatikani kwenye akaunti yako ya Groq (imeondolewa au huna ruhusa). Angalia console.groq.com → Models, kisha badilisha PH_MODELS kwenye faili. '+d); }
-  if(res.status===401) throw new Error('Groq API key si sahihi.');
+  if(res.status===401) throw new Error(PH_PROXY_URL?'Hujaingia. Toka (log out) kisha ingia tena.':'Groq API key si sahihi.');
   if(res.status===429) throw new Error('Kikomo cha maombi kimefikiwa. Subiri kidogo.');
   if(!res.ok){ let d=''; try{ d=(await res.json()).error.message; }catch(e){} throw new Error('Hitilafu ya seva '+res.status+(d?': '+d:'')); }
   return (await res.json()).choices[0].message.content;
@@ -5936,5 +5938,4 @@ function phBar(){
 </script>
 </body>
 </html>
-
 
