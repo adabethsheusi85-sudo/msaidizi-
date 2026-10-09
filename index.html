@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -5747,7 +5746,7 @@ function saveExamToBank(){
 /* ===== 📷 SOMA MATOKEO KWA PICHA — kipengele kipya (haibadilishi msimbo wa Ingizo la Haraka) =====
    Inasoma picha kwa Groq vision (inahitaji intaneti + Groq API key ile ile). Matokeo ni DRAFT: mwalimu hukagua,
    kisha mistari "Jina _Somo Alama" huongezwa kwenye kisanduku cha Ingizo la Haraka; Chambua/Hifadhi hufanya kazi kama kawaida. */
-const PH_MODEL = 'qwen/qwen3.6-27b'; // badilisha hapa tu Groq wakiibadilisha
+const PH_MODELS = ['qwen/qwen3.8-27b','qwen/qwen3.6-27b']; // inajaribu kwa mpangilio; ikikosekana (404) inaenda inayofuata // badilisha hapa tu Groq wakiibadilisha
 const PH_PROMPT = 'This is a photo of a handwritten Tanzanian school exam results sheet (one student per line: serial no, name, mark). '+
  'Transcribe ONLY what is written. NEVER invent or complete names or marks. If a name or number is unclear give your best reading and set "hakika":"chini"; if unreadable use "". '+
  'Keep every student in order, do not skip or add students. Header text goes into somo (subject), mtihani (exam name/date), darasa. '+
@@ -5799,9 +5798,10 @@ async function phLoad(file){
 }
 function phDraw(){
   const b=ph.bmp, c=document.getElementById('ph_cv'); if(!b) return;
-  const k=Math.min(1,1600/Math.max(b.width,b.height)), w=Math.round(b.width*k), h=Math.round(b.height*k), sw=ph.rot%180!==0;
+  const k=Math.min(1,2000/Math.max(b.width,b.height)), w=Math.round(b.width*k), h=Math.round(b.height*k), sw=ph.rot%180!==0;
   c.width=sw?h:w; c.height=sw?w:h; const x=c.getContext('2d');
   x.save(); x.translate(c.width/2,c.height/2); x.rotate(ph.rot*Math.PI/180); x.drawImage(b,-w/2,-h/2,w,h); x.restore();
+  if(!document.getElementById('ph_enh').checked) return;
   const d=x.getImageData(0,0,c.width,c.height), p=d.data, hist=new Array(256).fill(0);   // kuongeza utofauti wa picha hafifu
   for(let i=0;i<p.length;i+=4){ const g=(p[i]*.3+p[i+1]*.59+p[i+2]*.11)|0; p[i]=p[i+1]=p[i+2]=g; hist[g]++; }
   const n=p.length/4; let a=0,lo=0,hi=255; for(;lo<255&&(a+=hist[lo])<n*.01;lo++); a=0; for(;hi>0&&(a+=hist[hi])<n*.02;hi--);
@@ -5812,16 +5812,20 @@ function phRot(d){ ph.rot=(ph.rot+d+360)%360; phDraw(); }
 async function phVision(dataUrl){
   const key=(document.getElementById('groqApiKey').value||'').replace(/[^\x20-\x7E]/g,'').trim();
   if(!key) throw new Error('Weka Groq API key juu ya ukurasa kwanza.');
-  const body={model:PH_MODEL,temperature:0,max_tokens:4000,response_format:{type:'json_object'},
+  const body={model:PH_MODELS[0],temperature:0,max_tokens:4000,response_format:{type:'json_object'},
     messages:[{role:'user',content:[{type:'text',text:PH_PROMPT},{type:'image_url',image_url:{url:dataUrl}}]}]};
   let res;
-  for(let t=0;t<2;t++){
-    try{ res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)}); }
-    catch(e){ throw new Error('Imeshindwa kuunganisha na seva. Angalia mtandao.'); }
-    if(res.status===400&&t===0){ delete body.response_format; continue; } break;
+  for(const m of PH_MODELS){
+    body.model=m; body.response_format={type:'json_object'};
+    for(let t=0;t<2;t++){
+      try{ res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)}); }
+      catch(e){ throw new Error('Imeshindwa kuunganisha na seva. Angalia mtandao.'); }
+      if(res.status===400&&t===0){ delete body.response_format; continue; } break;
+    }
+    if(res.status!==404&&res.status!==410) break;
   }
   if(res.status===404||res.status===410){ let d=''; try{ d=(await res.clone().json()).error.message; }catch(e){}
-    throw new Error('Modeli ya picha ('+PH_MODEL+') haipatikani kwenye akaunti yako ya Groq (imeondolewa au huna ruhusa). Angalia console.groq.com → Models, kisha badilisha PH_MODEL kwenye faili. '+d); }
+    throw new Error('Modeli za picha ('+PH_MODELS.join(', ')+') hazipatikani kwenye akaunti yako ya Groq (imeondolewa au huna ruhusa). Angalia console.groq.com → Models, kisha badilisha PH_MODELS kwenye faili. '+d); }
   if(res.status===401) throw new Error('Groq API key si sahihi.');
   if(res.status===429) throw new Error('Kikomo cha maombi kimefikiwa. Subiri kidogo.');
   if(!res.ok){ let d=''; try{ d=(await res.json()).error.message; }catch(e){} throw new Error('Hitilafu ya seva '+res.status+(d?': '+d:'')); }
@@ -5875,7 +5879,7 @@ function phOpen(){
    '<div class="hint">'+smAttr(grade)+' • alama za juu '+ph.max+'. Picha hutumwa kwa Groq (inahitaji intaneti). Majina yatakayosomwa ni DRAFT — wewe ndiye unayethibitisha.</div>'+
    '<div class="sm-btnrow"><label class="rowBtn">📸 Piga picha<input type="file" id="ph_cam" accept="image/*" capture="environment" hidden></label><label class="rowBtn">🖼️ Chagua picha<input type="file" id="ph_gal" accept="image/*" hidden></label>'+
    '<button type="button" class="rowBtn" onclick="phRot(-90)">↺</button><button type="button" class="rowBtn" onclick="phRot(90)">↻</button></div>'+
-   '<canvas id="ph_cv" class="ph-cv"></canvas><div class="hint">Zungusha picha mpaka maandishi yasimame wima kabla ya kusoma.</div>'+
+   '<canvas id="ph_cv" class="ph-cv"></canvas><div class="hint">Zungusha picha mpaka maandishi yasimame wima. Karatasi ijaze picha (sogea karibu), bila mng\'ao.</div><label class="hint"><input type="checkbox" id="ph_enh"> Boresha mwanga (jaribu kama maandishi hayaonekani)</label>'+
    '<label class="hint"><input type="checkbox" id="ph_ack0"> Nakubali picha (yenye majina ya wanafunzi) itumwe kwa Groq kusomwa.</label>'+
    '<div class="field"><label>Somo (lazima)</label><input id="ph_somo" list="ph_sl" placeholder="mfano: Historia"><datalist id="ph_sl">'+smClassSubjects(grade).map(s=>'<option value="'+smAttr(s)+'">').join('')+'</datalist></div>'+
    '<button type="button" class="sm-primary" id="ph_readBtn" disabled onclick="phRead()">Soma Picha</button><div id="ph_msg" class="hint"></div>'+
@@ -5884,7 +5888,7 @@ function phOpen(){
   document.body.appendChild(o);
   document.getElementById('ph_x').onclick=phClose;
   ['ph_cam','ph_gal'].forEach(id=>document.getElementById(id).addEventListener('change',e=>phLoad(e.target.files[0])));
-  document.getElementById('ph_somo').addEventListener('input',phStatus); document.getElementById('ph_ack').addEventListener('change',phStatus);
+  document.getElementById('ph_enh').addEventListener('change',phDraw); document.getElementById('ph_somo').addEventListener('input',phStatus); document.getElementById('ph_ack').addEventListener('change',phStatus);
   const rows=document.getElementById('ph_rows');
   rows.addEventListener('input',e=>{ const t=e.target,i=+t.dataset.i,f=t.dataset.f; if(f==='ok'||isNaN(i)) return; ph.rows[i][f]=t.value; if(f==='alama') ph.rows[i].raw=''; ph.rows[i].hakika='juu'; ph.rows[i].ok=false; phStatus(); });
   rows.addEventListener('change',e=>{ const t=e.target; if(t.dataset.f==='ok'){ ph.rows[+t.dataset.i].ok=t.checked; phStatus(); } });
@@ -5932,3 +5936,5 @@ function phBar(){
 </script>
 </body>
 </html>
+
+
