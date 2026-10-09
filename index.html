@@ -5799,7 +5799,7 @@ async function phLoad(file){
 }
 function phDraw(){
   const b=ph.bmp, c=document.getElementById('ph_cv'); if(!b) return;
-  const k=Math.min(1,2000/Math.max(b.width,b.height)), w=Math.round(b.width*k), h=Math.round(b.height*k), sw=ph.rot%180!==0;
+  const k=Math.min(1,1800/Math.max(b.width,b.height)), w=Math.round(b.width*k), h=Math.round(b.height*k), sw=ph.rot%180!==0;
   c.width=sw?h:w; c.height=sw?w:h; const x=c.getContext('2d');
   x.save(); x.translate(c.width/2,c.height/2); x.rotate(ph.rot*Math.PI/180); x.drawImage(b,-w/2,-h/2,w,h); x.restore();
   if(!document.getElementById('ph_enh').checked) return;
@@ -5821,7 +5821,7 @@ async function phVision(dataUrl){
     body.model=m; body.response_format={type:'json_object'};
     for(let t=0;t<2;t++){
       try{ res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+auth},body:JSON.stringify(body)}); }
-      catch(e){ throw new Error('Imeshindwa kuunganisha na seva. Angalia mtandao.'); }
+      catch(e){ throw new Error(await phDiag(url,e)); }
       if(res.status===400&&t===0){ delete body.response_format; continue; } break;
     }
     if(res.status!==404&&res.status!==410) break;
@@ -5833,12 +5833,17 @@ async function phVision(dataUrl){
   if(!res.ok){ let d=''; try{ d=(await res.json()).error.message; }catch(e){} throw new Error('Hitilafu ya seva '+res.status+(d?': '+d:'')); }
   return (await res.json()).choices[0].message.content;
 }
+async function phDiag(url,e){   // inabaini kama tatizo ni mtandao au ombi la picha
+  let reach=false; try{ await fetch(url,{method:'GET'}); reach=true; }catch(x){}
+  return reach ? 'Seva inapatikana lakini ombi la picha limekataliwa/limeshindwa ('+(e&&e.message||e)+'). Jaribu picha ndogo/nyepesi, au tuma ujumbe huu kwa msanidi.'
+               : 'Simu haifikii seva ('+(e&&e.message||e)+'). Angalia mtandao au jaribu mtandao mwingine.';
+}
 async function phRead(){
   const msg=document.getElementById('ph_msg'), btn=document.getElementById('ph_readBtn');
   if(!document.getElementById('ph_ack0').checked){ msg.textContent='Thibitisha kwanza kwamba unakubali picha itumwe Groq.'; return; }
   btn.disabled=true; msg.textContent='Inasoma picha… (inaweza kuchukua sekunde chache)';
   try{
-    const r=phParse(await phVision(document.getElementById('ph_cv').toDataURL('image/jpeg',0.85)));
+    const r=phParse(await phVision(document.getElementById('ph_cv').toDataURL('image/jpeg',0.8)));
     if(!r.rows.length) throw new Error('Hakuna mistari iliyosomwa. Zungusha picha iwe wima, piga tena kwa mwanga mzuri.');
     ph.rows=r.rows; if(r.somo&&!document.getElementById('ph_somo').value) document.getElementById('ph_somo').value=r.somo;
     msg.textContent='Imesoma wanafunzi '+r.rows.length+'. Kagua kila mstari kabla ya kuingiza.'+(r.mtihani?' (Karatasi: '+r.mtihani+')':'');
