@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -5746,15 +5747,15 @@ function saveExamToBank(){
 /* ===== 📷 SOMA MATOKEO KWA PICHA — kipengele kipya (haibadilishi msimbo wa Ingizo la Haraka) =====
    Inasoma picha kwa Groq vision (inahitaji intaneti + Groq API key ile ile). Matokeo ni DRAFT: mwalimu hukagua,
    kisha mistari "Jina _Somo Alama" huongezwa kwenye kisanduku cha Ingizo la Haraka; Chambua/Hifadhi hufanya kazi kama kawaida. */
-const PH_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'; // badilisha hapa tu Groq wakiibadilisha
+const PH_MODEL = 'qwen/qwen3.6-27b'; // badilisha hapa tu Groq wakiibadilisha
 const PH_PROMPT = 'This is a photo of a handwritten Tanzanian school exam results sheet (one student per line: serial no, name, mark). '+
  'Transcribe ONLY what is written. NEVER invent or complete names or marks. If a name or number is unclear give your best reading and set "hakika":"chini"; if unreadable use "". '+
  'Keep every student in order, do not skip or add students. Header text goes into somo (subject), mtihani (exam name/date), darasa. '+
  'Reply ONLY with JSON: {"somo":"","mtihani":"","darasa":"","rows":[{"no":1,"jina":"","alama":"","hakika":"juu|kati|chini"}]}. "alama" = digits exactly as written.';
-let ph = {rot:0, bmp:null, rows:[], roster:[], max:100};
+let ph = {rot:0, bmp:null, rows:[], roster:[], max:100, batches:[], done:false};
 
 function phParse(txt){
-  let s = String(txt||'').replace(/```json|```/g,''); const a=s.indexOf('{'), b=s.lastIndexOf('}');
+  let s = String(txt||'').replace(/<think>[\s\S]*?<\/think>/g,'').replace(/```json|```/g,''); const a=s.indexOf('{'), b=s.lastIndexOf('}');
   if(a<0||b<a) throw new Error('Jibu la model halikueleweka. Jaribu tena na picha iliyo wazi zaidi.');
   const j = JSON.parse(s.slice(a,b+1));
   const rows = (Array.isArray(j.rows)?j.rows:[]).map(r=>{
@@ -5811,7 +5812,7 @@ function phRot(d){ ph.rot=(ph.rot+d+360)%360; phDraw(); }
 async function phVision(dataUrl){
   const key=(document.getElementById('groqApiKey').value||'').replace(/[^\x20-\x7E]/g,'').trim();
   if(!key) throw new Error('Weka Groq API key juu ya ukurasa kwanza.');
-  const body={model:PH_MODEL,temperature:0,max_tokens:3000,response_format:{type:'json_object'},
+  const body={model:PH_MODEL,temperature:0,max_tokens:4000,response_format:{type:'json_object'},
     messages:[{role:'user',content:[{type:'text',text:PH_PROMPT},{type:'image_url',image_url:{url:dataUrl}}]}]};
   let res;
   for(let t=0;t<2;t++){
@@ -5819,6 +5820,8 @@ async function phVision(dataUrl){
     catch(e){ throw new Error('Imeshindwa kuunganisha na seva. Angalia mtandao.'); }
     if(res.status===400&&t===0){ delete body.response_format; continue; } break;
   }
+  if(res.status===404||res.status===410){ let d=''; try{ d=(await res.clone().json()).error.message; }catch(e){}
+    throw new Error('Modeli ya picha ('+PH_MODEL+') haipatikani kwenye akaunti yako ya Groq (imeondolewa au huna ruhusa). Angalia console.groq.com → Models, kisha badilisha PH_MODEL kwenye faili. '+d); }
   if(res.status===401) throw new Error('Groq API key si sahihi.');
   if(res.status===429) throw new Error('Kikomo cha maombi kimefikiwa. Subiri kidogo.');
   if(!res.ok){ let d=''; try{ d=(await res.json()).error.message; }catch(e){} throw new Error('Hitilafu ya seva '+res.status+(d?': '+d:'')); }
@@ -5860,7 +5863,8 @@ function phStatus(){
 }
 function phInsert(){
   const somo=document.getElementById('ph_somo').value.trim(), ta=document.getElementById('sm_input');
-  const add=phLines(ph.rows,somo).join('\n'); ta.value=(ta.value.trim()?ta.value.replace(/\s+$/,'')+'\n':'')+add;
+  if(ph.batches.some(b=>smNorm(b.somo)===smNorm(somo))&&!confirm('Somo "'+somo+'" tayari limeingizwa kutoka picha nyingine. Kuongeza tena kutaleta alama zilizorudiwa. Endelea?')) return;
+  const add=phLines(ph.rows,somo).join('\n'); ph.batches.push({somo,n:add.split('\n').length}); ph.done=false; ta.value=(ta.value.trim()?ta.value.replace(/\s+$/,'')+'\n':'')+add;
   ta.dispatchEvent(new Event('input')); phClose(); smMsg('Mistari '+add.split('\n').length+' imeongezwa kwenye Ingizo la Haraka. Bonyeza "Chambua" kuendelea.','ok'); ta.scrollIntoView({block:'center'});
 }
 function phClose(){ const o=document.getElementById('ph_ov'); if(o) o.remove(); ph.bmp=null; ph.rows=[]; }
@@ -5886,7 +5890,45 @@ function phOpen(){
   rows.addEventListener('change',e=>{ const t=e.target; if(t.dataset.f==='ok'){ ph.rows[+t.dataset.i].ok=t.checked; phStatus(); } });
   rows.addEventListener('click',e=>{ const t=e.target; if(t.tagName==='BUTTON'&&t.dataset.f==='on'){ const r=ph.rows[+t.dataset.i]; r.on=!r.on; phStatus(); } });
 }
+
+/* ===== Rasimu (draft) inayodumu + kizuizi cha "Chambua" mpaka masomo yote ya picha yaingie ===== */
+const PH_DRAFT_KEY='msaidizi_sm_draft_v1_';
+function phUid(){ try{ const u=firebase.auth().currentUser; return u?u.uid:''; }catch(e){ return ''; } }
+let phTimer=null, phLoading=false;
+function phSaveDraft(){
+  if(phLoading) return; clearTimeout(phTimer);
+  phTimer=setTimeout(()=>{ const uid=phUid(); if(!uid) return; const g=id=>document.getElementById(id).value;
+    const d={grade:g('sm_grade'),type:g('sm_type'),name:g('sm_name'),max:g('sm_max'),text:g('sm_input'),batches:ph.batches,done:ph.done};
+    try{ if(d.text.trim()) localStorage.setItem(PH_DRAFT_KEY+uid,JSON.stringify(d)); else localStorage.removeItem(PH_DRAFT_KEY+uid); }catch(e){} },300);
+}
+function phLoadDraft(){
+  const uid=phUid(); if(!uid) return; let d=null; try{ d=JSON.parse(localStorage.getItem(PH_DRAFT_KEY+uid)||'null'); }catch(e){}
+  if(!d||!d.text||document.getElementById('sm_input').value.trim()) return;
+  phLoading=true; const s=(id,v)=>{ const el=document.getElementById(id); if(el&&v!=null&&v!=='') el.value=v; };
+  s('sm_grade',d.grade); s('sm_type',d.type); s('sm_name',d.name); s('sm_max',d.max); document.getElementById('sm_input').value=d.text;
+  ph.batches=Array.isArray(d.batches)?d.batches:[]; ph.done=!!d.done; phLoading=false; phBar();
+  try{ smMsg('Orodha ya awali imerejeshwa. Endelea kuongeza masomo mengine, kisha bonyeza "Chambua".','ok'); }catch(e){}
+}
+function phBar(){
+  let bar=document.getElementById('ph_bar');
+  if(!bar){ bar=document.createElement('div'); bar.id='ph_bar'; bar.className='sm-box warn hidden'; bar.style.marginTop='12px';
+    bar.addEventListener('change',e=>{ if(e.target.id==='ph_done'){ ph.done=e.target.checked; phBar(); phSaveDraft(); } });
+    const st=document.getElementById('sm_stale'); st.parentNode.insertBefore(bar,st); }
+  const gate=ph.batches.length>0&&!ph.done;
+  bar.classList.toggle('hidden',!ph.batches.length);
+  bar.innerHTML='📷 Masomo yaliyoingizwa kwa picha: <b>'+ph.batches.map(b=>smAttr(b.somo)+' ('+b.n+')').join(', ')+'</b><br><label><input type="checkbox" id="ph_done"'+(ph.done?' checked':'')+'> Nimemaliza kuingiza masomo yote — niruhusu "Chambua"</label>';
+  document.querySelectorAll('button[onclick="smAnalyze()"]').forEach(b=>{ b.disabled=gate; b.title=gate?'Thibitisha kwanza kuwa masomo yote yameingia':''; });
+}
+(function(){
+  const oA=window.smAnalyze, oC=window.smClearAll;
+  window.smAnalyze=function(){ if(ph.batches.length&&!ph.done){ smMsg('Picha za masomo yote zikishaingia, tia tiki "Nimemaliza kuingiza masomo yote" kisha bonyeza Chambua.','warn'); return; } return oA.apply(this,arguments); };
+  window.smClearAll=function(){ const r=oC.apply(this,arguments); ph.batches=[]; ph.done=false; phBar(); phSaveDraft(); return r; };
+  ['sm_input','sm_name','sm_max'].forEach(id=>document.getElementById(id).addEventListener('input',phSaveDraft));
+  ['sm_grade','sm_type'].forEach(id=>document.getElementById(id).addEventListener('change',phSaveDraft));
+  let n=0,t=setInterval(()=>{ if(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length&&firebase.auth){ clearInterval(t);
+      firebase.auth().onAuthStateChanged(u=>{ if(u) phLoadDraft(); else { phLoading=true; ph.batches=[]; ph.done=false; document.getElementById('sm_input').value=''; phLoading=false; phBar(); } }); }
+    else if(++n>200) clearInterval(t); },300);
+})();
 </script>
 </body>
 </html>
-
