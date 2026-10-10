@@ -5833,10 +5833,13 @@ async function phVision(dataUrl){
   if(!res.ok){ let d=''; try{ d=(await res.json()).error.message; }catch(e){} throw new Error('Hitilafu ya seva '+res.status+(d?': '+d:'')); }
   return (await res.json()).choices[0].message.content;
 }
-async function phDiag(url,e){   // inabaini kama tatizo ni mtandao au ombi la picha
-  let reach=false; try{ await fetch(url,{method:'GET'}); reach=true; }catch(x){}
-  return reach ? 'Seva inapatikana lakini ombi la picha limekataliwa/limeshindwa ('+(e&&e.message||e)+'). Jaribu picha ndogo/nyepesi, au tuma ujumbe huu kwa msanidi.'
-               : 'Simu haifikii seva ('+(e&&e.message||e)+'). Angalia mtandao au jaribu mtandao mwingine.';
+async function phDiag(url,e){   // inabaini kama tatizo ni mtandao, ruhusa (CORS) au ombi la picha
+  const det=(e&&e.name?e.name+': ':'')+(e&&e.message||e); let cors=false, net=false;
+  try{ await fetch(url,{method:'GET'}); cors=true; net=true; }catch(x){}
+  if(!net){ try{ await fetch(url,{method:'GET',mode:'no-cors'}); net=true; }catch(x){} }
+  if(cors) return 'Seva inapatikana lakini ombi la picha limeshindwa ('+det+'). Jaribu picha ndogo, au tuma ujumbe huu kwa msanidi.';
+  if(net) return 'Simu inafika kwenye seva lakini seva haikuruhusu programu (CORS) ['+det+']. Tuma ujumbe huu kwa msanidi.';
+  return 'Simu haifikii seva kabisa ['+det+'; mtandao: '+(navigator.onLine?'upo':'hakuna')+']. Jaribu WiFi au data nyingine, na zima VPN/Private DNS/AdBlock.';
 }
 async function phRead(){
   const msg=document.getElementById('ph_msg'), btn=document.getElementById('ph_readBtn');
