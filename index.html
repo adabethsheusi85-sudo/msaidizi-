@@ -2658,6 +2658,7 @@ async function generateEng4Exam(topics, lang, gradeNum){
    AI inaombwa YALIYOMO tu (JSON); muundo, herufi A-F, kuchanganya orodha na mwongozo wa majibu vinajengwa na programu.
    Idadi na alama zinabadilishwa hapa chini kwa urahisi. */
 const ENG7_SPEC  = { listen:5, mcq:5, bank:5, match:5, verbs:5, comp:5, order:5 };
+const ENG7_LAST_SECTION_LETTER = 'B'; // karatasi halisi: "SECTION B (10 Marks)" mara ya pili
 const ENG7_MARKS = { listen:1, mcq:1, bank:1, match:1, verbs:2, comp:2, order:2 }; // A = 20, B = 20, C = 10
 
 function eng7Shuffle(arr){
@@ -2682,9 +2683,10 @@ function eng7BuildPrompt(topics, problems, gradeNum){
     ' "verbs":[{"q":"The pupils (clean) ______ the classroom now.","ans":"are cleaning"}],\n' +
     ' "comp":{"title":"Malaria","text":"Malaria is one of the dangerous diseases in Africa. ...","q":[{"q":"Malaria is transmitted by a mosquito known as ______","ans":"anopheles"}]},\n' +
     ' "story":["It was Saturday afternoon and I was going to town.","Near the city hall, I saw a place where an accident had taken place.","..."]}';
-  let p = 'You are a Tanzanian primary-school English examiner (TAMISEMI / NECTA style).\n' +
+  let p = 'THE ENTIRE EXAM MUST BE WRITTEN IN ENGLISH - NOT ONE SWAHILI SENTENCE. This is an ENGLISH LANGUAGE paper.\n' +
+    'You are a Tanzanian primary-school English examiner (TAMISEMI / NECTA style).\n' +
     'Write the content of an English Language examination for ' + level + ' on these topics: "' + topics + '".\n' +
-    'LANGUAGE RULE (VERY IMPORTANT): write EVERYTHING in simple, correct ENGLISH ONLY. The topics may be written in Kiswahili: understand them, but NEVER write Kiswahili sentences or words in the exam (Kiswahili only inside Tanzanian names and places). Vocabulary and grammar must suit the class. Base the items on the topics wherever possible (grammar items should test the grammar topics given).\n\n' +
+    'The topics may be written in Kiswahili: understand them, then write every passage, question, option, answer and definition in simple, correct ENGLISH (Kiswahili only inside Tanzanian names and places). Vocabulary and grammar must suit the class. Base the items on the topics wherever possible (grammar items should test the grammar topics given).\n\n' +
     'Return ONLY ONE valid JSON object - no markdown, no comments, no text before or after it. Use straight double quotes only; inside sentences use single quotes if needed.\n' +
     'You MUST fill every slot with the EXACT counts below. Never skip, merge or shorten items.\n\n' +
     'Q1 "listen": a short story of 60-90 words that the invigilator will read aloud (with a short "title" and the "text"), then ' + S.listen + ' questions in "q" answerable only from the story, in the order of the story. Each question has FIVE options a, b, c, d, e (one correct, four believable) and the correct letter in "ans" (A, B, C, D or E). Vary the correct letters.\n' +
@@ -2694,11 +2696,36 @@ function eng7BuildPrompt(topics, problems, gradeNum){
     'Q5 "verbs": ' + S.verbs + ' sentences, each with ______ followed by a verb in brackets, for example "Hamisi (buy) ______ a new car last week."; "ans" is the correct form (use different tenses: present continuous, past simple, present simple, etc.).\n' +
     'Q6 "comp": a reading passage of 90-130 words with a short "title" and "text" (a different text from Q1), then ' + S.comp + ' short-answer questions in "q", each with a short answer in "ans", answerable directly from the passage.\n' +
     'Q7 "story": exactly ' + S.order + ' complete sentences that form one logical short story (an event, a journey, an accident, a visit, etc.) written IN THE CORRECT ORDER. The program will shuffle them.\n\n' +
-    'FORMAT EXAMPLE (structure only - do NOT copy this content; give exactly the counts above in every array):\n' + ex + '\nREMINDER: the whole JSON content must be in English. No Kiswahili sentences.';
+    'FORMAT EXAMPLE (structure only - do NOT copy this content; give exactly the counts above in every array):\n' + ex + '\nFINAL REMINDER: the whole JSON content must be in English. No Kiswahili sentences.';
   if(problems && problems.length){
     p += '\n\nYOUR PREVIOUS ANSWER WAS REJECTED BECAUSE: ' + problems.join('; ') + '.\nReturn the COMPLETE JSON object again with every part at its exact count.';
   }
   return p;
+}
+
+// Maneno ya Kiswahili yasiyo na maana ya Kiingereza — hutumika kuthibitisha kuwa mtihani wa English ni Kiingereza kweli
+const ENG7_SW = new Set(('na ya wa la za kwa ni katika hii huu hili hizi hiki kile yule wale hao huyu yake wake wangu yangu wetu yetu wenu yenu ' +
+ 'alikwenda alienda walikwenda anapika anasoma wanasoma anakula analima akasema alisema walisema sokoni shuleni nyumbani darasani shambani ' +
+ 'chakula maji mtoto watoto mwalimu mwanafunzi wanafunzi wazazi baba mama sana pia lakini kwamba wapi nini gani nani lini vipi kwanini ' +
+ 'kila hapa huko pale leo jana kesho vizuri mkubwa mdogo mzuri mbaya ndiyo hapana kuna sisi wewe mimi yeye wao nyinyi ' +
+ 'wakati kutoka kuwa alikuwa walikuwa sasa baada kabla kisha halafu mwisho kwanza pili tatu moja mbili tatu nne tano ' +
+ 'jibu swali maswali sentensi neno maneno chagua andika soma kamilisha ugonjwa mbu mbwa paka ng\'ombe nyumba gari barabara ajali ' +
+ 'siku wiki mwezi mwaka asubuhi mchana jioni usiku ili kama au bali hata tu bado tayari bila pamoja kuhusu juu chini ndani nje ' +
+ 'amekuwa wamekuwa anaenda wanaenda tunaenda nilikwenda tulikwenda mgonjwa dawa hospitali daktari polisi dereva mkulima').split(/\s+/));
+function eng7LooksSwahili(texts){
+  const toks = t => String(t || '').toLowerCase().replace(/[^a-z' ]+/g, ' ').split(/\s+/).filter(Boolean);
+  // 1) Kwa jumla: asilimia ya maneno ya Kiswahili
+  const words = toks(texts.join(' '));
+  let hit = 0; words.forEach(w => { if(ENG7_SW.has(w)) hit++; });
+  if(words.length >= 15 && hit >= 4 && (hit / words.length) >= 0.025) return true;
+  // 2) Kila kipande peke yake (kifungu, swali, sentensi): kikiwa na Kiswahili kingi ni kosa
+  let bad = 0;
+  texts.forEach(t => {
+    const w = toks(t); if(w.length < 4) return;
+    let h = 0; w.forEach(x => { if(ENG7_SW.has(x)) h++; });
+    if(h >= 2 && h / w.length >= 0.2) bad++;
+  });
+  return bad >= 2;
 }
 
 function eng7Mcq(list){
@@ -2763,7 +2790,7 @@ function eng7Check(o){
     mcq.map(x => [x.q, x.a, x.b, x.c, x.d, x.e].join(' ')),
     bankItems.map(x => x.q + ' ' + x.ans), pairs.map(x => x.term + ' ' + x.def), [extra],
     verbs.map(x => x.q + ' ' + x.ans), [comp.title, comp.text], comp.q.map(x => x.q + ' ' + x.ans), story);
-  if(eng4LooksSwahili(all)){
+  if(eng7LooksSwahili(all)){
     swPenalty = true;
     problems.push('the content is written in Kiswahili - this is an ENGLISH language exam, so rewrite EVERYTHING in simple English');
   }
@@ -2778,7 +2805,8 @@ function eng7BuildExam(d, gradeNum){
   const std = gradeNum === 5 ? 'V' : gradeNum === 6 ? 'VI' : 'VII';
   const R = i => romanFromIndex(i);
   const BR = '   [      ]';
-  const optText = x => x.q + BR + '\nA. ' + x.a + '\nB. ' + x.b + '\nC. ' + x.c + '\nD. ' + x.d + '\nE. ' + x.e;
+  // Chaguo: kila chaguo mstari wake, "A: neno" kama karatasi halisi; mabano ya jibu mwishoni mwa swali
+  const optText = x => x.q + BR + '\nA: ' + x.a + '\nB: ' + x.b + '\nC: ' + x.c + '\nD: ' + x.d + '\nE: ' + x.e;
   const year = new Date().getFullYear();
 
   // Q3: orodha ya maneno (majibu + maneno 2 ya ziada), yamechanganywa
@@ -2800,7 +2828,7 @@ function eng7BuildExam(d, gradeNum){
 
   const sections = [];
   sections.push({
-    number: 'A.1', heading: 'SECTION A (' + mA + ' MARKS)  1. Listen attentively to the passage read by the invigilator and then answer the questions that follow by writing the letter of the correct answer in the brackets.',
+    number: 'A.1', heading: 'SECTION A (' + mA + ' marks) — 1. Listen attentively to the passage read by the invigilator and then answer questions that follow by writing the letter of the correct answer in the brackets',
     note: marks(S.listen * M.listen),
     questions: d.listen.q.map((x, i) => ({ roman: R(i), text: optText(x), marks: M.listen }))
   });
@@ -2809,51 +2837,57 @@ function eng7BuildExam(d, gradeNum){
     note: marks(S.mcq * M.mcq),
     questions: d.mcq.map((x, i) => ({ roman: R(i), text: optText(x), marks: M.mcq }))
   });
-  const q3 = [{ roman: '', text: 'WORD LIST:   ' + bankShuffled.join(',   '), marks: 0 }];
+  const q3 = [{ roman: '', text: bankShuffled.join(',   ') + ',', marks: 0 }];
   d.bankItems.forEach((x, i) => q3.push({ roman: R(i), text: x.q, marks: M.bank }));
   sections.push({
-    number: 'A.3', heading: '3. Choose the correct word from the list below to fill in the blanks.',
+    number: 'A.3', heading: '3. Choose the correct word from the list below to fill in the blanks',
     note: marks(S.bank * M.bank), questions: q3
   });
   const q4 = [{ roman: '', text: 'LIST B\n' + defsShuffled.map((t, i) => letters[i] + '. ' + t).join('\n'), marks: 0 }];
   d.pairs.forEach((p, i) => q4.push({ roman: R(i), text: p.term + BR, marks: M.match }));
   sections.push({
-    number: 'A.4', heading: '4. Match the items of List A with those of List B by writing the letter of the correct answer in the brackets. (List A is numbered i-v.)',
+    number: 'A.4', heading: '4. Match the items of list A with those of List B by writing a letter of the correct answer in the box provided.',
     note: marks(S.match * M.match), questions: q4
   });
   sections.push({
-    number: 'B.5', heading: 'SECTION B (' + mB + ' MARKS)  5. Complete the following sentences by changing the verbs in brackets into the appropriate form.',
+    number: 'B.5', heading: 'SECTION B (' + mB + ' Marks) — Answer all questions in this section. 5. Complete the following sentences by changing the verbs in brackets into the appropriate form',
     note: marks(S.verbs * M.verbs),
     questions: d.verbs.map((x, i) => ({ roman: R(i), text: x.q, marks: M.verbs }))
   });
-  const q6 = [{ roman: '', text: (d.comp.title ? d.comp.title.toUpperCase() + '\n\n' : '') + d.comp.text, marks: 0 }];
+  const q6 = [{ roman: '', text: (d.comp.title ? d.comp.title.toUpperCase() + '\n\n' : '') + d.comp.text, marks: 0 },
+              { roman: '', text: 'Questions', marks: 0 }];
   d.comp.q.forEach((x, i) => q6.push({ roman: R(i), text: x.q, marks: M.comp }));
   sections.push({
     number: 'B.6', heading: '6. Read the following passage carefully and answer the questions that follow.',
     note: marks(S.comp * M.comp), questions: q6
   });
+  // Karatasi halisi inaandika "SECTION B (10 Marks)" mara ya pili — imenakiliwa kama ilivyo. Badilisha herufi hapa ukitaka "C".
+  const lastLetter = ENG7_LAST_SECTION_LETTER;
   sections.push({
-    number: 'C.7', heading: 'SECTION C (' + mC + ' MARKS)  7. Arrange the following sentences to make a logical story by writing the letters A-E in the brackets (A = first sentence ... E = last sentence).',
+    number: 'B.7', heading: 'SECTION ' + lastLetter + ' (' + mC + ' Marks) — Answer all questions in this section. 7. Arrange the following sentences to make a logical story by providing letters A-E',
     note: marks(S.order * M.order),
     questions: storyShuffled.map((s, i) => ({ roman: R(i), text: s + BR, marks: M.order }))
   });
+  // THE PASSAGE (mwishoni mwa karatasi, kama karatasi halisi) — kwa msimamizi kusoma Q1
+  sections.push({
+    number: 'P', heading: 'THE PASSAGE', note: '',
+    questions: [{ roman: '', text: d.listen.text, marks: 0 }]
+  });
 
   let key = "TEACHER'S GUIDE - ENGLISH LANGUAGE, STANDARD " + std + '\n\n' +
-    'THE PASSAGE FOR QUESTION 1 (invigilator: read it twice, slowly, before pupils answer)\n' +
-    (d.listen.title ? d.listen.title.toUpperCase() + '\n' : '') + d.listen.text + '\n\n' +
-    'SECTION A (' + mA + ' marks)\nQ1\n';
+    'SECTION A.1  (Q1 Listening - the invigilator reads THE PASSAGE twice, slowly)\n';
   d.listen.q.forEach((x, i) => { key += R(i) + '. ' + x.ans + '  (' + x[x.ans.toLowerCase()] + ')\n'; });
-  key += '\nQ2\n';
+  key += '\nSECTION A.2  (Q2)\n';
   d.mcq.forEach((x, i) => { key += R(i) + '. ' + x.ans + '  (' + x[x.ans.toLowerCase()] + ')\n'; });
-  key += '\nQ3\n';
+  key += '\nSECTION A.3  (Q3)\n';
   d.bankItems.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
-  key += '\nQ4\n';
+  key += '\nSECTION A.4  (Q4)\n';
   d.pairs.forEach((p, i) => { key += R(i) + '. ' + matchAns[i] + '  (' + p.term + ')\n'; });
-  key += '\nSECTION B (' + mB + ' marks)\nQ5\n';
+  key += '\nSECTION B.5  (Q5)\n';
   d.verbs.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
-  key += '\nQ6\n';
+  key += '\nSECTION B.6  (Q6)\n';
   d.comp.q.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
-  key += '\nSECTION C (' + mC + ' marks)\nQ7  (A = first ... E = last)\n';
+  key += '\nSECTION B.7  (Q7: A = first sentence ... E = last sentence)\n';
   storyShuffled.forEach((s, i) => { key += R(i) + '. ' + orderAns[i] + '\n'; });
   key += '\nCorrect story order:\n';
   d.story.forEach((s, i) => { key += letters[i] + '. ' + s + '\n'; });
@@ -2862,7 +2896,7 @@ function eng7BuildExam(d, gradeNum){
     lines: [
       "PRIME MINISTER'S OFFICE REGIONAL ADMINISTRATIONS AND LOCAL GOVERNMENTS",
       '______________________ DISTRICT COUNCIL',
-      (gradeNum === 7 ? 'PRE-NATIONAL TRIAL EXAMINATION - ' : 'TERMINAL EXAMINATION - ') + year,
+      'PRE-NATIONAL TRIAL EXAMINATION- ' + year,
       'SUBJECT: ENGLISH LANGUAGE     CLASS: STANDARD ' + std + '     TIME: 1:40 HR'
     ],
     instructions: [], language: 'en', assessorTable: false
@@ -2896,6 +2930,7 @@ async function generateEng7Exam(topics, gradeNum){
     problems = chk.problems.concat(cut ? ['the output was cut off - keep every item short'] : []);
   }
   if(!best) throw new Error((lastErr && lastErr.message) || 'AI haikurudisha mtihani unaoeleweka.');
+  if(best.score === 0) throw new Error('AI iliandika mtihani kwa Kiswahili badala ya Kiingereza. Bonyeza "Tengeneza Mtihani" tena (au jaribu modeli nyingine).');
   const warning = best.problems.length
     ? '⚠️ Vipengele vifuatavyo havikukamilika baada ya majaribio 3: ' + best.problems.join('; ') +
       '. Bonyeza "Tengeneza Mtihani" tena, au ongeza maswali kwa "+ Ongeza Swali la Mkono".'
