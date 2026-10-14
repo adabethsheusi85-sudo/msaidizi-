@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -2361,7 +2360,7 @@ function romanFromIndex(i){
   return romans[i] || String(i+1);
 }
 
-/* ===================== ENGLISH DARASA LA 4 — MUUNDO WA KARATASI HALISI (KIONGEZEO) =====================
+/* ===================== ENGLISH NA KISWAHILI DARASA LA 3 NA 4 — MUUNDO WA KARATASI HALISI (KIONGEZEO) =====================
    Karatasi ya English Standard IV (TAMISEMI): Section A Dictation; Section B (Q2 MCQ, Q3 correct form,
    Q4 choose correct word, Q5 comprehension). AI inaombwa YALIYOMO tu (vipande vidogo vya JSON);
    muundo wa karatasi, namba, alama na mwongozo wa majibu vinajengwa na programu yenyewe — hivyo hakuna
@@ -2428,28 +2427,47 @@ function mtParseJSON(raw){
   return { obj: JSON.parse(mtCloseTruncated(mtEscapeControlChars(s))), repaired: true };
 }
 
-function eng4BuildPrompt(topics, problems){
+function eng4BuildPrompt(topics, problems, lang, gradeNum){
   const S = ENG4_SPEC;
-  let p = `You are a Tanzanian primary-school English examiner (TAMISEMI / NECTA style).
-Write the content of a STANDARD IV English terminal examination (pupils aged 9-10) on these topics: "${topics}".
-Language must be simple, correct and suitable for Standard IV. Every item must be based on the topics. Use Tanzanian names and places where natural.
+  const sw = lang === 'Kiswahili';
+  const level = (gradeNum === 3) ? 'STANDARD III (pupils aged 8-9, very simple vocabulary and very short sentences)' : 'STANDARD IV (pupils aged 9-10)';
+  const langRule = sw
+    ? 'ALL exam content (sentences, options, passage, questions and answers) must be in correct, simple standard Kiswahili suitable for the class. Use Tanzanian names and places where natural.'
+    : 'Language must be simple, correct English suitable for the class. Use Tanzanian names and places where natural.';
+  const q3 = sw
+    ? 'sentences, each with a blank ______ followed by a base word in brackets; the pupil writes the correct form of that word (e.g. wingi, wakati uliopita, wakati ujao, kukanusha, umoja/wingi). "ans" is the exact word to write.'
+    : 'sentences, each with a blank ______ followed by a base word in brackets; the pupil writes the correct form of that word (plural, past tense, verb with -s, comparative, etc.). "ans" is the exact word to write.';
+  const q4 = sw
+    ? 'sentences, each with a blank ______ followed by 2-3 words in brackets (words that sound or look similar, or easily confused); the pupil picks the correct one. "ans" is that word.'
+    : 'sentences, each with a blank ______ followed by 2-3 words in brackets (similar-sounding or easily confused words); the pupil picks the correct one. "ans" is that word.';
+  const ex = sw
+    ? `{"dictation":["Mama anapika chakula jikoni.","..."],
+ "mcq":[{"q":"Baba analima shamba ______ mahindi.","a":"la","b":"za","c":"wa","d":"ya","ans":"A"}],
+ "form":[{"q":"Mtoto mmoja, watoto ______ (wawili).","ans":"wawili"}],
+ "choose":[{"q":"Tunakunywa ______ kisimani (maji, maiji).","ans":"maji"}],
+ "passage":{"title":"Sokoni","text":"..."},
+ "comp":[{"q":"Neema alikwenda wapi?","ans":"Sokoni."}]}`
+    : `{"dictation":["We eat fruits every day.","..."],
+ "mcq":[{"q":"A farmer grows maize on his ______.","a":"farm","b":"fan","c":"form","d":"firm","ans":"A"}],
+ "form":[{"q":"Neema has two ______ (book).","ans":"books"}],
+ "choose":[{"q":"We drink ______ from the well (water, weather).","ans":"water"}],
+ "passage":{"title":"The Market","text":"..."},
+ "comp":[{"q":"Where did Neema go?","ans":"To the market."}]}`;
+  let p = `You are a Tanzanian primary-school ${sw ? 'Kiswahili' : 'English'} examiner (TAMISEMI / NECTA style).
+Write the content of a ${level} ${sw ? 'Kiswahili' : 'English'} terminal examination on these topics: "${topics}".
+${langRule} Every item must be based on the topics.
 
 Return ONLY ONE valid JSON object - no markdown, no comments, no text before or after it. Use straight double quotes only; inside sentences use single quotes if needed.
 The paper has 5 questions. You MUST fill every slot with the EXACT counts below. Never skip, merge or shorten items.
 
 Q1 "dictation": ${S.dictation} different short sentences (5-8 words each) that the teacher will read aloud.
 Q2 "mcq": ${S.mcq} multiple-choice items. Each has a sentence with one blank ______, four options a, b, c, d, and the correct letter in "ans" (A, B, C or D). Vary the correct letters.
-Q3 "form": ${S.formWords} sentences, each with a blank ______ followed by a base word in brackets; the pupil writes the correct form of that word (plural, past tense, verb with -s, comparative, etc.). "ans" is the exact word to write.
-Q4 "choose": ${S.chooseWord} sentences, each with a blank ______ followed by 2-3 words in brackets (similar-sounding or easily confused words); the pupil picks the correct one. "ans" is that word.
+Q3 "form": ${S.formWords} ${q3}
+Q4 "choose": ${S.chooseWord} ${q4}
 Q5 "passage" and "comp": one simple story or description of 60-90 words with a short title, then ${S.comprehension} comprehension questions answerable directly from the passage, each with a short answer in "ans".
 
 FORMAT EXAMPLE (structure only - do NOT copy this content):
-{"dictation":["We eat fruits every day.","..."],
- "mcq":[{"q":"A farmer grows maize on his ______.","a":"farm","b":"fan","c":"form","d":"firm","ans":"A"}],
- "form":[{"q":"Neema has two ______ (book).","ans":"books"}],
- "choose":[{"q":"We drink ______ from the well (water, weather).","ans":"water"}],
- "passage":{"title":"The Market","text":"..."},
- "comp":[{"q":"Where did Neema go?","ans":"To the market."}]}
+${ex}
 Each array must contain exactly the number of items stated above.`;
   if(problems && problems.length){
     p += `\n\nYOUR PREVIOUS ANSWER WAS REJECTED BECAUSE: ${problems.join('; ')}.\nReturn the COMPLETE JSON object again with every array at its exact count.`;
@@ -2495,76 +2513,101 @@ function eng4Check(o){
   };
 }
 
-// Jenga examData kamili (muundo wa karatasi halisi) kutoka kwenye yaliyomo
-function eng4BuildExam(d){
+// Jenga examData kamili (muundo wa karatasi halisi) kutoka kwenye yaliyomo. lang: 'English' au 'Kiswahili'
+function eng4BuildExam(d, lang, gradeNum){
   const S = ENG4_SPEC, M = ENG4_MARKS;
+  const sw = lang === 'Kiswahili';
+  const std = (gradeNum === 3) ? 'III' : 'IV';
   const R = i => romanFromIndex(i);
   const line = '________________________________________________________________';
   const mcq = d.mcq2, form = d.form2, choose = d.choose2, comp = d.comp;
   const marksB = mcq.length * M.mcq + form.length * M.formWords + choose.length * M.chooseWord + comp.length * M.comprehension;
+  const T = sw ? {
+    h1: '1. SEHEMU A: IMLA', h2: '2. SEHEMU B: (ALAMA ' + marksB + ')  Chagua jibu sahihi.',
+    h3: '3. Jaza nafasi kwa kuandika umbo sahihi la neno lililo kwenye mabano.',
+    h4: '4. Kamilisha kila sentensi kwa kuchagua neno sahihi kutoka kwenye mabano.',
+    h5: '5. Soma kifungu kwa makini kisha jibu maswali yanayofuata.', marks: 'Alama ',
+    keyTitle: 'MWONGOZO WA MWALIMU - KISWAHILI, DARASA LA ' + std,
+    keyA: 'SEHEMU A - IMLA (soma kila sentensi mara mbili, polepole; alama ' + M.dictation + ' kila moja)', sec: 'SEHEMU '
+  } : {
+    h1: '1. SECTION A: DICTATION', h2: '2. SECTION B: (MARKS ' + marksB + ')  Choose the correct answer.',
+    h3: '3. Fill in the blanks by writing the correct form of the word given in the brackets.',
+    h4: '4. Complete each sentence by choosing the correct word from the brackets.',
+    h5: '5. Read the passage carefully and answer the questions that follow.', marks: 'Marks ',
+    keyTitle: "TEACHER'S GUIDE - ENGLISH LANGUAGE, STANDARD " + std,
+    keyA: 'SECTION A - DICTATION (read each sentence twice, slowly; ' + M.dictation + ' mark each)', sec: 'SECTION '
+  };
   const sections = [];
-
   sections.push({
-    number: 'A', heading: '1. SECTION A: DICTATION', note: 'Marks ' + (S.dictation * M.dictation),
+    number: 'A', heading: T.h1, note: T.marks + (S.dictation * M.dictation),
     questions: Array.from({ length: S.dictation }, (_, i) => ({ roman: R(i), text: line, marks: M.dictation }))
   });
   sections.push({
-    number: 'B.2', heading: '2. SECTION B: (MARKS ' + marksB + ')  Choose the correct answer.', note: 'Marks ' + (mcq.length * M.mcq),
+    number: 'B.2', heading: T.h2, note: T.marks + (mcq.length * M.mcq),
     questions: mcq.map((x, i) => ({ roman: R(i), text: x.q + '\nA. ' + x.a + '\nB. ' + x.b + '\nC. ' + x.c + '\nD. ' + x.d, marks: M.mcq }))
   });
   sections.push({
-    number: 'B.3', heading: '3. Fill in the blanks by writing the correct form of the word given in the brackets.', note: 'Marks ' + (form.length * M.formWords),
+    number: 'B.3', heading: T.h3, note: T.marks + (form.length * M.formWords),
     questions: form.map((x, i) => ({ roman: R(i), text: x.q, marks: M.formWords }))
   });
   sections.push({
-    number: 'B.4', heading: '4. Complete each sentence by choosing the correct word from the brackets.', note: 'Marks ' + (choose.length * M.chooseWord),
+    number: 'B.4', heading: T.h4, note: T.marks + (choose.length * M.chooseWord),
     questions: choose.map((x, i) => ({ roman: R(i), text: x.q, marks: M.chooseWord }))
   });
   const q5 = [{ roman: '', text: (d.passage.title ? d.passage.title.toUpperCase() + '\n\n' : '') + d.passage.text, marks: 0 }];
   comp.forEach((x, i) => q5.push({ roman: R(i), text: x.q, marks: M.comprehension }));
-  sections.push({
-    number: 'B.5', heading: '5. Read the passage carefully and answer the questions that follow.', note: 'Marks ' + (comp.length * M.comprehension),
-    questions: q5
-  });
+  sections.push({ number: 'B.5', heading: T.h5, note: T.marks + (comp.length * M.comprehension), questions: q5 });
 
-  let key = "TEACHER'S GUIDE - ENGLISH LANGUAGE, STANDARD IV\n\nSECTION A - DICTATION (read each sentence twice, slowly; " + M.dictation + " mark each)\n";
+  let key = T.keyTitle + '\n\n' + T.keyA + '\n';
   d.dict.forEach((s, i) => { key += (i + 1) + '. ' + s + '\n'; });
-  key += '\nSECTION B.2\n';
+  key += '\n' + T.sec + 'B.2\n';
   mcq.forEach((x, i) => { key += R(i) + '. ' + x.ans + '  (' + x[x.ans.toLowerCase()] + ')\n'; });
-  key += '\nSECTION B.3\n';
+  key += '\n' + T.sec + 'B.3\n';
   form.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
-  key += '\nSECTION B.4\n';
+  key += '\n' + T.sec + 'B.4\n';
   choose.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
-  key += '\nSECTION B.5\n';
+  key += '\n' + T.sec + 'B.5\n';
   comp.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
 
+  const header = sw ? {
+    lines: [
+      'JAMHURI YA MUUNGANO WA TANZANIA',
+      'TAWALA ZA MIKOA NA SERIKALI ZA MITAA',
+      'OFISI YA WAZIRI MKUU (TAMISEMI)',
+      'MTIHANI WA MUHULA - DARASA LA ' + std,
+      'KISWAHILI',
+      'JINA LA MWANAFUNZI: ______________________________    NAMBA YA MTAHINIWA: ______________',
+      'JINA LA SHULE: ______________________________    WILAYA: ______________________'
+    ],
+    instructions: [], language: 'sw', assessorTable: true, assessorRows: 5
+  } : {
+    lines: [
+      'THE UNITED REPUBLIC OF TANZANIA',
+      'REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT',
+      "PRIME MINISTER'S OFFICE (TAMISEMI)",
+      'TERMINAL EXAMINATION - STANDARD ' + std,
+      'ENGLISH LANGUAGE',
+      "PUPIL'S NAME: ______________________________    CANDIDATE NUMBER: ______________",
+      'SCHOOL NAME: ______________________________    DISTRICT: ______________________'
+    ],
+    instructions: [], language: 'en', assessorTable: true, assessorRows: 5
+  };
   return {
-    header: {
-      lines: [
-        'THE UNITED REPUBLIC OF TANZANIA',
-        'REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT',
-        "PRIME MINISTER'S OFFICE (TAMISEMI)",
-        'TERMINAL EXAMINATION - STANDARD IV',
-        'ENGLISH LANGUAGE',
-        "PUPIL'S NAME: ______________________________    CANDIDATE NUMBER: ______________",
-        'SCHOOL NAME: ______________________________    DISTRICT: ______________________'
-      ],
-      instructions: [], language: 'en', assessorTable: true, assessorRows: 5
-    },
-    examTitle: 'ENGLISH LANGUAGE — STANDARD IV',
+    header,
+    examTitle: (sw ? 'KISWAHILI — DARASA LA ' : 'ENGLISH LANGUAGE — STANDARD ') + std,
     sections, answerKey: key.trim()
   };
 }
 
-// Tengeneza mtihani wa English Darasa la 4: jaribu hadi mara 3 hadi kila kipengele kikamilike
-async function generateEng4Exam(topics){
+// Tengeneza mtihani (English/Kiswahili, Darasa la 3-4): jaribu hadi mara 3 hadi kila kipengele kikamilike
+async function generateEng4Exam(topics, lang, gradeNum){
   const model = document.getElementById('groqModel').value;
   const extra = /gpt-oss/i.test(model) ? { reasoning_effort: 'low' } : {}; // reasoning ndefu hula tokens za jibu
   let best = null, problems = [], lastErr = null;
   for(let attempt = 1; attempt <= 3; attempt++){
     let raw;
     try{
-      raw = await callClaude(eng4BuildPrompt(topics, attempt > 1 ? problems : null), 4000, extra);
+      raw = await callClaude(eng4BuildPrompt(topics, attempt > 1 ? problems : null, lang, gradeNum), 4000, extra);
     }catch(e){
       if(!best) throw e; // kosa la mtandao/ufunguo — usijaribu tena bila sababu
       lastErr = e; break;
@@ -2586,7 +2629,7 @@ async function generateEng4Exam(topics){
     ? '⚠️ Vipengele vifuatavyo havikukamilika baada ya majaribio 3: ' + best.problems.join('; ') +
       '. Bonyeza "Tengeneza Mtihani" tena, au ongeza maswali kwa "+ Ongeza Swali la Mkono".'
     : '';
-  return { exam: eng4BuildExam(best.data), warning };
+  return { exam: eng4BuildExam(best.data, lang, gradeNum), warning };
 }
 
 function mtShowWarning(){
@@ -2617,7 +2660,7 @@ async function generateMitihani(){
   const isLowerPrimary = gradeNum >= 1 && gradeNum <= 4;
   const isUpperPrimary = gradeNum >= 5 && gradeNum <= 7;
   const specialFormatPending = isUpperPrimary && (subject === 'Hisabati' || subject === 'Uraia na Maadili');
-  const useEng4 = /^darasa/i.test(grade) && gradeNum === 4 && subject === 'English'; // karatasi halisi ya English Std IV
+  const useEng4 = /^darasa/i.test(grade) && (gradeNum === 3 || gradeNum === 4) && (subject === 'English' || subject === 'Kiswahili'); // karatasi halisi (English/Kiswahili, Darasa 3-4)
 
   let formatInstructions;
   if(isLowerPrimary){
@@ -2686,7 +2729,7 @@ MUHIMU SANA: (1) Kila swali LAZIMA lihusiane moja kwa moja na mada "${topics}" n
   try{
     mtWarning = '';
     if(useEng4){
-      const r = await generateEng4Exam(topics);
+      const r = await generateEng4Exam(topics, subject, gradeNum);
       examData = r.exam; mtWarning = r.warning || '';
     } else {
       const raw = await callClaude(prompt, 6500);
@@ -6204,3 +6247,4 @@ function phBar(){
 </script>
 </body>
 </html>
+
