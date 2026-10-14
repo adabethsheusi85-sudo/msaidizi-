@@ -2433,7 +2433,7 @@ function eng4BuildPrompt(topics, problems, lang, gradeNum){
   const level = (gradeNum === 3) ? 'STANDARD III (pupils aged 8-9, very simple vocabulary and very short sentences)' : 'STANDARD IV (pupils aged 9-10)';
   const langRule = sw
     ? 'ALL exam content (sentences, options, passage, questions and answers) must be in correct, simple standard Kiswahili suitable for the class. Use Tanzanian names and places where natural.'
-    : 'Language must be simple, correct English suitable for the class. Use Tanzanian names and places where natural.';
+    : 'LANGUAGE RULE (VERY IMPORTANT): Write EVERYTHING in simple, correct ENGLISH ONLY - dictation sentences, questions, options a-d, passage, comprehension questions and answers. The topics below may be written in Kiswahili: understand them, but NEVER write Kiswahili sentences or words in the exam (Kiswahili is allowed only inside Tanzanian names and places). Suitable for the class.';
   const q3 = sw
     ? 'sentences, each with a blank ______ followed by a base word in brackets; the pupil writes the correct form of that word (e.g. wingi, wakati uliopita, wakati ujao, kukanusha, umoja/wingi). "ans" is the exact word to write.'
     : 'sentences, each with a blank ______ followed by a base word in brackets; the pupil writes the correct form of that word (plural, past tense, verb with -s, comparative, etc.). "ans" is the exact word to write.';
@@ -2455,7 +2455,7 @@ function eng4BuildPrompt(topics, problems, lang, gradeNum){
  "comp":[{"q":"Where did Neema go?","ans":"To the market."}]}`;
   let p = `You are a Tanzanian primary-school ${sw ? 'Kiswahili' : 'English'} examiner (TAMISEMI / NECTA style).
 Write the content of a ${level} ${sw ? 'Kiswahili' : 'English'} terminal examination on these topics: "${topics}".
-${langRule} Every item must be based on the topics.
+${langRule} Every item must be based on the topics.${sw ? '' : ' (If a topic is in Kiswahili, translate its idea into English and write the items in English.)'}
 
 Return ONLY ONE valid JSON object - no markdown, no comments, no text before or after it. Use straight double quotes only; inside sentences use single quotes if needed.
 The paper has 5 questions. You MUST fill every slot with the EXACT counts below. Never skip, merge or shorten items.
@@ -2468,7 +2468,7 @@ Q5 "passage" and "comp": one simple story or description of 60-90 words with a s
 
 FORMAT EXAMPLE (structure only - do NOT copy this content):
 ${ex}
-Each array must contain exactly the number of items stated above.`;
+Each array must contain exactly the number of items stated above.${sw ? '' : '\nREMINDER: the whole JSON content must be in English. No Kiswahili sentences.'}`;
   if(problems && problems.length){
     p += `\n\nYOUR PREVIOUS ANSWER WAS REJECTED BECAUSE: ${problems.join('; ')}.\nReturn the COMPLETE JSON object again with every array at its exact count.`;
   }
@@ -2476,7 +2476,16 @@ Each array must contain exactly the number of items stated above.`;
 }
 
 // Hakiki jibu la AI dhidi ya idadi zinazotakiwa. Rudisha { problems, data, score }.
-function eng4Check(o){
+// Je, maandishi yameandikwa kwa Kiswahili? (hutumika kuthibitisha kuwa mtihani wa English ni Kiingereza)
+const ENG4_SW_WORDS = new Set(['na','ya','wa','la','za','kwa','ni','katika','hii','huu','hili','yake','wake','wangu','yangu','alikwenda','anapika','wanafunzi','mwalimu','sokoni','shuleni','nyumbani','chakula','maji','mtoto','watoto','sana','pia','lakini','kwamba','wapi','nini','gani','nani','wawili','kila','hapa','huko','leo','jana','kesho','vizuri','mkubwa','mdogo','alienda','walikwenda','anasoma','wanasoma','tunakunywa','tunakula','anakula','analima','shamba','mahindi','kisima','kisimani','jikoni','ndiyo','hapana','kuna','sisi','wewe','mimi','yeye','wao','huyu','hao','hizi','zile','yule','wakati','kutoka','kuwa','alikuwa','walikuwa','sasa','baada','kabla']);
+function eng4LooksSwahili(texts){
+  const words = texts.join(' ').toLowerCase().replace(/[^a-z' ]+/g,' ').split(/\s+/).filter(Boolean);
+  if(words.length < 15) return false;
+  let hit = 0; words.forEach(w => { if(ENG4_SW_WORDS.has(w)) hit++; });
+  return hit >= 8 && (hit / words.length) >= 0.08;
+}
+
+function eng4Check(o, lang){
   const S = ENG4_SPEC, problems = [];
   const str = v => String(v == null ? '' : v).trim();
   const arr = k => (o && Array.isArray(o[k])) ? o[k] : [];
@@ -2503,8 +2512,18 @@ function eng4Check(o){
   need('choose', choose.length, S.chooseWord);
   need('comp', comp.length, S.comprehension);
   if(passage.text.split(/\s+/).filter(Boolean).length < 25) problems.push('"passage.text" is missing or too short (needs 60-90 words)');
-  const score = Math.min(dict.length, S.dictation) + Math.min(mcq.length, S.mcq) + Math.min(form.length, S.formWords) +
+  let swPenalty = false;
+  if(lang === 'English'){
+    const all = [].concat(dict, mcq.map(x => [x.q, x.a, x.b, x.c, x.d].join(' ')), form.map(x => x.q + ' ' + x.ans),
+                          choose.map(x => x.q + ' ' + x.ans), [passage.title, passage.text], comp.map(x => x.q + ' ' + x.ans));
+    if(eng4LooksSwahili(all)){
+      swPenalty = true;
+      problems.push('the content is written in Kiswahili - this is an ENGLISH language exam, so rewrite EVERYTHING (sentences, options, passage, questions and answers) in simple English');
+    }
+  }
+  let score = Math.min(dict.length, S.dictation) + Math.min(mcq.length, S.mcq) + Math.min(form.length, S.formWords) +
                 Math.min(choose.length, S.chooseWord) + Math.min(comp.length, S.comprehension) + (passage.text ? 1 : 0);
+  if(swPenalty) score = 0; // jibu la Kiswahili kwenye mtihani wa English halipaswi kushinda jaribio la Kiingereza
   return {
     problems, score,
     data: { dict, mcq, form, choose, passage,
@@ -2615,7 +2634,7 @@ async function generateEng4Exam(topics, lang, gradeNum){
     const cut = callClaude.lastFinish === 'length';
     let chk;
     try{
-      chk = eng4Check(mtParseJSON(raw).obj);
+      chk = eng4Check(mtParseJSON(raw).obj, lang);
     }catch(e){
       problems = ['the reply was not valid JSON' + (cut ? ' (it was cut off - keep every item short)' : '')];
       lastErr = e; continue;
