@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -144,6 +145,8 @@
   .answerkey-block{margin-top:26px;padding-top:16px;border-top:2px solid var(--paper-line);}
   .answerkey-block h3{font-size:15px;margin:0 0 8px;}
   .answerkey-text{white-space:pre-wrap;font-size:13.5px;line-height:1.6;}
+  .mt-warn{background:#FFF4D6;border:1px solid #E2B33C;color:#5A4308;border-radius:6px;padding:9px 12px;margin-bottom:12px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12.5px;line-height:1.5;}
+  @media print{.mt-warn{display:none !important;}}
 
   /* Assessment hub */
   .hub-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
@@ -2257,7 +2260,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('groqApiKey').addEventListener('input', updateApikeyStatus);
 });
 
-async function callClaude(prompt, maxTokens){
+async function callClaude(prompt, maxTokens, extra){
   let apiKey = document.getElementById('groqApiKey').value.trim();
   const model = document.getElementById('groqModel').value;
   if(!apiKey){
@@ -2285,7 +2288,8 @@ async function callClaude(prompt, maxTokens){
       body: JSON.stringify({
         model: model,
         max_tokens: maxTokens || 2000,
-        messages: [{ role:"user", content: prompt }]
+        messages: [{ role:"user", content: prompt }],
+        ...(extra || {})
       })
     });
   }catch(fetchErr){
@@ -2302,6 +2306,7 @@ async function callClaude(prompt, maxTokens){
     throw new Error("Server error: " + response.status + (detail ? (" — " + detail) : ""));
   }
   const data = await response.json();
+  callClaude.lastFinish = data?.choices?.[0]?.finish_reason || "";
   const txt = data?.choices?.[0]?.message?.content || "";
   if(!txt) throw new Error("Hakuna majibu yaliyorudi.");
   return txt;
@@ -2356,6 +2361,240 @@ function romanFromIndex(i){
   return romans[i] || String(i+1);
 }
 
+/* ===================== ENGLISH DARASA LA 4 — MUUNDO WA KARATASI HALISI (KIONGEZEO) =====================
+   Karatasi ya English Standard IV (TAMISEMI): Section A Dictation; Section B (Q2 MCQ, Q3 correct form,
+   Q4 choose correct word, Q5 comprehension). AI inaombwa YALIYOMO tu (vipande vidogo vya JSON);
+   muundo wa karatasi, namba, alama na mwongozo wa majibu vinajengwa na programu yenyewe — hivyo hakuna
+   swali linaloweza kukatwa au kuruka. Idadi za maswali zinabadilishwa hapa chini kwa urahisi. */
+const ENG4_SPEC  = { dictation:5, mcq:5, formWords:5, chooseWord:5, comprehension:5 };
+const ENG4_MARKS = { dictation:1, mcq:1, formWords:1, chooseWord:1, comprehension:1 }; // alama kwa kila kipengele
+let mtWarning = '';
+
+// Kichwa cha sehemu: sec.heading (ikiwepo) au "LABEL NAMBA — kichwa" (chaguo-msingi SEHEMU, kama awali)
+function secHeading(sec){
+  if(sec && sec.heading) return String(sec.heading);
+  return (sec.label || 'SEHEMU') + ' ' + sec.number + (sec.title ? ' — ' + sec.title : '');
+}
+
+// Ondoa mistari mipya/tabs zilizo ndani ya maandishi ya JSON (hufanya JSON.parse ishindwe)
+function mtEscapeControlChars(s){
+  let out = '', inStr = false, esc = false;
+  for(let i = 0; i < s.length; i++){
+    const ch = s[i];
+    if(inStr){
+      if(esc){ out += ch; esc = false; continue; }
+      if(ch === '\\'){ out += ch; esc = true; continue; }
+      if(ch === '"'){ out += ch; inStr = false; continue; }
+      if(ch === '\n'){ out += '\\n'; continue; }
+      if(ch === '\r'){ continue; }
+      if(ch === '\t'){ out += '\\t'; continue; }
+      out += ch;
+    } else {
+      if(ch === '"') inStr = true;
+      out += ch;
+    }
+  }
+  return out;
+}
+
+// Funga JSON iliyokatika katikati (ikifika kikomo cha tokens)
+function mtCloseTruncated(str){
+  let s = str.replace(/,\s*$/, '');
+  s = s.replace(/,?\s*"(?:[^"\\]|\\.)*"\s*:\s*$/, '');
+  s = s.replace(/,\s*$/, '');
+  const stack = []; let inStr = false, esc = false;
+  for(const ch of s){
+    if(inStr){ if(esc) esc = false; else if(ch === '\\') esc = true; else if(ch === '"') inStr = false; continue; }
+    if(ch === '"'){ inStr = true; continue; }
+    if(ch === '{' || ch === '[') stack.push(ch);
+    else if(ch === '}' || ch === ']') stack.pop();
+  }
+  if(inStr) s += '"';
+  while(stack.length){ s += (stack.pop() === '{') ? '}' : ']'; }
+  return s;
+}
+
+function mtParseJSON(raw){
+  let s = String(raw || '').replace(/```json|```/gi, '').trim();
+  const a = s.indexOf('{');
+  if(a < 0) throw new Error('Jibu la AI halina JSON.');
+  s = s.slice(a);
+  const b = s.lastIndexOf('}');
+  const tries = [s]; if(b > 0 && b < s.length - 1) tries.push(s.slice(0, b + 1));
+  for(const t of tries){
+    try{ return { obj: JSON.parse(t), repaired: false }; }catch(e){}
+    try{ return { obj: JSON.parse(mtEscapeControlChars(t)), repaired: false }; }catch(e){}
+  }
+  return { obj: JSON.parse(mtCloseTruncated(mtEscapeControlChars(s))), repaired: true };
+}
+
+function eng4BuildPrompt(topics, problems){
+  const S = ENG4_SPEC;
+  let p = `You are a Tanzanian primary-school English examiner (TAMISEMI / NECTA style).
+Write the content of a STANDARD IV English terminal examination (pupils aged 9-10) on these topics: "${topics}".
+Language must be simple, correct and suitable for Standard IV. Every item must be based on the topics. Use Tanzanian names and places where natural.
+
+Return ONLY ONE valid JSON object - no markdown, no comments, no text before or after it. Use straight double quotes only; inside sentences use single quotes if needed.
+The paper has 5 questions. You MUST fill every slot with the EXACT counts below. Never skip, merge or shorten items.
+
+Q1 "dictation": ${S.dictation} different short sentences (5-8 words each) that the teacher will read aloud.
+Q2 "mcq": ${S.mcq} multiple-choice items. Each has a sentence with one blank ______, four options a, b, c, d, and the correct letter in "ans" (A, B, C or D). Vary the correct letters.
+Q3 "form": ${S.formWords} sentences, each with a blank ______ followed by a base word in brackets; the pupil writes the correct form of that word (plural, past tense, verb with -s, comparative, etc.). "ans" is the exact word to write.
+Q4 "choose": ${S.chooseWord} sentences, each with a blank ______ followed by 2-3 words in brackets (similar-sounding or easily confused words); the pupil picks the correct one. "ans" is that word.
+Q5 "passage" and "comp": one simple story or description of 60-90 words with a short title, then ${S.comprehension} comprehension questions answerable directly from the passage, each with a short answer in "ans".
+
+FORMAT EXAMPLE (structure only - do NOT copy this content):
+{"dictation":["We eat fruits every day.","..."],
+ "mcq":[{"q":"A farmer grows maize on his ______.","a":"farm","b":"fan","c":"form","d":"firm","ans":"A"}],
+ "form":[{"q":"Neema has two ______ (book).","ans":"books"}],
+ "choose":[{"q":"We drink ______ from the well (water, weather).","ans":"water"}],
+ "passage":{"title":"The Market","text":"..."},
+ "comp":[{"q":"Where did Neema go?","ans":"To the market."}]}
+Each array must contain exactly the number of items stated above.`;
+  if(problems && problems.length){
+    p += `\n\nYOUR PREVIOUS ANSWER WAS REJECTED BECAUSE: ${problems.join('; ')}.\nReturn the COMPLETE JSON object again with every array at its exact count.`;
+  }
+  return p;
+}
+
+// Hakiki jibu la AI dhidi ya idadi zinazotakiwa. Rudisha { problems, data, score }.
+function eng4Check(o){
+  const S = ENG4_SPEC, problems = [];
+  const str = v => String(v == null ? '' : v).trim();
+  const arr = k => (o && Array.isArray(o[k])) ? o[k] : [];
+  const dict = arr('dictation').map(str).filter(Boolean).slice(0, S.dictation);
+  const mcq = [];
+  arr('mcq').forEach(x => {
+    if(!x || !str(x.q) || !str(x.a) || !str(x.b) || !str(x.c) || !str(x.d)) return;
+    let L = str(x.ans).charAt(0).toUpperCase();
+    if(!'ABCD'.includes(L) || str(x.ans).length > 3){
+      const hit = ['a','b','c','d'].find(k => str(x[k]).toLowerCase() === str(x.ans).toLowerCase());
+      L = hit ? hit.toUpperCase() : '';
+    }
+    if(!L) return;
+    mcq.push({ q: str(x.q), a: str(x.a), b: str(x.b), c: str(x.c), d: str(x.d), ans: L });
+  });
+  const pairs = k => arr(k).filter(x => x && str(x.q) && str(x.ans)).map(x => ({ q: str(x.q), ans: str(x.ans) }));
+  const form = pairs('form'), choose = pairs('choose'), comp = pairs('comp');
+  const pas = (o && o.passage) || {};
+  const passage = { title: str(pas.title), text: str(pas.text) };
+  const need = (name, got, want) => { if(got < want) problems.push(`"${name}" has ${got} valid items but needs exactly ${want}`); };
+  need('dictation', dict.length, S.dictation);
+  need('mcq', mcq.length, S.mcq);
+  need('form', form.length, S.formWords);
+  need('choose', choose.length, S.chooseWord);
+  need('comp', comp.length, S.comprehension);
+  if(passage.text.split(/\s+/).filter(Boolean).length < 25) problems.push('"passage.text" is missing or too short (needs 60-90 words)');
+  const score = Math.min(dict.length, S.dictation) + Math.min(mcq.length, S.mcq) + Math.min(form.length, S.formWords) +
+                Math.min(choose.length, S.chooseWord) + Math.min(comp.length, S.comprehension) + (passage.text ? 1 : 0);
+  return {
+    problems, score,
+    data: { dict, mcq, form, choose, passage,
+            comp: comp.slice(0, S.comprehension), form2: form.slice(0, S.formWords), choose2: choose.slice(0, S.chooseWord),
+            mcq2: mcq.slice(0, S.mcq) }
+  };
+}
+
+// Jenga examData kamili (muundo wa karatasi halisi) kutoka kwenye yaliyomo
+function eng4BuildExam(d){
+  const S = ENG4_SPEC, M = ENG4_MARKS;
+  const R = i => romanFromIndex(i);
+  const line = '________________________________________________________________';
+  const mcq = d.mcq2, form = d.form2, choose = d.choose2, comp = d.comp;
+  const marksB = mcq.length * M.mcq + form.length * M.formWords + choose.length * M.chooseWord + comp.length * M.comprehension;
+  const sections = [];
+
+  sections.push({
+    number: 'A', heading: '1. SECTION A: DICTATION', note: 'Marks ' + (S.dictation * M.dictation),
+    questions: Array.from({ length: S.dictation }, (_, i) => ({ roman: R(i), text: line, marks: M.dictation }))
+  });
+  sections.push({
+    number: 'B.2', heading: '2. SECTION B: (MARKS ' + marksB + ')  Choose the correct answer.', note: 'Marks ' + (mcq.length * M.mcq),
+    questions: mcq.map((x, i) => ({ roman: R(i), text: x.q + '\nA. ' + x.a + '\nB. ' + x.b + '\nC. ' + x.c + '\nD. ' + x.d, marks: M.mcq }))
+  });
+  sections.push({
+    number: 'B.3', heading: '3. Fill in the blanks by writing the correct form of the word given in the brackets.', note: 'Marks ' + (form.length * M.formWords),
+    questions: form.map((x, i) => ({ roman: R(i), text: x.q, marks: M.formWords }))
+  });
+  sections.push({
+    number: 'B.4', heading: '4. Complete each sentence by choosing the correct word from the brackets.', note: 'Marks ' + (choose.length * M.chooseWord),
+    questions: choose.map((x, i) => ({ roman: R(i), text: x.q, marks: M.chooseWord }))
+  });
+  const q5 = [{ roman: '', text: (d.passage.title ? d.passage.title.toUpperCase() + '\n\n' : '') + d.passage.text, marks: 0 }];
+  comp.forEach((x, i) => q5.push({ roman: R(i), text: x.q, marks: M.comprehension }));
+  sections.push({
+    number: 'B.5', heading: '5. Read the passage carefully and answer the questions that follow.', note: 'Marks ' + (comp.length * M.comprehension),
+    questions: q5
+  });
+
+  let key = "TEACHER'S GUIDE - ENGLISH LANGUAGE, STANDARD IV\n\nSECTION A - DICTATION (read each sentence twice, slowly; " + M.dictation + " mark each)\n";
+  d.dict.forEach((s, i) => { key += (i + 1) + '. ' + s + '\n'; });
+  key += '\nSECTION B.2\n';
+  mcq.forEach((x, i) => { key += R(i) + '. ' + x.ans + '  (' + x[x.ans.toLowerCase()] + ')\n'; });
+  key += '\nSECTION B.3\n';
+  form.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
+  key += '\nSECTION B.4\n';
+  choose.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
+  key += '\nSECTION B.5\n';
+  comp.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
+
+  return {
+    header: {
+      lines: [
+        'THE UNITED REPUBLIC OF TANZANIA',
+        'REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT',
+        "PRIME MINISTER'S OFFICE (TAMISEMI)",
+        'TERMINAL EXAMINATION - STANDARD IV',
+        'ENGLISH LANGUAGE',
+        "PUPIL'S NAME: ______________________________    CANDIDATE NUMBER: ______________",
+        'SCHOOL NAME: ______________________________    DISTRICT: ______________________'
+      ],
+      instructions: [], language: 'en', assessorTable: true, assessorRows: 5
+    },
+    examTitle: 'ENGLISH LANGUAGE — STANDARD IV',
+    sections, answerKey: key.trim()
+  };
+}
+
+// Tengeneza mtihani wa English Darasa la 4: jaribu hadi mara 3 hadi kila kipengele kikamilike
+async function generateEng4Exam(topics){
+  const model = document.getElementById('groqModel').value;
+  const extra = /gpt-oss/i.test(model) ? { reasoning_effort: 'low' } : {}; // reasoning ndefu hula tokens za jibu
+  let best = null, problems = [], lastErr = null;
+  for(let attempt = 1; attempt <= 3; attempt++){
+    let raw;
+    try{
+      raw = await callClaude(eng4BuildPrompt(topics, attempt > 1 ? problems : null), 4000, extra);
+    }catch(e){
+      if(!best) throw e; // kosa la mtandao/ufunguo — usijaribu tena bila sababu
+      lastErr = e; break;
+    }
+    const cut = callClaude.lastFinish === 'length';
+    let chk;
+    try{
+      chk = eng4Check(mtParseJSON(raw).obj);
+    }catch(e){
+      problems = ['the reply was not valid JSON' + (cut ? ' (it was cut off - keep every item short)' : '')];
+      lastErr = e; continue;
+    }
+    if(!best || chk.score > best.score) best = chk;
+    if(!chk.problems.length){ best = chk; break; }
+    problems = chk.problems.concat(cut ? ['the output was cut off - keep every item short'] : []);
+  }
+  if(!best) throw new Error((lastErr && lastErr.message) || 'AI haikurudisha mtihani unaoeleweka.');
+  const warning = best.problems.length
+    ? '⚠️ Vipengele vifuatavyo havikukamilika baada ya majaribio 3: ' + best.problems.join('; ') +
+      '. Bonyeza "Tengeneza Mtihani" tena, au ongeza maswali kwa "+ Ongeza Swali la Mkono".'
+    : '';
+  return { exam: eng4BuildExam(best.data), warning };
+}
+
+function mtShowWarning(){
+  if(!mtWarning) return;
+  const out = document.getElementById('mt_output');
+  if(out) out.insertAdjacentHTML('afterbegin', '<div class="mt-warn">' + escapeHtml(mtWarning) + '</div>');
+}
+
 async function generateMitihani(){
   const grade = document.getElementById('mt_grade').value;
   const subject = document.getElementById('mt_subject').value;
@@ -2378,6 +2617,7 @@ async function generateMitihani(){
   const isLowerPrimary = gradeNum >= 1 && gradeNum <= 4;
   const isUpperPrimary = gradeNum >= 5 && gradeNum <= 7;
   const specialFormatPending = isUpperPrimary && (subject === 'Hisabati' || subject === 'Uraia na Maadili');
+  const useEng4 = /^darasa/i.test(grade) && gradeNum === 4 && subject === 'English'; // karatasi halisi ya English Std IV
 
   let formatInstructions;
   if(isLowerPrimary){
@@ -2434,7 +2674,7 @@ MUHIMU SANA: (1) Kila swali LAZIMA lihusiane moja kwa moja na mada "${topics}" n
     const stack = [];
     let inStr = false, esc = false;
     for(const ch of s){
-      if(inStr){ if(esc) esc=false; else if(ch==='\\\\') esc=true; else if(ch==='"') inStr=false; continue; }
+      if(inStr){ if(esc) esc=false; else if(ch==='\\') esc=true; else if(ch==='"') inStr=false; continue; }
       if(ch==='"'){ inStr=true; continue; }
       if(ch==='{'||ch==='[') stack.push(ch);
       else if(ch==='}'||ch===']') stack.pop();
@@ -2444,16 +2684,33 @@ MUHIMU SANA: (1) Kila swali LAZIMA lihusiane moja kwa moja na mada "${topics}" n
     return s;
   }
   try{
-    const raw = await callClaude(prompt, 6500);
-    const cleaned = raw.replace(/```json|```/g, "").trim();
-    try{
-      examData = JSON.parse(cleaned);
-    }catch(parseErr){
-      examData = JSON.parse(jaribuKurekebishaJSONiliyokatika(cleaned));
-      console.warn('Mtihani ulikatika kidogo — umerekebishwa kiotomatiki. Angalia mwisho wake kabla ya kutumia.');
+    mtWarning = '';
+    if(useEng4){
+      const r = await generateEng4Exam(topics);
+      examData = r.exam; mtWarning = r.warning || '';
+    } else {
+      const raw = await callClaude(prompt, 6500);
+      const finishReason = callClaude.lastFinish;
+      const cleaned = raw.replace(/```json|```/g, "").trim();
+      try{
+        examData = JSON.parse(cleaned);
+      }catch(parseErr){
+        const fixed = mtEscapeControlChars(cleaned);
+        try{
+          examData = JSON.parse(fixed);
+        }catch(parseErr2){
+          examData = JSON.parse(jaribuKurekebishaJSONiliyokatika(fixed));
+          mtWarning = '⚠️ Jibu la AI lilikatika na lilirekebishwa kiotomatiki — baadhi ya maswali au mwongozo wa majibu vinaweza kukosekana. Hakikisha, kisha bonyeza "Tengeneza Mtihani" tena kama inahitajika.';
+          console.warn('Mtihani ulikatika kidogo — umerekebishwa kiotomatiki. Angalia mwisho wake kabla ya kutumia.');
+        }
+      }
+      if(finishReason === 'length' && !mtWarning){
+        mtWarning = '⚠️ AI ilifika kikomo cha maneno — hakikisha maswali yote yapo; ikiwa yamepungua bonyeza "Tengeneza Mtihani" tena.';
+      }
     }
     document.getElementById('mt_headLabel').textContent = examData.examTitle || `${subject.toUpperCase()} — ${grade.toUpperCase()}`;
     renderExamEditor();
+    mtShowWarning();
     copyBtn.classList.remove('hidden'); printBtn.classList.remove('hidden'); docxBtn.classList.remove('hidden');
   }catch(err){
     output.innerHTML = `<div class="error-box">Samahani, imeshindikana kutengeneza mtihani (${escapeHtml(err.message||"")}). Jaribu tena.</div>`;
@@ -2473,9 +2730,10 @@ function renderExamHeaderHtml(h){
   }
   if(h.assessorTable){
     const n = h.assessorRows || 6;
-    out += '<table class="md-table assessor-table"><thead><tr><th>Swali Na.</th><th>Alama</th><th>Mtia Saini</th></tr></thead><tbody>';
+    const en = h.language === 'en';
+    out += '<table class="md-table assessor-table"><thead><tr><th>' + (en ? 'Question No.' : 'Swali Na.') + '</th><th>' + (en ? 'Marks' : 'Alama') + '</th><th>' + (en ? "Assessor's Sign" : 'Mtia Saini') + '</th></tr></thead><tbody>';
     for(let i=1;i<=n;i++) out += `<tr><td>${i}</td><td></td><td></td></tr>`;
-    out += `<tr><td>JUMLA</td><td></td><td></td></tr></tbody></table>`;
+    out += `<tr><td>${en ? 'TOTAL' : 'JUMLA'}</td><td></td><td></td></tr></tbody></table>`;
   }
   out += '</div>';
   return out;
@@ -2488,7 +2746,7 @@ function renderExamEditor(){
   html += `<h2 class="exam-title">${escapeHtml(examData.examTitle||"")}</h2>`;
   examData.sections.forEach((sec, si) => {
     html += `<div class="sec-block" data-sec="${si}">
-      <div class="sec-header"><h3>SEHEMU ${sec.number}${sec.title? " — "+escapeHtml(sec.title):""}</h3><span class="sec-note">${escapeHtml(sec.note||"")}</span></div>
+      <div class="sec-header"><h3>${escapeHtml(secHeading(sec))}</h3><span class="sec-note">${escapeHtml(sec.note||"")}</span></div>
       <div class="q-list" id="qlist-${si}">`;
     (sec.questions||[]).forEach((q, qi) => {
       html += renderQuestionRow(si, qi, q);
@@ -2507,7 +2765,7 @@ function renderExamEditor(){
 
 function renderQuestionRow(si, qi, q){
   return `<div class="q-item" data-sec="${si}" data-q="${qi}">
-    <div class="q-num">${escapeHtml(q.roman||romanFromIndex(qi))}.</div>
+    <div class="q-num">${q.roman==='' ? '' : escapeHtml(q.roman||romanFromIndex(qi)) + '.'}</div>
     <div class="q-text" contenteditable="true" onblur="updateQuestionText(${si},${qi},this)">${escapeHtml(q.text||"")}</div>
     <input type="number" class="q-marks" value="${q.marks!=null?q.marks:1}" min="0" onchange="updateQuestionMarks(${si},${qi},this.value)" title="Alama">
     <button class="q-del" onclick="deleteQuestion(${si},${qi})" title="Futa swali">🗑</button>
@@ -2535,7 +2793,7 @@ function deleteQuestion(si, qi){
 function addQuestion(si){
   if(!examData) return;
   const qs = examData.sections[si].questions;
-  const newQ = { roman: romanFromIndex(qs.length), text: "Andika swali jipya hapa...", marks: 1 };
+  const newQ = { roman: romanFromIndex(qs.filter(x => x.roman !== '').length), text: "Andika swali jipya hapa...", marks: 1 };
   qs.push(newQ);
   renderExamEditor();
   // focus the newly added question text for immediate editing
@@ -2564,9 +2822,9 @@ function examToText(){
   }
   out += (examData.examTitle||"") + "\n\n";
   examData.sections.forEach(sec=>{
-    out += `SEHEMU ${sec.number}${sec.title?(" — "+sec.title):""} (${sec.note||""})\n`;
+    out += `${secHeading(sec)} (${sec.note||""})\n`;
     (sec.questions||[]).forEach(q=>{
-      out += `${q.roman}. ${q.text}  [Alama: ${q.marks}]\n`;
+      out += `${q.roman===''?'':q.roman+'. '}${q.text}  [Alama: ${q.marks}]\n`;
     });
     out += "\n";
   });
@@ -4349,12 +4607,12 @@ function downloadExamDocx(){
   const paras = [];
   (examData.sections||[]).forEach(sec=>{
     paras.push(new Paragraph({
-      text: `SEHEMU ${sec.number}${sec.title ? ' — '+sec.title : ''}${sec.note ? ' ('+sec.note+')' : ''}`,
+      text: secHeading(sec) + (sec.note ? ' ('+sec.note+')' : ''),
       heading: HeadingLevel.HEADING_2, spacing:{before:220,after:110}
     }));
     (sec.questions||[]).forEach(q=>{
       const lines = (q.text||'').split('\n');
-      const runs = [ new TextRun({ text: (q.roman||'')+'. ', bold:true }) ];
+      const runs = [ new TextRun({ text: (q.roman===''?'':(q.roman||'')+'. '), bold:true }) ];
       lines.forEach((ln,idx)=>{
         if(idx>0) runs.push(new TextRun({ text:'', break:1 }));
         runs.push(new TextRun(ln));
@@ -5235,7 +5493,7 @@ function bankFindAnswer(secNumber, roman, chaguo){
   const key = String(examData.answerKey||'');
   if(!key || !roman) return null;
   let block = key;
-  const heads = [...key.matchAll(/SEHEMU\s+([A-Za-z0-9]+)/gi)];
+  const heads = [...key.matchAll(/(?:SEHEMU|SECTION)\s+([A-Za-z0-9]+(?:\.[0-9]+)?)/gi)];
   if(heads.length){
     const idx = heads.findIndex(h => h[1].toUpperCase() === String(secNumber).toUpperCase());
     if(idx < 0) return null; // sehemu haijapatikana — usikisie
@@ -5944,8 +6202,5 @@ function phBar(){
     else if(++n>200) clearInterval(t); },300);
 })();
 </script>
-<script>
-(function(){var f=window.fetch;window.fetch=function(u,o){if(typeof u==='string'){u=u.replace('adabethsheusi.workers.dev','adabethsheusi85.workers.dev');}return f.call(this,u,o);};})();
-</script>/body>
+</body>
 </html>
-
