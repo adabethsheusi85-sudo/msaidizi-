@@ -168,7 +168,7 @@
   .bar-count{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:var(--sage);margin-bottom:3px;}
 
   /* Assessment hub: Ingizo la Haraka (smart entry) */
-  .sm-textarea{width:100%;min-height:max(440px,62vh);padding:12px 14px;border-radius:8px;border:1px solid rgba(244,239,225,0.25);background:rgba(244,239,225,0.06);color:var(--chalk);font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:15px;line-height:1.7;resize:vertical;}
+  .sm-textarea{width:100%;min-height:420px;min-height:62vh;padding:12px 14px;border-radius:8px;border:1px solid rgba(244,239,225,0.25);background:rgba(244,239,225,0.06);color:var(--chalk);font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:15px;line-height:1.7;resize:vertical;}
   .sm-textarea:focus{outline:1px solid var(--amber);}
   .sm-btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center;}
   .sm-primary{padding:12px 24px;border:none;border-radius:6px;background:var(--amber);color:#2A1D07;font-family:'Helvetica Neue',Arial,sans-serif;font-weight:700;font-size:14.5px;cursor:pointer;}
@@ -907,9 +907,9 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
         </div>
         <div class="field" style="margin-bottom:0;">
           <label>Ingiza alama kwa mpangilio wowote — mstari mmoja kwa kila alama: <b>Jina _Somo Alama</b><br>AU kwa makundi: andika <b>Somo;</b> kisha chini yake <b>Jina Alama</b> kila mstari</label>
-          <textarea id="sm_input" class="sm-textarea" spellcheck="false" placeholder="Kiswahili;&#10;ADABETH SHEUSI 50&#10;MUSA BILAURI 70&#10;Joyce minaz 70&#10;M/jamii;&#10;Ayubu kamwela 80&#10;ADABETH SHEUSI 70&#10;&#10;(au mpangilio wa zamani: Maiko Chaote _Hisabati 80)"></textarea>
+          <textarea id="sm_input" class="sm-textarea" rows="18" spellcheck="false" placeholder="Kiswahili;&#10;ADABETH SHEUSI 50&#10;MUSA BILAURI 70&#10;Joyce minaz 70&#10;M/jamii;&#10;Ayubu kamwela 80&#10;ADABETH SHEUSI 70&#10;&#10;(au mpangilio wa zamani: Maiko Chaote _Hisabati 80)"></textarea>
         </div>
-        <div class="hint" style="margin-top:8px;">Jina la mwanafunzi halihitaji kuwepo kwenye database. Mfumo hutengeneza mwanafunzi mara jina linapoonekana kwa mara ya kwanza, na jina lile lile likirudi huongeza alama kwenye masomo yake. Namba ya mwanzo (1. 2. 3.) ni hiari. Katika mpangilio wa makundi, jina la somo huishia na <b>;</b> (au <b>:</b>) na linatumika kwa mistari yote inayofuata hadi somo jingine; mstari wenye <b>_Somo</b> ndani yake hubaki kama ulivyo.</div>
+        <div class="hint" style="margin-top:8px;">Jina la mwanafunzi halihitaji kuwepo kwenye database. Mfumo hutengeneza mwanafunzi mara jina linapoonekana kwa mara ya kwanza, na jina lile lile likirudi huongeza alama kwenye masomo yake. <b style="color:var(--amber);">[Toleo v24 — kisanduku kikubwa + mpangilio wa makundi]</b> Namba ya mwanzo (1. 2. 3.) ni hiari. Katika mpangilio wa makundi, jina la somo huishia na <b>;</b> (au <b>:</b>) na linatumika kwa mistari yote inayofuata hadi somo jingine; mstari wenye <b>_Somo</b> ndani yake hubaki kama ulivyo.</div>
         <div id="sm_stale" class="sm-box warn hidden" style="margin-top:12px;margin-bottom:0;">Maandishi yamebadilika tangu uchambuzi wa mwisho. Bonyeza "Chambua" tena kabla ya kuhifadhi.</div>
         <div class="sm-btnrow">
           <button class="sm-primary" onclick="smAnalyze()">Chambua</button>
