@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -6924,16 +6923,60 @@ function phParse(txt){
   const j = JSON.parse(s.slice(a,b+1));
   const rows = (Array.isArray(j.rows)?j.rows:[]).map(r=>{
     const raw = String(r.alama==null?'':r.alama).trim(), nums = raw.match(/\d+(?:[.,]\d+)?/g)||[];
-    return {jina:String(r.jina||'').replace(/[\d_]+/g,' ').replace(/\s+/g,' ').trim(), alama: /^\d+(?:[.,]\d+)?$/.test(raw)?raw.replace(',','.'):'',
+    return {no:(parseInt(r.no,10)||null), fix:null, jina:String(r.jina||'').replace(/[\d_]+/g,' ').replace(/\s+/g,' ').trim(), alama: /^\d+(?:[.,]\d+)?$/.test(raw)?raw.replace(',','.'):'',
       raw, hakika: /^\d+(?:[.,]\d+)?$/.test(raw)?String(r.hakika||'kati').toLowerCase():'chini', on:true, ok:false};
   });
   return {somo:String(j.somo||'').trim(), mtihani:String(j.mtihani||'').trim(), rows};
 }
-/* hard = lazima irekebishwe; soft = mwalimu athibitishe */
+/*PH_MATCH_START*/
+/* ===== Kulinganisha majina ya picha na majina yaliyohifadhiwa kwenye Assessment ya darasa =====
+   Kanuni: (1) jina linalolingana kabisa => mwanafunzi yule yule; (2) tahajia iliyokosewa kidogo na mgombea MMOJA
+   pekee wa kuaminika => jina la Assessment linatumika (na mwalimu anaona + anaweza kurudisha); (3) wagombea wengi,
+   S/N zinagongana, au hakuna anayefanana => HAKUNA kubadilisha — linaenda kwa mwalimu. Alama HAZIGUSWI kamwe.
+   Kumbuka: Assessment haina kitambulisho cha kudumu cha mwanafunzi; "key" ni jina lililosanifishwa na S/N hutengenezwa
+   upya kwa mpangilio wa kuingiza. Kwa hiyo S/N hutumika kama KIONGEZA-UHAKIKA tu, si kitambulisho pekee. */
+function phToks(s){ return smNorm(s).split(' ').filter(Boolean); }
+function phDist(a,b){
+  const A=phToks(a), B=phToks(b); if(!A.length||A.length!==B.length) return 9;
+  const tot=(x,y)=>x.reduce((n,t,i)=>n+(t===y[i]?0:(t.length>=3&&y[i].length>=3?smLev(t,y[i]):2)),0);
+  return Math.min(tot(A,B), tot(A.slice().sort(),B.slice().sort()));
+}
+function phSubset(a,b){   // jina moja lina maneno machache, yote yako kwenye jingine (mfano jina la kati limeachwa)
+  let A=phToks(a), B=phToks(b); if(A.length>B.length){ const t=A; A=B; B=t; }
+  return A.length>=2 && A.length<B.length && A.every(t=>B.indexOf(t)>=0);
+}
+function phMatch(name, no, roster){
+  const k=smNorm(name); if(!k||!roster.length) return {t:'none',c:[]};
+  const ex=roster.find(s=>s.key===k);
+  if(ex) return {t:'exact', st:ex, snConflict: !!(no && ex.sns.length && ex.sns.indexOf(no)<0)};
+  const cands=roster.filter(s=>phDist(name,s.name)<=2||phSubset(name,s.name));
+  if(!cands.length) return {t:'none',c:[]};
+  const snHit=s=>!!(no&&s.sns.indexOf(no)>=0);
+  let pool=cands.filter(s=>{ const d=phDist(name,s.name); return (d<=1&&k.length>=5)||(d<=2&&snHit(s)); });
+  let bySn=false;
+  if(pool.length>1){ const p2=pool.filter(snHit); if(p2.length===1){ pool=p2; bySn=true; } }
+  if(pool.length===1){
+    const others=cands.filter(s=>s!==pool[0]);
+    const safe = !others.length || (snHit(pool[0]) && !others.some(snHit)) || bySn;
+    if(safe) return {t:'fix', st:pool[0], c:cands};
+  }
+  return {t:'cands', c:cands};
+}
+/* Hutumika MARA MOJA baada ya kusoma picha: hurekebisha tu tahajia zenye uhakika; mwanafunzi mmoja wa Assessment
+   hawezi kudaiwa na mistari miwili. Jina la picha huhifadhiwa kwenye r.fix.from ili mwalimu aweze kulirudisha. */
+function phApply(rows, roster){
+  const taken=new Set(); let n=0;
+  rows.forEach(r=>{ const m=phMatch(r.jina,r.no,roster); if(m.t==='exact') taken.add(m.st.key); });
+  rows.forEach(r=>{ if(!r.jina) return; const m=phMatch(r.jina,r.no,roster);
+    if(m.t==='fix'&&!taken.has(m.st.key)){ r.fix={from:r.jina,to:m.st.name}; r.jina=m.st.name; taken.add(m.st.key); n++; } });
+  return n;
+}
+/*PH_MATCH_END*/
+/* hard = lazima irekebishwe; soft = mwalimu athibitishe; info = taarifa tu; pick = majina ya kuchagua */
 function phCheck(rows, max, roster){
   const keys = rows.map(r=>smNorm(r.jina));
   return rows.map((r,i)=>{
-    const hard=[], soft=[]; if(!r.on) return {hard,soft};
+    const hard=[], soft=[], info=[], pick=[]; if(!r.on) return {hard,soft,info,pick};
     if(!r.jina) hard.push('Jina halijasomeka — liandike');
     const m = parseFloat(r.alama);
     if(r.alama===''||isNaN(m)) hard.push('Alama haijasomeka — iandike'+(r.raw?' (picha: "'+r.raw+'")':''));
@@ -6941,19 +6984,30 @@ function phCheck(rows, max, roster){
     if(r.hakika!=='juu') soft.push('Haina uhakika wa kutosha — linganisha na karatasi');
     if(keys[i]){
       if(keys.some((k,j)=>j!==i&&rows[j].on&&k===keys[i])) soft.push('Jina limerudiwa kwenye karatasi hii');
-      else { const o=keys.findIndex((k,j)=>j!==i&&rows[j].on&&k&&k.length>=4&&smLev(k,keys[i])<=1); if(o>=0) soft.push('Linafanana na "'+rows[o].jina+'"'); }
-      const rn = roster.find(n=>smNorm(n)===keys[i]);
-      if(!rn){ const n2=roster.find(n=>{const k=smNorm(n);return k.length>=4&&smLev(k,keys[i])<=1;}); if(n2) soft.push('Je, ni "'+n2+'" (aliyepo kwenye assessment zilizohifadhiwa)?'); }
+      else { const o=keys.findIndex((k,j)=>j!==i&&rows[j].on&&k&&k.length>=4&&smLev(k,keys[i])<=1); if(o>=0) soft.push('Linafanana na "'+rows[o].jina+'" (mstari mwingine wa karatasi hii)'); }
+      if(r.fix) info.push('Jina limesahihishwa kutoka Assessment: "'+r.fix.from+'" → "'+r.fix.to+'". Alama haikubadilishwa.');
+      if(roster.length){
+        const mm=phMatch(r.jina,r.no,roster);
+        if(mm.t==='exact'){
+          if(mm.snConflict) soft.push('Jina linalingana na Assessment, lakini S/N ya karatasi ('+r.no+') si ile iliyohifadhiwa ('+mm.st.sns.join(', ')+'). Hakikisha ni mwanafunzi yule yule, si mwingine mwenye jina sawa.');
+        } else if(mm.t==='fix'||mm.t==='cands'){
+          const list=mm.t==='fix'?[mm.st]:mm.c;
+          soft.push('Halipo kwenye Assessment kama lilivyo. Linafanana na: '+list.map(s=>'"'+s.name+'"').join(', ')+'. Chagua kama ni yeye, au thibitisha kuwa ni mwanafunzi mpya.');
+          list.slice(0,4).forEach(s=>pick.push(s.name));
+        } else soft.push('Mwanafunzi mpya — jina halipo kwenye Assessment ya darasa hili. Halitaunganishwa na mwanafunzi mwingine; thibitisha.');
+      }
     }
-    return {hard,soft};
+    return {hard,soft,info,pick};
   });
 }
 function phLines(rows, somo){
   return rows.filter(r=>r.on).map(r=>smTitle(r.jina).replace(/_/g,' ')+' _'+somo.replace(/[_\d]+/g,' ').trim()+' '+r.alama);
 }
-function phRoster(grade){
-  const set={}; try{ smLoad().forEach(rec=>{ if(rec.grade===grade&&rec.model) rec.model.rows.forEach(r=>{ if(r.name) set[smNorm(r.name)]=r.name; }); }); }catch(e){}
-  return Object.values(set);
+function phRoster(grade){   // majina yaliyohifadhiwa kwenye Assessment za darasa husika + S/N zao
+  const map={}; try{ smLoad().forEach(rec=>{ if(rec.grade===grade&&rec.model&&rec.model.rows) rec.model.rows.forEach((r,i)=>{
+    if(!r.name) return; const k=smNorm(r.name); if(!k) return; const o=map[k]||(map[k]={key:k,name:r.name,sns:[]});
+    const sn=r.sn!==undefined?r.sn:i+1; if(o.sns.indexOf(sn)<0) o.sns.push(sn); }); }); }catch(e){}
+  return Object.values(map);
 }
 /* ---- picha ---- */
 async function phLoad(file){
@@ -7012,8 +7066,9 @@ async function phRead(){
   try{
     const r=phParse(await phVision(document.getElementById('ph_cv').toDataURL('image/jpeg',0.8)));
     if(!r.rows.length) throw new Error('Hakuna mistari iliyosomwa. Zungusha picha iwe wima, piga tena kwa mwanga mzuri.');
+    const nfix=phApply(r.rows,ph.roster);
     ph.rows=r.rows; if(r.somo&&!document.getElementById('ph_somo').value) document.getElementById('ph_somo').value=r.somo;
-    msg.textContent='Imesoma wanafunzi '+r.rows.length+'. Kagua kila mstari kabla ya kuingiza.'+(r.mtihani?' (Karatasi: '+r.mtihani+')':'');
+    msg.textContent='Imesoma wanafunzi '+r.rows.length+'.'+(nfix?' Majina '+nfix+' yamesahihishwa kwa kutumia Assessment.':'')+' Kagua kila mstari kabla ya kuingiza.'+(r.mtihani?' (Karatasi: '+r.mtihani+')':'');
     phRender();
   }catch(e){ msg.textContent=e.message; }
   btn.disabled=false;
@@ -7030,7 +7085,9 @@ function phStatus(){
   ph.rows.forEach((r,i)=>{
     const c=ck[i], el=document.getElementById('ph_f'+i), row=document.getElementById('ph_r'+i); if(!el) return;
     row.className='ph-row'+(!r.on?' off':c.hard.length?' bad':c.soft.length&&!r.ok?' warn':'');
-    let h=c.hard.map(m=>'⛔ '+m).join('<br>')+(c.hard.length&&c.soft.length?'<br>':'')+c.soft.map(m=>'⚠️ '+m).join('<br>');
+    let h=c.hard.map(m=>'⛔ '+m).concat(c.soft.map(m=>'⚠️ '+m),(c.info||[]).map(m=>'ℹ️ '+m)).join('<br>');
+    if(r.fix) h+='<br><button type="button" data-i="'+i+'" data-f="undo">↩ Rudisha jina la picha</button>';
+    (c.pick||[]).forEach(n=>{ h+='<br><button type="button" data-i="'+i+'" data-f="pick" data-v="'+smAttr(n)+'">Tumia "'+smAttr(n)+'"</button>'; });
     if(c.soft.length&&!c.hard.length) h+='<br><label><input type="checkbox" data-i="'+i+'" data-f="ok"'+(r.ok?' checked':'')+'> Nimekagua, ni sahihi</label>';
     if(el.dataset.h!==h){ el.dataset.h=h; el.innerHTML=h; }
     if(c.hard.length) bad++; else if(c.soft.length&&!r.ok) unconf++;
@@ -7050,7 +7107,7 @@ function phOpen(){
   phClose(); const grade=document.getElementById('sm_grade').value; ph.max=smGetMax(); ph.roster=phRoster(grade);
   const o=document.createElement('div'); o.id='ph_ov'; o.className='ph-ov';
   o.innerHTML='<div class="ph-box"><div class="ph-h"><b>📷 Soma Matokeo kwa Picha</b><button type="button" id="ph_x">✕</button></div>'+
-   '<div class="hint">'+smAttr(grade)+' • alama za juu '+ph.max+'. Picha hutumwa kwa Groq (inahitaji intaneti). Majina yatakayosomwa ni DRAFT — wewe ndiye unayethibitisha.</div>'+
+   '<div class="hint">'+smAttr(grade)+' • alama za juu '+ph.max+'. Picha hutumwa kwa Groq (inahitaji intaneti). Majina yatakayosomwa ni DRAFT — wewe ndiye unayethibitisha. '+(ph.roster.length?'Majina '+ph.roster.length+' ya Assessment zilizohifadhiwa za darasa hili yatatumika kusahihisha tahajia.':'Hakuna Assessment iliyohifadhiwa ya darasa hili — majina hayatalinganishwa.')+'</div>'+
    '<div class="sm-btnrow"><label class="rowBtn">📸 Piga picha<input type="file" id="ph_cam" accept="image/*" capture="environment" hidden></label><label class="rowBtn">🖼️ Chagua picha<input type="file" id="ph_gal" accept="image/*" hidden></label>'+
    '<button type="button" class="rowBtn" onclick="phRot(-90)">↺</button><button type="button" class="rowBtn" onclick="phRot(90)">↻</button></div>'+
    '<canvas id="ph_cv" class="ph-cv"></canvas><div class="hint">Zungusha picha mpaka maandishi yasimame wima. Karatasi ijaze picha (sogea karibu), bila mng\'ao.</div><label class="hint"><input type="checkbox" id="ph_enh"> Boresha mwanga (jaribu kama maandishi hayaonekani)</label>'+
@@ -7064,9 +7121,12 @@ function phOpen(){
   ['ph_cam','ph_gal'].forEach(id=>document.getElementById(id).addEventListener('change',e=>phLoad(e.target.files[0])));
   document.getElementById('ph_enh').addEventListener('change',phDraw); document.getElementById('ph_somo').addEventListener('input',phStatus); document.getElementById('ph_ack').addEventListener('change',phStatus);
   const rows=document.getElementById('ph_rows');
-  rows.addEventListener('input',e=>{ const t=e.target,i=+t.dataset.i,f=t.dataset.f; if(f==='ok'||isNaN(i)) return; ph.rows[i][f]=t.value; if(f==='alama') ph.rows[i].raw=''; ph.rows[i].hakika='juu'; ph.rows[i].ok=false; phStatus(); });
+  rows.addEventListener('input',e=>{ const t=e.target,i=+t.dataset.i,f=t.dataset.f; if(f==='ok'||isNaN(i)) return; ph.rows[i][f]=t.value; if(f==='alama') ph.rows[i].raw=''; if(f==='jina') ph.rows[i].fix=null; ph.rows[i].hakika='juu'; ph.rows[i].ok=false; phStatus(); });
   rows.addEventListener('change',e=>{ const t=e.target; if(t.dataset.f==='ok'){ ph.rows[+t.dataset.i].ok=t.checked; phStatus(); } });
-  rows.addEventListener('click',e=>{ const t=e.target; if(t.tagName==='BUTTON'&&t.dataset.f==='on'){ const r=ph.rows[+t.dataset.i]; r.on=!r.on; phStatus(); } });
+  rows.addEventListener('click',e=>{ const t=e.target; if(t.tagName!=='BUTTON') return; const r=ph.rows[+t.dataset.i]; if(!r) return;
+    if(t.dataset.f==='on'){ r.on=!r.on; phStatus(); }
+    else if(t.dataset.f==='pick'){ r.fix={from:r.fix?r.fix.from:r.jina,to:t.dataset.v}; r.jina=t.dataset.v; r.ok=true; phRender(); }   // mwalimu amechagua mwenyewe
+    else if(t.dataset.f==='undo'&&r.fix){ r.jina=r.fix.from; r.fix=null; r.ok=false; phRender(); } });
 }
 
 /* ===== Rasimu (draft) inayodumu + kizuizi cha "Chambua" mpaka masomo yote ya picha yaingie ===== */
@@ -7110,3 +7170,4 @@ function phBar(){
 </script>
 </body>
 </html>
+
