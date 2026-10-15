@@ -168,7 +168,7 @@
   .bar-count{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:var(--sage);margin-bottom:3px;}
 
   /* Assessment hub: Ingizo la Haraka (smart entry) */
-  .sm-textarea{width:100%;min-height:420px;min-height:62vh;padding:12px 14px;border-radius:8px;border:1px solid rgba(244,239,225,0.25);background:rgba(244,239,225,0.06);color:var(--chalk);font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:15px;line-height:1.7;resize:vertical;}
+  .sm-textarea{width:100%;height:420px;height:60vh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:12px 14px;border-radius:8px;border:1px solid rgba(244,239,225,0.25);background:rgba(244,239,225,0.06);color:var(--chalk);font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:15px;line-height:1.7;resize:vertical;}
   .sm-textarea:focus{outline:1px solid var(--amber);}
   .sm-btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center;}
   .sm-primary{padding:12px 24px;border:none;border-radius:6px;background:var(--amber);color:#2A1D07;font-family:'Helvetica Neue',Arial,sans-serif;font-weight:700;font-size:14.5px;cursor:pointer;}
@@ -402,7 +402,7 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
 <h2>Msaidizi wa Mwalimu</h2><p class="fbs" id="fbSub">Ingia au jisajili ili kuendelea.</p>
 <div class="fbt"><button type="button" id="fbTabIn" class="on">Ingia</button><button type="button" id="fbTabUp">Jisajili</button></div>
 <p id="fbMsg"></p>
-<input type="email" id="fbEmail" placeholder="Barua pepe (email)" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false">
+<input type="email" id="fbEmail" placeholder="Barua pepe (email)" autocomplete="email">
 <input type="password" id="fbPass" placeholder="Nenosiri (angalau herufi 6)" autocomplete="current-password">
 <input type="password" id="fbPass2" placeholder="Rudia nenosiri" autocomplete="new-password" style="display:none">
 <button type="button" class="fbgo" id="fbGo">Ingia</button>
@@ -909,7 +909,7 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
           <label>Ingiza alama kwa mpangilio wowote — mstari mmoja kwa kila alama: <b>Jina _Somo Alama</b><br>AU kwa makundi: andika <b>Somo;</b> kisha chini yake <b>Jina Alama</b> kila mstari</label>
           <textarea id="sm_input" class="sm-textarea" rows="18" spellcheck="false" placeholder="Kiswahili;&#10;ADABETH SHEUSI 50&#10;MUSA BILAURI 70&#10;Joyce minaz 70&#10;M/jamii;&#10;Ayubu kamwela 80&#10;ADABETH SHEUSI 70&#10;&#10;(au mpangilio wa zamani: Maiko Chaote _Hisabati 80)"></textarea>
         </div>
-        <div class="hint" style="margin-top:8px;">Jina la mwanafunzi halihitaji kuwepo kwenye database. Mfumo hutengeneza mwanafunzi mara jina linapoonekana kwa mara ya kwanza, na jina lile lile likirudi huongeza alama kwenye masomo yake. <b style="color:var(--amber);">[Toleo v24 — kisanduku kikubwa + mpangilio wa makundi]</b> Namba ya mwanzo (1. 2. 3.) ni hiari. Katika mpangilio wa makundi, jina la somo huishia na <b>;</b> (au <b>:</b>) na linatumika kwa mistari yote inayofuata hadi somo jingine; mstari wenye <b>_Somo</b> ndani yake hubaki kama ulivyo.</div>
+        <div class="hint" style="margin-top:8px;">Jina la mwanafunzi halihitaji kuwepo kwenye database. Mfumo hutengeneza mwanafunzi mara jina linapoonekana kwa mara ya kwanza, na jina lile lile likirudi huongeza alama kwenye masomo yake. <b style="color:var(--amber);">[Toleo v25 — kisanduku kikubwa chenye urefu thabiti; maandishi yanapanda juu ndani yake + mpangilio wa makundi]</b> Namba ya mwanzo (1. 2. 3.) ni hiari. Katika mpangilio wa makundi, jina la somo huishia na <b>;</b> (au <b>:</b>) na linatumika kwa mistari yote inayofuata hadi somo jingine; mstari wenye <b>_Somo</b> ndani yake hubaki kama ulivyo.</div>
         <div id="sm_stale" class="sm-box warn hidden" style="margin-top:12px;margin-bottom:0;">Maandishi yamebadilika tangu uchambuzi wa mwisho. Bonyeza "Chambua" tena kabla ya kuhifadhi.</div>
         <div class="sm-btnrow">
           <button class="sm-primary" onclick="smAnalyze()">Chambua</button>
@@ -5372,7 +5372,6 @@ function smInit(){
                 '<optgroup label="Sekondari">'+secondaryGrades.map(x=>'<option>'+x+'</option>').join('')+'</optgroup>';
   document.getElementById('sm_type').innerHTML = SM_TYPES.map(x=>'<option>'+x+'</option>').join('');
   document.getElementById('sm_input').addEventListener('input', smMarkStale);
-  document.getElementById('sm_input').addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.max(this.scrollHeight+4,this.clientHeight)+'px'; });
   const resync = ()=>{ if(smState && !smState.stale) smRecompute(); };
   g.addEventListener('change', resync);
   document.getElementById('sm_max').addEventListener('change', resync);
@@ -6533,14 +6532,7 @@ function saveExamToBank(){
     'auth/too-many-requests':'Majaribio mengi. Subiri kidogo kisha ujaribu tena.',
     'auth/network-request-failed':'Tatizo la mtandao. Angalia intaneti.',
     'auth/operation-not-allowed':'Email/Password haijawashwa kwenye Firebase Console (Authentication > Sign-in method).',
-    'auth/unauthorized-domain':'Domain hii haijaruhusiwa kwenye Firebase (Authentication > Settings > Authorized domains).',
-    'auth/missing-password':'Weka nenosiri.',
-    'auth/user-disabled':'Akaunti hii imezuiwa. Wasiliana na msimamizi.',
-    'auth/invalid-login-credentials':'Barua pepe au nenosiri si sahihi.',
-    'auth/admin-restricted-operation':'Usajili wa watumiaji wapya umezimwa kwenye Firebase (Authentication > Settings > User actions > washa Enable create (sign-up)).',
-    'auth/password-does-not-meet-requirements':'Nenosiri halikidhi masharti ya usalama yaliyowekwa. Tumia nenosiri refu zaidi lenye herufi na namba.',
-    'auth/internal-error':'Hitilafu ya ndani ya Firebase. Jaribu tena baada ya muda.',
-    'auth/web-storage-unsupported':'Kivinjari kimezuia hifadhi (cookies/storage). Ziruhusu kisha ujaribu tena.'
+    'auth/unauthorized-domain':'Domain hii haijaruhusiwa kwenye Firebase (Authentication > Settings > Authorized domains).'
   };
   function setMode(m){
     mode=m; var up=m==='up';
@@ -6549,41 +6541,21 @@ function saveExamToBank(){
     $('fbGo').textContent=up?'Jisajili':'Ingia';
     $('fbReset').style.display=up?'none':'inline';
     $('fbPass').autocomplete=up?'new-password':'current-password';
-    if(!up)$('fbPass2').value='';
-    var sub=$('fbSub'); if(sub)sub.textContent=up?'Akaunti mpya: weka barua pepe na nenosiri (angalau herufi 6), kisha lirudie.':'Una akaunti? Weka barua pepe na nenosiri kisha bonyeza Ingia. Huna akaunti? Bonyeza "Jisajili" hapo juu.';
     say('');
   }
   $('fbTabIn').onclick=function(){setMode('in')};
   $('fbTabUp').onclick=function(){setMode('up')};
   function busy(b){$('fbGo').disabled=b}
-  /* Makosa: ujumbe unategemea kitufe kilichobonyezwa (Jisajili au Ingia) na msimbo halisi wa Firebase. */
-  function authErr(m,e){
-    var c=(e&&e.code)||'';
-    try{console.warn('Firebase Auth ['+(m==='up'?'createUser':'signIn')+']:',c,e&&e.message);}catch(_x){}
-    if(m==='up'&&c==='auth/email-already-in-use'){
-      /* Akaunti ipo tayari: haitengenezwi upya. Mpeleke kwenye INGIA, barua pepe inabaki. */
-      setMode('in'); $('fbPass').value=''; $('fbPass2').value='';
-      say('Akaunti yenye barua pepe hii tayari ipo. Weka nenosiri lako kisha bonyeza Ingia.','err');
-      try{$('fbPass').focus();}catch(_y){}
-      return;
-    }
-    if(m==='in'&&(c==='auth/invalid-credential'||c==='auth/user-not-found'||c==='auth/invalid-login-credentials')){
-      say('Barua pepe au nenosiri si sahihi. Kama bado huna akaunti, bonyeza "Jisajili" hapo juu kufungua akaunti mpya.','err');
-      return;
-    }
-    say(E[c]||('Hitilafu: '+((e&&e.message)||c||'haijulikani')),'err');
-  }
   function submit(){
-    var m=mode, em=$('fbEmail').value.trim(), pw=$('fbPass').value;
+    var em=$('fbEmail').value.trim(), pw=$('fbPass').value;
     if(!em||!pw){say('Jaza barua pepe na nenosiri.','err');return;}
-    if(m==='up'){
-      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){say(E['auth/invalid-email'],'err');return;}
+    if(mode==='up'){
       if(pw.length<6){say('Nenosiri liwe angalau herufi 6.','err');return;}
       if(pw!==$('fbPass2').value){say('Manenosiri hayafanani.','err');return;}
     }
     busy(true); say('Tafadhali subiri...');
-    var p=m==='up'?auth.createUserWithEmailAndPassword(em,pw):auth.signInWithEmailAndPassword(em,pw);
-    p.then(function(){say('');}).catch(function(e){authErr(m,e);}).then(function(){busy(false)});
+    var p=mode==='up'?auth.createUserWithEmailAndPassword(em,pw):auth.signInWithEmailAndPassword(em,pw);
+    p.then(function(){say('');}).catch(function(e){say(E[e.code]||('Hitilafu: '+(e.message||e.code)),'err');}).then(function(){busy(false)});
   }
   $('fbGo').onclick=submit;
   [$('fbEmail'),$('fbPass'),$('fbPass2')].forEach(function(el){el.addEventListener('keydown',function(ev){if(ev.key==='Enter')submit();});});
