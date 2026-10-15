@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -7028,12 +7029,12 @@ function phDraw(){
   x.putImageData(d,0,0);
 }
 function phRot(d){ ph.rot=(ph.rot+d+360)%360; phDraw(); }
-async function phVision(dataUrl){
+async function phVision(dataUrl,extra){
   let url='https://api.groq.com/openai/v1/chat/completions', auth;
   if(PH_PROXY_URL){ url=PH_PROXY_URL; try{ auth=await firebase.auth().currentUser.getIdToken(); }catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); } }
   else { auth=(document.getElementById('groqApiKey').value||'').replace(/[^\x20-\x7E]/g,'').trim(); if(!auth) throw new Error('Weka Groq API key juu ya ukurasa kwanza.'); }
   const body={model:PH_MODELS[0],temperature:0,max_tokens:4000,response_format:{type:'json_object'},
-    messages:[{role:'user',content:[{type:'text',text:PH_PROMPT},{type:'image_url',image_url:{url:dataUrl}}]}]};
+    messages:[{role:'user',content:[{type:'text',text:PH_PROMPT+(extra||'')},{type:'image_url',image_url:{url:dataUrl}}]}]};
   let res;
   for(const m of PH_MODELS){
     body.model=m; body.response_format={type:'json_object'};
@@ -7059,16 +7060,102 @@ async function phDiag(url,e){   // inabaini kama tatizo ni mtandao, ruhusa (CORS
   if(net) return 'Simu inafika kwenye seva lakini seva haikuruhusu programu (CORS) ['+det+']. Tuma ujumbe huu kwa msanidi.';
   return 'Simu haifikii seva kabisa ['+det+'; mtandao: '+(navigator.onLine?'upo':'hakuna')+']. Jaribu WiFi au data nyingine, na zima VPN/Private DNS/AdBlock.';
 }
+/* ===== Uchakataji wa picha kiotomatiki — Canvas pekee, hakuna AI wala huduma mpya =====
+   (1) picha kamili iliyozungushwa; HAIPANULIWI, hupunguzwa tu kwa kikomo cha upana/ukubwa  (2) kutafuta wino kwa kulinganisha na mazingira yake
+   (3) kukata kingo TUPU tu (maandishi hayaguswi)  (4) picha yenye mistari mingi hugawanywa KWA MISTARI (kamwe si kwa safu wima, ili jina na alama
+   za mwanafunzi mmoja zibaki pamoja), kwenye mapengo kati ya mistari, na mistari PH_OV hurudiwa kila mpaka  (5) mwanga husawazishwa bila kubadili maandishi.
+   Tatizo lolote la uchakataji => mfumo hurudi kwenye njia ya zamani (picha moja). */
+const PH_MAX_W=2400, PH_MAX_PX=4500000, PH_MAX_BANDS=4, PH_LINES_PER_BAND=26, PH_OV=2;
+function phInk(g,w,h){   // g = kijivu (w*h); 1 = wino (giza kuliko mazingira yake)
+  const r=Math.max(6,Math.round(w/24)), W1=w+1, I=new Float64Array(W1*(h+1)), ink=new Uint8Array(w*h);
+  for(let y=0;y<h;y++){ let s=0; for(let x=0;x<w;x++){ s+=g[y*w+x]; I[(y+1)*W1+x+1]=I[y*W1+x+1]+s; } }
+  for(let y=0;y<h;y++){ const y0=Math.max(0,y-r), y1=Math.min(h,y+r+1);
+    for(let x=0;x<w;x++){ const x0=Math.max(0,x-r), x1=Math.min(w,x+r+1);
+      const m=(I[y1*W1+x1]-I[y0*W1+x1]-I[y1*W1+x0]+I[y0*W1+x0])/((x1-x0)*(y1-y0));
+      if(g[y*w+x]<m-22) ink[y*w+x]=1; } }
+  return ink;
+}
+function phPlan(ink,w,h){   // inarudisha eneo la kukata na bendi za mistari (yote kwa vipimo vya picha ndogo ya uchambuzi)
+  const full={cx0:0,cx1:w,ry0:0,ry1:h,lines:0,bands:[[0,h]],cropped:false};
+  const rowI=new Float32Array(h), colI=new Float32Array(w); let tot=0;
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(ink[y*w+x]){ rowI[y]++; colI[x]++; tot++; }
+  if(tot<w*h*0.002||tot>w*h*0.35) return full;   // hakuna wino au kelele nyingi: usiguse picha
+  const trim=(a,n)=>{ const cut=tot*0.002; let s=0,lo=0,hi=n-1; for(;lo<n-1&&(s+=a[lo])<cut;lo++); s=0; for(;hi>0&&(s+=a[hi])<cut;hi--); return [lo,hi+1]; };
+  let [ry0,ry1]=trim(rowI,h), [cx0,cx1]=trim(colI,w);
+  const py=Math.max(4,Math.round(h*0.03)), px=Math.max(4,Math.round(w*0.03));
+  ry0=Math.max(0,ry0-py); ry1=Math.min(h,ry1+py); cx0=Math.max(0,cx0-px); cx1=Math.min(w,cx1+px);
+  const cropped=(ry1-ry0)*(cx1-cx0)<0.92*w*h; if(!cropped){ ry0=0; ry1=h; cx0=0; cx1=w; }
+  const cw=cx1-cx0, ch=ry1-ry0, lp=new Float32Array(ch);
+  for(let y=0;y<ch;y++){ let n=0; for(let x=cx0;x<cx1;x++) n+=ink[(ry0+y)*w+x]; lp[y]=n>0.55*cw?0:n; }   // mistari mirefu ya jedwali haihesabiwi kama maandishi
+  const sm=Array.from(lp,(v,i)=>((lp[i-1]||0)+2*v+(lp[i+1]||0))/4), srt=sm.slice().sort((a,b)=>a-b), thr=Math.max(1.5,0.18*srt[Math.floor(srt.length*0.9)]);
+  const L=[]; for(let y=0;y<ch;y++) if(sm[y]>thr){ const l=L[L.length-1]; if(l&&y-l[1]<=2) l[1]=y+1; else L.push([y,y+1]); }
+  const lines=L.filter(l=>l[1]-l[0]>=3), nL=lines.length;
+  const n=nL>=6&&nL>PH_LINES_PER_BAND*1.3?Math.min(PH_MAX_BANDS,Math.ceil(nL/PH_LINES_PER_BAND)):1;
+  const gap=k=>k<=0?0:k>=nL?ch:Math.round((lines[k-1][1]+lines[k][0])/2), bands=[];
+  for(let i=0;i<n;i++){ const a=Math.round(i*nL/n), b=Math.round((i+1)*nL/n), s=i?Math.max(0,a-PH_OV):0, e=i<n-1?Math.min(nL,b+PH_OV):nL; bands.push([ry0+gap(s),ry0+gap(e)]); }
+  return {cx0,cx1,ry0,ry1,lines:nL,bands,cropped};
+}
+function phEnhance(c){   // husawazisha kivuli/mwanga kwa rangi zile zile; hakuna kuchora upya maandishi
+  const w=c.width, h=c.height, x=c.getContext('2d'), d=x.getImageData(0,0,w,h), p=d.data;
+  const t=document.createElement('canvas'); t.width=Math.max(2,Math.round(w/16)); t.height=Math.max(2,Math.round(h/16));
+  const tx=t.getContext('2d'); tx.imageSmoothingQuality='high'; tx.drawImage(c,0,0,t.width,t.height);
+  const u=document.createElement('canvas'); u.width=w; u.height=h; const ux=u.getContext('2d',{willReadFrequently:true}); ux.imageSmoothingEnabled=true; ux.imageSmoothingQuality='high'; ux.drawImage(t,0,0,w,h);
+  const b=ux.getImageData(0,0,w,h).data, hist=new Uint32Array(256), n=w*h;
+  for(let i=0;i<p.length;i+=4){ for(let k=0;k<3;k++) p[i+k]=p[i+k]*235/Math.max(60,b[i+k]); hist[(p[i]*.3+p[i+1]*.59+p[i+2]*.11)|0]++; }
+  let a=0,lo=0,hi=255; for(;lo<255&&(a+=hist[lo])<n*.005;lo++); a=0; for(;hi>0&&(a+=hist[hi])<n*.25;hi--);
+  const sc=255/Math.max(60,hi-lo); for(let i=0;i<p.length;i+=4) for(let k=0;k<3;k++) p[i+k]=(p[i+k]-lo)*sc;
+  x.putImageData(d,0,0);
+}
+async function phPrep(){
+  const b=ph.bmp; if(!b) throw new Error('hakuna picha');
+  const sw=ph.rot%180!==0, W0=sw?b.height:b.width, H0=sw?b.width:b.height, k=Math.min(1,PH_MAX_W/W0), W=Math.round(W0*k), H=Math.round(H0*k);
+  const src=document.createElement('canvas'); src.width=W; src.height=H; const sx=src.getContext('2d');
+  sx.translate(W/2,H/2); sx.rotate(ph.rot*Math.PI/180); sx.drawImage(b,-(sw?H:W)/2,-(sw?W:H)/2,sw?H:W,sw?W:H);
+  const s=Math.min(1,1400/Math.max(W,H)), aw=Math.max(8,Math.round(W*s)), ah=Math.max(8,Math.round(H*s));
+  const ac=document.createElement('canvas'); ac.width=aw; ac.height=ah; const ax=ac.getContext('2d',{willReadFrequently:true}); ax.drawImage(src,0,0,aw,ah);
+  const q=ax.getImageData(0,0,aw,ah).data, g=new Float32Array(aw*ah); for(let i=0;i<aw*ah;i++) g[i]=q[i*4]*.3+q[i*4+1]*.59+q[i*4+2]*.11;
+  const pl=phPlan(phInk(g,aw,ah),aw,ah), X=Math.round(pl.cx0/s), CW=Math.max(1,Math.min(W-X,Math.round((pl.cx1-pl.cx0)/s)));
+  const urls=pl.bands.map(bd=>{ const y0=Math.min(H-1,Math.round(bd[0]/s)), hh=Math.max(1,Math.min(H-y0,Math.round((bd[1]-bd[0])/s)));
+    const f=pl.bands.length===1?Math.min(1,Math.sqrt(PH_MAX_PX/(CW*hh))):1, c=document.createElement('canvas'); c.width=Math.round(CW*f); c.height=Math.round(hh*f);
+    const cx=c.getContext('2d',{willReadFrequently:true}); cx.imageSmoothingQuality='high'; cx.drawImage(src,X,y0,CW,hh,0,0,c.width,c.height); phEnhance(c); return c.toDataURL('image/jpeg',0.88); });
+  return {urls, note:' Picha imechakatwa'+(pl.cropped?' (kingo tupu zimekatwa)':'')+(urls.length>1?' na kugawanywa sehemu '+urls.length+' kwa mistari':'')+'.'};
+}
+/* Kuunganisha majibu ya sehemu nyingi: nakala za mwingiliano huondolewa TU kama S/N, jina (karibu sawa) na alama zote zinafanana;
+   S/N moja yenye data tofauti haifutwi — inawekwa "haina uhakika" ili mwalimu athibitishe. Alama hazibadilishwi kamwe. */
+function phSame(a,b){ return a.alama!==''&&a.alama===b.alama&&(!a.no||!b.no||a.no===b.no)&&(smNorm(a.jina)===smNorm(b.jina)||phDist(a.jina,b.jina)<=1); }
+function phMerge(parts){
+  let out=parts[0].slice(); const warn=[];
+  for(let p=1;p<parts.length;p++){
+    const nx=parts[p], win=PH_OV+2, tail=out.slice(-win); let skip=0;
+    while(skip<nx.length&&skip<win&&tail.some(t=>phSame(t,nx[skip]))) skip++;
+    nx.slice(skip,skip+win).forEach(r=>{ const t=r.no&&tail.find(t=>t.no===r.no); if(t){ t.hakika=r.hakika='chini'; warn.push('S/N '+r.no+' imesomwa tofauti kwenye mpaka wa sehemu'); } });
+    out=out.concat(nx.slice(skip));
+  }
+  const nos=out.map(r=>r.no).filter(n=>n!=null); let bad=0; for(let i=1;i<nos.length;i++) if(nos[i]<=nos[i-1]) bad++;
+  if(bad) warn.push('S/N '+bad+' hazifuati mpangilio (huenda mstari umerudiwa au umeachwa kwenye mpaka wa sehemu) — kagua');
+  return {rows:out,warn:warn.filter((w,i,a)=>a.indexOf(w)===i)};
+}
 async function phRead(){
   const msg=document.getElementById('ph_msg'), btn=document.getElementById('ph_readBtn');
   if(!document.getElementById('ph_ack0').checked){ msg.textContent='Thibitisha kwanza kwamba unakubali picha itumwe Groq.'; return; }
-  btn.disabled=true; msg.textContent='Inasoma picha… (inaweza kuchukua sekunde chache)';
+  btn.disabled=true; msg.textContent='Inachakata picha…';
   try{
-    const r=phParse(await phVision(document.getElementById('ph_cv').toDataURL('image/jpeg',0.8)));
+    let urls=null, note='';
+    if(document.getElementById('ph_auto').checked){ try{ const pr=await phPrep(); urls=pr.urls; note=pr.note; }catch(e){ console.warn('phPrep imeshindwa, njia ya zamani inatumika',e); } }
+    if(!urls) urls=[document.getElementById('ph_cv').toDataURL('image/jpeg',0.8)];
+    const n=urls.length, parts=[]; let head=null;
+    for(let i=0;i<n;i++){
+      msg.textContent='Inasoma picha'+(n>1?' (sehemu '+(i+1)+' kati ya '+n+')':'')+'… (inaweza kuchukua sekunde chache)';
+      const extra=n>1?' NOTE: this image is part '+(i+1)+' of '+n+' of the SAME sheet, cut between lines; the first and last 1-2 lines may repeat in the neighbouring part. Transcribe every line visible in THIS image only, copy "no" exactly as printed, never renumber, never guess lines above or below. Leave somo/mtihani/darasa empty if no header is visible.':'';
+      let r; try{ r=phParse(await phVision(urls[i],extra)); }
+      catch(e){ if(/Kikomo/.test(e.message)){ await new Promise(z=>setTimeout(z,4000)); try{ r=phParse(await phVision(urls[i],extra)); }catch(e2){ e=e2; } } if(!r) throw new Error(n>1?'Sehemu '+(i+1)+' kati ya '+n+' imeshindwa ('+e.message+'). Hakuna kilichoingizwa — jaribu tena.':e.message); }
+      if(i===0) head=r; parts.push(r.rows);
+    }
+    const mg=n>1?phMerge(parts):{rows:parts[0],warn:[]}, r={somo:head.somo,mtihani:head.mtihani,rows:mg.rows};
     if(!r.rows.length) throw new Error('Hakuna mistari iliyosomwa. Zungusha picha iwe wima, piga tena kwa mwanga mzuri.');
     const nfix=phApply(r.rows,ph.roster);
     ph.rows=r.rows; if(r.somo&&!document.getElementById('ph_somo').value) document.getElementById('ph_somo').value=r.somo;
-    msg.textContent='Imesoma wanafunzi '+r.rows.length+'.'+(nfix?' Majina '+nfix+' yamesahihishwa kwa kutumia Assessment.':'')+' Kagua kila mstari kabla ya kuingiza.'+(r.mtihani?' (Karatasi: '+r.mtihani+')':'');
+    msg.textContent='Imesoma wanafunzi '+r.rows.length+'.'+note+(nfix?' Majina '+nfix+' yamesahihishwa kwa kutumia Assessment.':'')+' Kagua kila mstari kabla ya kuingiza.'+(r.mtihani?' (Karatasi: '+r.mtihani+')':'')+(mg.warn.length?' ⚠️ '+mg.warn.join('; ')+'.':'');
     phRender();
   }catch(e){ msg.textContent=e.message; }
   btn.disabled=false;
@@ -7110,7 +7197,7 @@ function phOpen(){
    '<div class="hint">'+smAttr(grade)+' • alama za juu '+ph.max+'. Picha hutumwa kwa Groq (inahitaji intaneti). Majina yatakayosomwa ni DRAFT — wewe ndiye unayethibitisha. '+(ph.roster.length?'Majina '+ph.roster.length+' ya Assessment zilizohifadhiwa za darasa hili yatatumika kusahihisha tahajia.':'Hakuna Assessment iliyohifadhiwa ya darasa hili — majina hayatalinganishwa.')+'</div>'+
    '<div class="sm-btnrow"><label class="rowBtn">📸 Piga picha<input type="file" id="ph_cam" accept="image/*" capture="environment" hidden></label><label class="rowBtn">🖼️ Chagua picha<input type="file" id="ph_gal" accept="image/*" hidden></label>'+
    '<button type="button" class="rowBtn" onclick="phRot(-90)">↺</button><button type="button" class="rowBtn" onclick="phRot(90)">↻</button></div>'+
-   '<canvas id="ph_cv" class="ph-cv"></canvas><div class="hint">Zungusha picha mpaka maandishi yasimame wima. Karatasi ijaze picha (sogea karibu), bila mng\'ao.</div><label class="hint"><input type="checkbox" id="ph_enh"> Boresha mwanga (jaribu kama maandishi hayaonekani)</label>'+
+   '<canvas id="ph_cv" class="ph-cv"></canvas><div class="hint">Zungusha picha mpaka maandishi yasimame wima. Karatasi ijaze picha (sogea karibu), bila mng\'ao.</div><label class="hint"><input type="checkbox" id="ph_auto" checked> Chakata kingo na boresha picha kiotomatiki kabla ya kusoma (picha ndefu hugawanywa kwa mistari)</label><label class="hint"><input type="checkbox" id="ph_enh"> Boresha mwanga (jaribu kama maandishi hayaonekani)</label>'+
    '<label class="hint"><input type="checkbox" id="ph_ack0"> Nakubali picha (yenye majina ya wanafunzi) itumwe kwa Groq kusomwa.</label>'+
    '<div class="field"><label>Somo (lazima)</label><input id="ph_somo" list="ph_sl" placeholder="mfano: Historia"><datalist id="ph_sl">'+smClassSubjects(grade).map(s=>'<option value="'+smAttr(s)+'">').join('')+'</datalist></div>'+
    '<button type="button" class="sm-primary" id="ph_readBtn" disabled onclick="phRead()">Soma Picha</button><div id="ph_msg" class="hint"></div>'+
@@ -7170,4 +7257,3 @@ function phBar(){
 </script>
 </body>
 </html>
-
