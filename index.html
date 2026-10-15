@@ -2652,6 +2652,213 @@ async function generateEng4Exam(topics, lang, gradeNum){
   return { exam: eng4BuildExam(best.data, lang, gradeNum), warning };
 }
 
+/* ===================== KISWAHILI DARASA LA 3 NA 4 — MUUNDO WA KARATASI HALISI (KIONGEZEO) =====================
+   Muundo (kutoka karatasi halisi ya Kiswahili Darasa la III, Mtihani wa Nusu Muhula wa I):
+   1. SEHEMU A: IMLA (alama 20) — sentensi 5 zinazosomwa na mwalimu (mistari ya kuandikia).
+   2. SEHEMU B: Chagua herufi ya jibu sahihi na ujaze kwenye kisanduku [ ] — IDADI HAINA KIKOMO KISICHOBADILIKA: inatokana na mada.
+   3. Oanisha Sehemu A na B ili kuleta maana (alama 20) — vipengele 5, majibu A-E.
+   4. Jaza nafasi zilizoachwa wazi — IDADI inatokana na mada; methali, nahau, vitendawili, kinyume, sarufi n.k. vyote hukaa SEHEMU HII MOJA.
+   5. Soma habari ifuatayo kisha jibu maswali (alama 10) — kifungu + maswali 5 ya kujaza nafasi.
+   AI inaombwa YALIYOMO tu (JSON); muundo, namba, kuchanganya orodha ya Oanisha na mwongozo wa majibu vinajengwa na programu.
+   Idadi na alama zinabadilishwa hapa chini kwa urahisi. */
+const SW4_SPEC  = { dictation:5, match:5, comp:5, itemsMin:5, itemsMax:10 }; // itemsMin/itemsMax: kikomo cha idadi ya maswali ya Q2 na Q4 (hutegemea mada)
+const SW4_MARKS = { dictation:4, mcq:2, match:4, fill:2, comp:2 };           // Imla = 20, Oanisha = 20, Kifungu = 10; Q2 na Q4 = alama 2 kwa kila swali
+const SW4_TERM_TEXT = 'MTIHANI WA NUSU MUHULA WA I';                          // badilisha hapa kama muhula ni tofauti
+
+// Idadi ya maswali ya Q2 (chagua) na Q4 (jaza nafasi): hutokana na idadi ya mada zilizoandikwa (zimetenganishwa kwa koma, nukta-mkato au mstari mpya)
+function sw4ItemCount(topics){
+  const parts = String(topics || '').split(/[;,\n]+/).map(s => s.trim()).filter(s => s.length > 1);
+  return Math.max(SW4_SPEC.itemsMin, Math.min(SW4_SPEC.itemsMax, parts.length));
+}
+
+function sw4BuildPrompt(topics, problems, gradeNum, n){
+  const S = SW4_SPEC;
+  const level = (gradeNum === 3) ? 'DARASA LA III (wanafunzi wa miaka 8-9, maneno rahisi sana na sentensi fupi sana)' : 'DARASA LA IV (wanafunzi wa miaka 9-10)';
+  const ex = '{"dictation":["Mama anapika chakula jikoni.","..."],\n' +
+    ' "mcq":[{"q":"Mtu anayefundisha wanafunzi darasani anaitwa","a":"daktari","b":"mwalimu","c":"dereva","d":"mkulima","ans":"B"}],\n' +
+    ' "match":{"pairs":[{"term":"Mwalimu","def":"Anayefundisha wanafunzi"},{"term":"Nyekundu","def":"Rangi ya damu"}]},\n' +
+    ' "fill":[{"q":"Kinyume cha neno furaha ni ______","ans":"huzuni"},{"q":"Mwenye nguvu mpishe. Hii ni methali. Kitendawili: Nyumba yangu haina mlango ______","ans":"yai"}],\n' +
+    ' "passage":{"title":"Kuku na Vifaranga","text":"..."},\n' +
+    ' "comp":[{"q":"Mama kuku alikuwa na vifaranga ______","ans":"watano"}]}';
+  let p = 'MTIHANI MZIMA UNATAKIWA UANDIKWE KWA KISWAHILI SANIFU - USIANDIKE SENTENSI HATA MOJA YA KIINGEREZA. Hii ni karatasi ya somo la KISWAHILI.\n' +
+    'Wewe ni mtunzi wa mitihani ya shule za msingi Tanzania (mtindo wa TAMISEMI / NECTA).\n' +
+    'Andika YALIYOMO ya mtihani wa Kiswahili wa ' + level + ' kuhusu mada hizi: "' + topics + '".\n' +
+    'Kila swali lihusiane na mada zilizotolewa. Lugha rahisi inayolingana na darasa. Tumia majina na mahali vya Kitanzania inapofaa.\n\n' +
+    'Rudisha OBJECT MOJA TU ya JSON halali - bila markdown, bila maelezo, bila maandishi kabla au baada yake. Tumia alama za nukuu mbili za kawaida; ndani ya sentensi tumia nukuu moja ikihitajika.\n' +
+    'Lazima ujaze kila kipengele kwa IDADI KAMILI hapa chini. Usiruke, usiunganishe wala kufupisha vipengele.\n\n' +
+    'Q1 "dictation": sentensi ' + S.dictation + ' tofauti fupi (maneno 5-8 kila moja) ambazo mwalimu atazisoma kwa sauti.\n' +
+    'Q2 "mcq": maswali ' + n + ' ya kuchagua jibu sahihi. Kila swali liwe kamili lenyewe (si lazima liwe na nafasi), lenye chaguo NNE a, b, c, d na herufi sahihi katika "ans" (A, B, C au D). Badilisha herufi sahihi. Changanya aina: maana ya neno, kinyume, kisawe, idadi ya silabi, idadi ya miezi au siku, umoja na wingi, mtu na kazi yake, sarufi rahisi. Maswali yatokane na mada, mada moja au zaidi kwa kila swali.\n' +
+    'Q3 "match": "pairs" ' + S.match + ' za "term" (neno fupi, mf. kazi, rangi, neno la shukrani, jina la wakati) na "def" (maelezo mafupi yanayolingana nalo kikamilifu). Maelezo yote yawe tofauti kabisa ili kila "term" ilingane na "def" moja tu. Programu itachanganya orodha ya maelezo.\n' +
+    'Q4 "fill": maswali ' + n + ' ya kujaza nafasi: kila moja ni sentensi au nusu ya semi yenye nafasi ______ na jibu katika "ans". Mada zote za methali, nahau, vitendawili, misemo, kinyume, visawe, viunganishi na nyakati HUKAA KWENYE SEHEMU HII MOJA (Q4), si kwingine; kila mada iliyotolewa iwakilishwe kwa angalau swali moja, na kama mada zinataja methali, nahau au vitendawili basi kila kimoja kiwepo. Methali: andika nusu ya kwanza kisha ______ (jibu ni nusu ya pili). Nahau: sentensi yenye nafasi ya kuweka neno au maana sahihi. Kitendawili: andika kitendawili kisha ______ (jibu ni jibu la kitendawili).\n' +
+    'Q5 "passage" na "comp": habari au hadithi rahisi ya maneno 60-90 yenye "title" fupi, kisha maswali ' + S.comp + ' katika "comp", kila moja ni sentensi isiyokamilika yenye ______ (nafasi moja au mbili) inayojibiwa moja kwa moja kutoka kwenye habari, kwa mpangilio wa habari, na jibu fupi katika "ans" (kama kuna nafasi mbili, jibu litenganishwe kwa "na").\n\n' +
+    'MFANO WA MUUNDO (muundo tu - USINAKILI maudhui; toa idadi kamili katika kila array):\n' + ex +
+    '\nUKUMBUSHO WA MWISHO: JSON yote iwe kwa Kiswahili. Hakuna sentensi za Kiingereza. Idadi: dictation ' + S.dictation + ', mcq ' + n + ', match.pairs ' + S.match + ', fill ' + n + ', comp ' + S.comp + '.';
+  if(problems && problems.length){
+    p += '\n\nJIBU LAKO LA AWALI LILIKATALIWA KWA SABABU: ' + problems.join('; ') + '.\nRudisha JSON KAMILI tena na kila kipengele kwa idadi kamili.';
+  }
+  return p;
+}
+
+function sw4Check(o, n){
+  const S = SW4_SPEC, problems = [];
+  const str = v => String(v == null ? '' : v).trim();
+  const arr = v => Array.isArray(v) ? v : [];
+  const obj = k => (o && o[k] && typeof o[k] === 'object' && !Array.isArray(o[k])) ? o[k] : {};
+  const uniq = (list, keyFn) => { const seen = new Set(); return list.filter(x => { const k = keyFn(x).toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; }); };
+
+  const dict = arr(o && o.dictation).map(str).filter(Boolean).slice(0, S.dictation);
+
+  let mcq = [];
+  arr(o && o.mcq).forEach(x => {
+    if(!x || !str(x.q) || !str(x.a) || !str(x.b) || !str(x.c) || !str(x.d)) return;
+    const raw = str(x.ans);
+    let L = '';
+    const m = raw.match(/^\(?([A-Da-d])(?:[\).:\s]|$)/);
+    if(m) L = m[1].toUpperCase();
+    else {
+      const hit = ['a','b','c','d'].find(k => str(x[k]).toLowerCase() === raw.toLowerCase());
+      L = hit ? hit.toUpperCase() : '';
+    }
+    if(!L) return;
+    mcq.push({ q: str(x.q), a: str(x.a), b: str(x.b), c: str(x.c), d: str(x.d), ans: L });
+  });
+  mcq = uniq(mcq, x => x.q).slice(0, n);
+
+  let pairs = arr(obj('match').pairs).filter(x => x && str(x.term) && str(x.def)).map(x => ({ term: str(x.term), def: str(x.def) }));
+  pairs = uniq(uniq(pairs, x => x.def), x => x.term).slice(0, S.match);
+
+  const qa = list => arr(list).filter(x => x && str(x.q) && str(x.ans)).map(x => ({ q: str(x.q), ans: str(x.ans) }));
+  let fill = uniq(qa(o && o.fill), x => x.q).slice(0, n);
+  fill = fill.map(x => ({ q: /_{3,}/.test(x.q) ? x.q : x.q + ' ______', ans: x.ans }));
+  let comp = uniq(qa(o && o.comp), x => x.q).slice(0, S.comp);
+  comp = comp.map(x => ({ q: /_{3,}/.test(x.q) ? x.q : x.q + ' ______', ans: x.ans }));
+
+  const pas = obj('passage');
+  const passage = { title: str(pas.title), text: str(pas.text) };
+
+  const need = (name, got, want) => { if(got < want) problems.push('"' + name + '" has ' + got + ' valid items but needs exactly ' + want); };
+  need('dictation', dict.length, S.dictation);
+  need('mcq', mcq.length, n);
+  need('match.pairs', pairs.length, S.match);
+  need('fill', fill.length, n);
+  need('comp', comp.length, S.comp);
+  if(passage.text.split(/\s+/).filter(Boolean).length < 25) problems.push('"passage.text" is missing or too short (needs 60-90 words)');
+
+  const all = [].concat(dict, mcq.map(x => [x.q, x.a, x.b, x.c, x.d].join(' ')), pairs.map(x => x.term + ' ' + x.def),
+                        fill.map(x => x.q + ' ' + x.ans), [passage.title, passage.text], comp.map(x => x.q + ' ' + x.ans));
+  let enPenalty = false;
+  if(sw7LooksEnglish(all)){
+    enPenalty = true;
+    problems.push('the content is written in English - this is a KISWAHILI exam, so rewrite EVERYTHING in Kiswahili sanifu');
+  }
+  let score = Math.min(dict.length, S.dictation) + Math.min(mcq.length, n) + Math.min(pairs.length, S.match) +
+              Math.min(fill.length, n) + Math.min(comp.length, S.comp) + (passage.text ? 1 : 0);
+  if(enPenalty) score = 0;
+  return { problems, score, data: { dict, mcq, pairs, fill, passage, comp } };
+}
+
+function sw4BuildExam(d, gradeNum){
+  const S = SW4_SPEC, M = SW4_MARKS;
+  const std = (gradeNum === 3) ? 'III' : 'IV';
+  const R = i => romanFromIndex(i);
+  const BR = '   [      ]';
+  const LINE = '________________________________________________________________';
+  const letters = 'ABCDE';
+  const mcq = d.mcq, fill = d.fill, comp = d.comp, pairs = d.pairs;
+
+  // Q3: orodha ya Sehemu B (maelezo) inachanganywa; jibu la kila neno la Sehemu A ni herufi ya maelezo yake
+  const listB = eng7ShuffleDifferent(pairs);
+  const matchAns = pairs.map(p => letters[listB.indexOf(p)]);
+
+  const mDict = d.dict.length * M.dictation, mMatch = pairs.length * M.match, mComp = comp.length * M.comp;
+  const sections = [];
+  sections.push({
+    number: 'A', heading: '1. SEHEMU A: IMLA (alama ' + mDict + ')', note: '',
+    questions: d.dict.map((_, i) => ({ roman: R(i), text: LINE, marks: M.dictation }))
+  });
+  sections.push({
+    number: 'B.2', heading: '2. SEHEMU B: Chagua herufi ya jibu sahihi na ujaze kwenye kisanduku.', note: '',
+    questions: mcq.map((x, i) => ({ roman: R(i), text: x.q + BR + '\nA. ' + x.a + '\nB. ' + x.b + '\nC. ' + x.c + '\nD. ' + x.d, marks: M.mcq }))
+  });
+  const q3 = pairs.map((p, i) => ({ roman: R(i), text: p.term + BR, marks: M.match }));
+  q3.push({ roman: '', text: 'SEHEMU B\n' + listB.map((p, i) => letters[i] + '  –  ' + p.def).join('\n'), marks: 0 });
+  sections.push({
+    number: 'B.3', heading: '3. Oanisha Sehemu A na B ili kuleta maana (alama ' + mMatch + ')', note: '',
+    questions: q3
+  });
+  sections.push({
+    number: 'B.4', heading: '4. Jaza nafasi zilizoachwa wazi.', note: '',
+    questions: fill.map((x, i) => ({ roman: R(i), text: x.q, marks: M.fill }))
+  });
+  const q5 = [{ roman: '', text: (d.passage.title ? d.passage.title.toUpperCase() + '\n\n' : '') + d.passage.text, marks: 0 }];
+  comp.forEach((x, i) => q5.push({ roman: R(i), text: x.q, marks: M.comp }));
+  sections.push({
+    number: 'B.5', heading: '5. Soma habari ifuatayo kisha jibu maswali (alama ' + mComp + ')', note: '',
+    questions: q5
+  });
+
+  let key = 'MWONGOZO WA KUSAHIHISHA - KISWAHILI, DARASA LA ' + std + '\n\n' +
+    'SEHEMU A - IMLA (soma kila sentensi mara mbili, polepole; alama ' + M.dictation + ' kila moja)\n';
+  d.dict.forEach((s, i) => { key += (i + 1) + '. ' + s + '\n'; });
+  key += '\nSEHEMU B.2  (Swali 2 - alama ' + M.mcq + ' kila moja)\n';
+  mcq.forEach((x, i) => { key += R(i) + '. ' + x.ans + '  (' + x[x.ans.toLowerCase()] + ')\n'; });
+  key += '\nSEHEMU B.3  (Swali 3 - alama ' + M.match + ' kila moja)\n';
+  pairs.forEach((p, i) => { key += R(i) + '. ' + matchAns[i] + '  (' + p.term + ' = ' + p.def + ')\n'; });
+  key += '\nSEHEMU B.4  (Swali 4 - alama ' + M.fill + ' kila moja)\n';
+  fill.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
+  key += '\nSEHEMU B.5  (Swali 5 - alama ' + M.comp + ' kila moja)\n';
+  comp.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
+
+  const header = {
+    lines: [
+      'JAMHURI YA MUUNGANO WA TANZANIA',
+      'OFISI YA WAZIRI MKUU (TAMISEMI)',
+      'HALMASHAURI YA WILAYA YA ______________________',
+      SW4_TERM_TEXT + ' - DARASA LA ' + std,
+      'KISWAHILI',
+      'JINA LA MWANAFUNZI: ______________________________    NAMBA YA MTAHINIWA: ______________',
+      'JINA LA SHULE: ______________________________    WILAYA: ______________________'
+    ],
+    instructions: [], language: 'sw', assessorTable: false
+  };
+  return { header, examTitle: 'KISWAHILI — DARASA LA ' + std, sections, answerKey: key.trim() };
+}
+
+// Tengeneza mtihani wa Kiswahili Darasa la 3-4: jaribu hadi mara 3 hadi kila kipengele kikamilike
+async function generateSw4Exam(topics, gradeNum){
+  const model = document.getElementById('groqModel').value;
+  const extra = /gpt-oss/i.test(model) ? { reasoning_effort: 'low' } : {};
+  const n = sw4ItemCount(topics);
+  let best = null, problems = [], lastErr = null;
+  for(let attempt = 1; attempt <= 3; attempt++){
+    let raw;
+    try{
+      raw = await callClaude(sw4BuildPrompt(topics, attempt > 1 ? problems : null, gradeNum, n), 5000, extra);
+    }catch(e){
+      if(!best) throw e;
+      lastErr = e; break;
+    }
+    const cut = callClaude.lastFinish === 'length';
+    let chk;
+    try{
+      chk = sw4Check(mtParseJSON(raw).obj, n);
+    }catch(e){
+      problems = ['the reply was not valid JSON' + (cut ? ' (it was cut off - keep every item short)' : '')];
+      lastErr = e; continue;
+    }
+    if(!best || chk.score > best.score) best = chk;
+    if(!chk.problems.length){ best = chk; break; }
+    problems = chk.problems.concat(cut ? ['the output was cut off - keep every item short'] : []);
+  }
+  if(!best) throw new Error((lastErr && lastErr.message) || 'AI haikurudisha mtihani unaoeleweka.');
+  if(best.score === 0) throw new Error('AI iliandika mtihani kwa Kiingereza badala ya Kiswahili. Bonyeza "Tengeneza Mtihani" tena (au jaribu modeli nyingine).');
+  const warning = best.problems.length
+    ? '⚠️ Vipengele vifuatavyo havikukamilika baada ya majaribio 3: ' + best.problems.join('; ') +
+      '. Bonyeza "Tengeneza Mtihani" tena, au ongeza maswali kwa "+ Ongeza Swali la Mkono".'
+    : '';
+  return { exam: sw4BuildExam(best.data, gradeNum), warning };
+}
+
 /* ===================== ENGLISH DARASA LA 5, 6 NA 7 — MUUNDO WA KARATASI HALISI (KIONGEZEO) =====================
    Muundo (kama mtihani halisi wa Halmashauri): SECTION A (alama 20): Q1 Listening comprehension (MCQ A-E),
    Q2 MCQ ya sarufi (A-E), Q3 chagua neno kutoka orodha, Q4 oanisha List A na List B.
@@ -3304,7 +3511,8 @@ async function generateMitihani(){
   const isLowerPrimary = gradeNum >= 1 && gradeNum <= 4;
   const isUpperPrimary = gradeNum >= 5 && gradeNum <= 7;
   const specialFormatPending = isUpperPrimary && (subject === 'Hisabati' || subject === 'Uraia na Maadili');
-  const useEng4 = /^darasa/i.test(grade) && (gradeNum === 3 || gradeNum === 4) && (subject === 'English' || subject === 'Kiswahili'); // karatasi halisi (English/Kiswahili, Darasa 3-4)
+  const useEng4 = /^darasa/i.test(grade) && (gradeNum === 3 || gradeNum === 4) && subject === 'English'; // karatasi halisi (English, Darasa 3-4)
+  const useSw4 = /^darasa/i.test(grade) && (gradeNum === 3 || gradeNum === 4) && subject === 'Kiswahili'; // karatasi halisi (Kiswahili, Darasa 3-4)
   const useEng7 = /^darasa/i.test(grade) && gradeNum >= 5 && gradeNum <= 7 && (subject === 'English' || subject === 'Kiingereza'); // karatasi halisi (English, Darasa 5-7)
   const useSw7 = /^darasa/i.test(grade) && gradeNum >= 5 && gradeNum <= 7 && subject === 'Kiswahili'; // karatasi halisi (Kiswahili, Darasa 5-7)
 
@@ -3376,6 +3584,9 @@ MUHIMU SANA: (1) Kila swali LAZIMA lihusiane moja kwa moja na mada "${topics}" n
     mtWarning = '';
     if(useEng4){
       const r = await generateEng4Exam(topics, subject, gradeNum);
+      examData = r.exam; mtWarning = r.warning || '';
+    } else if(useSw4){
+      const r = await generateSw4Exam(topics, gradeNum);
       examData = r.exam; mtWarning = r.warning || '';
     } else if(useEng7){
       const r = await generateEng7Exam(topics, gradeNum);
@@ -6704,7 +6915,7 @@ const PH_PROMPT = 'This is a photo of a handwritten Tanzanian school exam result
  'Transcribe ONLY what is written. NEVER invent or complete names or marks. If a name or number is unclear give your best reading and set "hakika":"chini"; if unreadable use "". '+
  'Keep every student in order, do not skip or add students. Header text goes into somo (subject), mtihani (exam name/date), darasa. '+
  'Reply ONLY with JSON: {"somo":"","mtihani":"","darasa":"","rows":[{"no":1,"jina":"","alama":"","hakika":"juu|kati|chini"}]}. "alama" = digits exactly as written.';
-const PH_PROXY_URL = 'https://msaidizi-seva.adabethsheusi.workers.dev'; // anwani ya seva ya Cloudflare (ukiiweka, walimu hawahitaji ufunguo wa Groq)
+const PH_PROXY_URL = 'https://msaidizi-seva.adabethsheusi85.workers.dev'; // anwani ya seva ya Cloudflare (ukiiweka, walimu hawahitaji ufunguo wa Groq)
 let ph = {rot:0, bmp:null, rows:[], roster:[], max:100, batches:[], done:false};
 
 function phParse(txt){
