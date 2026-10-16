@@ -321,6 +321,41 @@
   .ph-row button{background:none;border:1px solid rgba(244,239,225,.3);color:var(--chalk);border-radius:6px;padding:6px 9px;}
   .ph-row.warn{border-color:var(--amber);background:rgba(217,147,47,.12);} .ph-row.bad{border-color:var(--red);background:rgba(182,92,74,.18);} .ph-row.off{opacity:.35;}
   .ph-n{width:22px;font-size:12px;color:var(--sage);} .ph-fl{flex-basis:100%;font-size:12px;line-height:1.5;} .ph-fl:empty{display:none;}
+/* ===== Mitihani mizima + Zana za kuchora (kipya) ===== */
+.mh-panel{margin-bottom:18px}
+.mh-card{border:1px solid rgba(244,239,225,.15);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;align-items:center}
+.mh-sub{font-size:11.5px;color:rgba(244,239,225,.65);margin-top:3px;font-family:'Helvetica Neue',Arial,sans-serif}
+.mh-badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;background:rgba(139,169,138,.25)}
+.mh-bila_majibu{background:rgba(217,147,47,.3)}.mh-marking_inahitaji{background:rgba(182,92,74,.35)}
+.mh-btns{display:flex;gap:6px;flex-wrap:wrap}
+.mh-btns button,.mh-bar button,.mh-attach,.mh-qfig button,.mc-bar button,.mh-box button,.mh-filters button{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12.5px;padding:7px 11px;border-radius:6px;border:1px solid rgba(244,239,225,.35);background:transparent;color:var(--chalk);cursor:pointer;min-height:34px}
+.mh-btns button:hover,.mh-bar button:hover,.mc-bar button:hover{border-color:var(--amber);color:var(--amber)}
+.mh-del{border-color:#c0392b!important;color:#e07a6b!important}
+.mh-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.mh-paper{background:var(--paper);color:var(--ink);padding:18px;border-radius:4px;font-size:14px}
+.mh-q{display:flex;gap:8px;margin:8px 0;align-items:flex-start}.mh-n{min-width:34px;font-weight:700}.mh-t{flex:1;white-space:pre-wrap}.mh-m{font-style:italic;white-space:nowrap}
+.mh-sec{margin:18px 0 6px;border-bottom:1px solid var(--paper-line)}
+.mh-key{white-space:pre-wrap;background:#f1ead3;padding:10px;border-radius:4px}
+.mh-fig{margin:8px 0}.mh-fig svg,.mh-thumb svg,.mc-th svg{max-width:100%;height:auto;width:100%}.mh-fig svg{max-width:420px}
+.mh-pick{margin-top:5px}
+.mh-qfig{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0 10px 36px}
+.mh-qfig button,.mh-attach{color:var(--ink);border-color:var(--paper-line);min-height:28px;padding:4px 9px;font-size:12px}
+.mh-attached{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--paper-line);border-radius:6px;padding:2px;background:#fff}
+.mh-thumb.sm{display:inline-block;width:70px}.mh-thumb.miss{color:#a33}
+.mh-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100000;display:flex;align-items:center;justify-content:center;padding:14px}
+.mh-box{background:var(--board-dark);color:var(--chalk);border-radius:10px;padding:14px;max-width:640px;width:100%;max-height:85vh;overflow:auto}
+.mh-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.mh-pi{border:1px solid rgba(244,239,225,.2);border-radius:8px;padding:6px;cursor:pointer}
+.mc-th{background:#fff;border-radius:4px;overflow:hidden}
+.mc-bar{background:var(--board-dark);border:1px solid rgba(244,239,225,.15);border-radius:8px;padding:10px;margin-bottom:10px}
+.mc-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.mc-gl{font-size:11px;color:var(--sage);font-family:'Helvetica Neue',Arial,sans-serif;min-width:62px}
+.mc-t.on{background:var(--amber)!important;color:#2A1D07!important;border-color:var(--amber)!important}
+.mc-row label{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;display:flex;align-items:center;gap:4px}
+.mc-row input[type=number],.mc-row input[type=text],.mc-row select{width:auto;padding:5px 7px;font-size:12.5px;border-radius:5px}
+.mc-row input[type=color]{width:36px;height:30px;padding:0;border:none;background:none}
+#mc_svg{width:100%;height:auto;max-height:72vh;background:#fff;border-radius:4px;touch-action:none;display:block;border:1px solid #888;user-select:none;-webkit-user-select:none}
+#mc_hint{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:var(--sage);margin:6px 0}
 </style>
 <style>
   /* ===== Majedwali ya markdown (Azimio la Kazi n.k) — kiongezeo kipya ===== */
@@ -474,6 +509,10 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
       <div class="task-card" onclick="showView('benki')">
         <div class="icon">🗃️</div><h3>Benki ya Maswali (Offline)</h3>
         <p>Hifadhi maswali yako mwenyewe na uyachanganye kiotomatiki kutengeneza mtihani — bila intaneti, bila AI.</p>
+      </div>
+      <div class="task-card" onclick="mcOpenFresh()">
+        <div class="icon">📐</div><h3>Zana za Kuchora (Offline)</h3>
+        <p>Chora maumbo, ramani rahisi, michoro ya sayansi na chati — bila intaneti. Tumia kwenye maswali na mitihani.</p>
       </div>
       <div class="task-card hub-card" onclick="showView('hub')">
         <div class="icon">📊</div><h3>Kituo cha Alama (Assessment Hub)</h3>
@@ -954,6 +993,27 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
 
   <!-- ============ BENKI YA MASWALI (ya mwalimu, offline, bila AI) — KIPENGELE KIPYA ============ -->
   <div id="view-benki" class="hidden">
+    <div class="panel mh-panel" id="mh_wrap">
+      <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;margin:0 0 10px;">🗂️ Mitihani Mizima Iliyohifadhiwa (inafunguka bila intaneti)</h3>
+      <div id="mh_filters" class="mh-filters">
+        <div class="row2">
+          <div class="field"><label>Tafuta kichwa/mada</label><input id="mh_q" type="text" oninput="mhRefresh()" placeholder="mf. Ukoloni"></div>
+          <div class="field"><label>Darasa/Kidato</label><select id="mh_fg" onchange="mhRefresh()"></select></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Somo</label><select id="mh_fs" onchange="mhRefresh()"></select></div>
+          <div class="field"><label>Tarehe: kuanzia — hadi</label><div style="display:flex;gap:6px;"><input id="mh_fd1" type="date" onchange="mhRefresh()"><input id="mh_fd2" type="date" onchange="mhRefresh()"></div></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+          <button onclick="mhExportAll()">⬇️ Nakala rudufu ya mitihani na michoro (.json)</button>
+          <label class="upload-btn" style="display:inline-block;border:1px solid rgba(244,239,225,0.35);color:var(--sage);border-radius:6px;font-size:12.5px;padding:7px 11px;cursor:pointer;">⬆️ Rejesha (.json)<input type="file" accept="application/json,.json" style="display:none;" onchange="mhImport(event)"></label>
+          <span id="mh_cnt" class="mh-sub"></span>
+        </div>
+      </div>
+      <div class="lp-status" id="mh_msg" style="padding:0 0 8px;background:none;border:none;"></div>
+      <div id="mh_list"></div>
+      <div id="mh_view" class="hidden"></div>
+    </div>
     <div class="layout">
       <div class="panel">
         <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;margin:0 0 10px;">➕ Ongeza Swali kwenye Benki Yako</h3>
@@ -1011,6 +1071,90 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
           <div id="bk_list"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+
+  <!-- ============ ZANA ZA KUCHORA (SVG, offline) — KIPENGELE KIPYA ============ -->
+  <div id="view-michoro" class="hidden">
+    <div class="mc-bar">
+      <div class="mc-row"><span class="mc-gl">Umbo</span>
+        <button class="mc-t" data-tool="select" onclick="mcTool('select')">☝️ Chagua</button>
+        <button class="mc-t" data-tool="rect" onclick="mcTool('rect')">▭ Mstatili</button>
+        <button class="mc-t" data-tool="sq" onclick="mcTool('sq')">◻ Mraba</button>
+        <button class="mc-t" data-tool="circ" onclick="mcTool('circ')">◯ Mduara</button>
+        <button class="mc-t" data-tool="ell" onclick="mcTool('ell')">⬭ Duaradufu</button>
+        <button class="mc-t" data-tool="tri" onclick="mcTool('tri')">△ Pembetatu</button>
+        <button class="mc-t" data-tool="poly" onclick="mcTool('poly')">⬠ Poligoni</button>
+        <button class="mc-t" data-tool="ppoly" onclick="mcTool('ppoly')">✎ Poligoni huru</button>
+        <button id="mc_finish" class="hidden" onclick="mcFinishPoly()">✔ Maliza</button>
+      </div>
+      <div class="mc-row"><span class="mc-gl">Mistari</span>
+        <button class="mc-t" data-tool="line" onclick="mcTool('line')">╱ Mstari</button>
+        <button class="mc-t" data-tool="arrow" onclick="mcTool('arrow')">➝ Mshale</button>
+        <button class="mc-t" data-tool="angle" onclick="mcTool('angle')">∠ Pembe</button>
+        <button class="mc-t" data-tool="pen" onclick="mcTool('pen')">✏️ Kalamu</button>
+        <button class="mc-t" data-tool="mto" onclick="mcTool('mto')">〰 Mto</button>
+        <button class="mc-t" data-tool="road" onclick="mcTool('road')">🛣 Barabara</button>
+      </div>
+      <div class="mc-row"><span class="mc-gl">Maandishi</span>
+        <button class="mc-t" data-tool="text" onclick="mcTool('text')">🔤 Maandishi</button>
+        <button class="mc-t" data-tool="label" onclick="mcTool('label')">🏷 Lebo + mstari</button>
+        <button class="mc-t" data-tool="box" onclick="mcTool('box')">▭ Kisanduku</button>
+        <button class="mc-t" data-tool="diamond" onclick="mcTool('diamond')">◇ Uamuzi</button>
+        <button class="mc-t" data-tool="pill" onclick="mcTool('pill')">⬬ Mwanzo/Mwisho</button>
+      </div>
+      <div class="mc-row"><span class="mc-gl">Alama</span>
+        <select id="mc_stamp" onchange="mcStampSel()">
+          <optgroup label="Ramani / Jiografia">
+            <option value="dira">Dira (K, KS, M, MG)</option><option value="kaskazini">Mshale wa Kaskazini</option>
+            <option value="gridLL">Gridi ya latitudo/longitudo</option><option value="axes">Gridi ya koordinati (x,y)</option>
+            <option value="mlima">Mlima</option><option value="mji">Mji</option><option value="kijiji">Kijiji</option>
+            <option value="shule">Shule</option><option value="hospitali">Hospitali</option><option value="pin">Alama ya mahali</option><option value="ziwa">Ziwa</option>
+          </optgroup>
+          <optgroup label="Sayansi">
+            <option value="beaker">Bika (beaker)</option><option value="flask">Chupa ya koniko</option><option value="tube">Mrija wa majaribio</option>
+            <option value="bunsen">Bunsen burner</option><option value="thermo">Kipimajoto</option>
+          </optgroup>
+        </select>
+        <button class="mc-t" data-tool="stamp" onclick="mcStampSel()">📍 Weka alama</button>
+      </div>
+      <div class="mc-row"><span class="mc-gl">Rangi/Unene</span>
+        <label>Mstari <input type="color" id="mc_stroke" value="#1a1a1a" onchange="mcStyle()"></label>
+        <label><input type="checkbox" id="mc_fillOn" onchange="mcStyle()"> Jaza <input type="color" id="mc_fill" value="#cfe8f7" onchange="mcStyle()"></label>
+        <label>Unene <select id="mc_sw" onchange="mcStyle()"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>6</option><option>8</option></select></label>
+        <label><input type="checkbox" id="mc_dash" onchange="mcStyle()"> Kitone</label>
+        <label>Herufi <input type="number" id="mc_fsize" value="22" min="6" max="80" style="width:58px" onchange="mcStyle()"></label>
+        <label>Pande <input type="number" id="mc_sides" value="5" min="3" max="24" style="width:52px" onchange="mcStyle()"></label>
+      </div>
+      <div class="mc-row"><span class="mc-gl">Hariri</span>
+        <button onclick="mcUndo()">↶ Tendua</button><button onclick="mcRedo()">↷ Rudia</button>
+        <button onclick="mcBigger()">＋ Kubwa</button><button onclick="mcSmaller()">－ Ndogo</button>
+        <button onclick="mcEditText()">✎ Hariri maandishi</button><button onclick="mcDup()">⧉ Nakili</button>
+        <button onclick="mcFront()">⬆ Mbele</button><button onclick="mcBack()">⬇ Nyuma</button>
+        <button class="mh-del" onclick="mcDel()">🗑 Futa</button>
+      </div>
+      <div class="mc-row"><span class="mc-gl">Karatasi</span>
+        <select id="mc_page" onchange="mcPage()"><option value="800x600">Mlalo 800×600</option><option value="800x400">Mlalo mpana 800×400</option><option value="600x600">Mraba 600×600</option><option value="600x800">Wima 600×800</option></select>
+        <label><input type="checkbox" id="mc_gridOn" onchange="mcGrid()"> Gridi</label>
+        <label><input type="checkbox" id="mc_gridNum" onchange="mcGrid()"> Namba</label>
+        <label><input type="checkbox" id="mc_snap" onchange="mcGrid()"> Nata kwenye gridi</label>
+        <label>Hatua <select id="mc_step" onchange="mcGrid()"><option>20</option><option selected>40</option><option>50</option><option>100</option></select></label>
+      </div>
+      <div class="mc-row"><span class="mc-gl">Faili</span>
+        <input type="text" id="mc_title" placeholder="Jina la mchoro" oninput="mcTitle()" style="min-width:150px">
+        <button onclick="mcSave()">💾 Hifadhi</button><button onclick="mcNew()">📄 Mpya</button>
+        <button onclick="mcSvg()">⬇️ SVG</button><button onclick="mcPng()">⬇️ PNG</button><button onclick="mcPrint()">🖨️ Chapisha</button>
+        <button id="mc_useBtn" class="mc-t on" onclick="mcUse()">✔ Tumia kwenye mtihani</button>
+      </div>
+      <div id="mc_ctx" class="mh-sub"></div>
+    </div>
+    <div id="mc_hint"></div>
+    <svg id="mc_svg" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg"></svg>
+    <p class="hint" style="margin-top:8px;">Ramani za kufundishia ni michoro rahisi unayochora mwenyewe; mfumo huu hauna data ya ramani sahihi za maeneo yote.</p>
+    <div style="margin-top:16px;border-top:1px solid rgba(244,239,225,.15);padding-top:12px;">
+      <div style="display:flex;justify-content:space-between;"><strong style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;color:var(--amber);">Maktaba ya Michoro Yangu</strong><span id="mc_libCnt" class="mh-sub"></span></div>
+      <div id="mc_lib" class="mh-grid" style="margin-top:8px;"></div>
     </div>
   </div>
 
@@ -6469,6 +6613,847 @@ function saveExamToBank(){
   if(siMcq) ujumbe += '\n• ' + siMcq + ' si maswali ya kuchagua A-D, hivyo hayajahifadhiwa (benki inapokea maswali ya kuchagua tu).';
   alert(ujumbe);
 }
+
+</script>
+<script id="ms-mitihani-js">
+/* =====================================================================================
+   MITIHANI MIZIMA (IndexedDB) + ZANA ZA KUCHORA OFFLINE — KIPENGELE KIPYA (ONGEZEKO TU)
+   - Hakibadilishi Benki ya Maswali ya zamani (localStorage) wala data yake.
+   - Kinabadilisha tu: saveExamToBank (sasa inahifadhi mtihani MZIMA), renderQuestionRow na renderExamEditor
+     (kuongeza kitufe cha kuambatanisha michoro) na showView (kuwasha sehemu mpya).
+   - Hakuna AI, Firebase, CDN wala seva ya nje kinachotumika hapa.
+   ===================================================================================== */
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const E = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const r1 = n => Math.round(n*10)/10;
+let _uc = 0;
+const uid = () => 'm' + Date.now().toString(36) + (++_uc).toString(36) + Math.random().toString(36).slice(2,6);
+function hash(s){ // hash nyepesi (si ya usalama) — kitambulisho cha mchoro kulingana na maudhui yake
+  let h1=0xdeadbeef, h2=0x41c6ce57;
+  for(let i=0;i<s.length;i++){ const c=s.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); }
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return 'f' + (4294967296*(2097151&h2)+(h1>>>0)).toString(36) + s.length.toString(36);
+}
+
+/* ============================ 1. HIFADHI YA NDANI (IndexedDB) ============================ */
+const DBNAME = 'msaidizi_mitihani_v1';
+let _dbp = null;
+function db(){
+  if(_dbp) return _dbp;
+  _dbp = new Promise((res,rej)=>{
+    if(!window.indexedDB){ rej(new Error('Kivinjari hiki hakina IndexedDB.')); return; }
+    const r = indexedDB.open(DBNAME,1);
+    r.onupgradeneeded = ()=>{
+      const d = r.result;
+      d.createObjectStore('meta',{keyPath:'id'});     // taarifa fupi za kila mtihani (orodha, utafutaji)
+      d.createObjectStore('data',{keyPath:'id'});     // mtihani mzima (hufunguliwa mmoja mmoja)
+      d.createObjectStore('assets',{keyPath:'id'});   // michoro iliyotumika kwenye mitihani (kitambulisho = hash ya maudhui)
+      d.createObjectStore('michoro',{keyPath:'id'});  // maktaba ya michoro ya mwalimu
+    };
+    r.onsuccess = ()=>{ try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){} res(r.result); };
+    r.onerror = ()=>{ _dbp=null; rej(r.error||new Error('Imeshindwa kufungua hifadhi.')); };
+  });
+  return _dbp;
+}
+const rq = r => new Promise((res,rej)=>{ r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+async function dbAll(store){ const d=await db(); return rq(d.transaction(store).objectStore(store).getAll()); }
+async function dbGet(store,id){ const d=await db(); return rq(d.transaction(store).objectStore(store).get(id)); }
+async function dbPut(store,val){ const d=await db(); return rq(d.transaction(store,'readwrite').objectStore(store).put(val)); }
+async function dbTx(stores,fn){
+  const d = await db(); const tx = d.transaction(stores,'readwrite');
+  const done = new Promise((res,rej)=>{ tx.oncomplete=res; tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error||new Error('Uhifadhi umekatizwa.')); });
+  fn(tx); await done;
+}
+
+/* ============================ 2. MUUNDO WA MTIHANI ULIOHIFADHIWA ============================ */
+const HALI = {
+  kamili: 'Maswali + majibu',
+  bila_majibu: 'Maswali tu (bila majibu)',
+  marking_inahitaji: 'Marking scheme inahitaji kukamilishwa'
+};
+function countQ(ex){ let n=0; (ex.sections||[]).forEach(s=>(s.questions||[]).forEach(q=>{ if(String(q.text||'').trim()) n++; })); return n; }
+function sumMarks(ex){ let t=0; (ex.sections||[]).forEach(s=>(s.questions||[]).forEach(q=>{ t += parseFloat(q.marks)||0; })); return Math.round(t*100)/100; }
+function haliYa(ex,n){ // ni lebo ya taarifa tu — HAIZUII kuhifadhi kamwe
+  const lines = String(ex.answerKey||'').split('\n').filter(l=>l.trim()).length;
+  if(!lines) return 'bila_majibu';
+  return lines < n ? 'marking_inahitaji' : 'kamili';
+}
+function buildRecord(id, prev){
+  const { figs, ...rest } = examData;                 // michoro (SVG) huhifadhiwa kando kwenye 'assets', si ndani ya mtihani
+  const ex = JSON.parse(JSON.stringify(rest));
+  const ids = new Set();
+  (ex.examFigs||[]).forEach(i=>ids.add(i));
+  (ex.sections||[]).forEach(s=>(s.questions||[]).forEach(q=>(q.figs||[]).forEach(i=>ids.add(i))));
+  const assets = [];
+  ids.forEach(i=>{ const f=(figs||{})[i]; if(f && f.svg) assets.push({ id:i, svg:f.svg, model:f.model||null, title:f.title||'' }); });
+  const m = (typeof examMeta!=='undefined' && examMeta) ? examMeta : {};
+  const now = Date.now(), n = countQ(ex);
+  const title = ex.examTitle || ((ex.header&&ex.header.lines&&ex.header.lines[0])||'') || ((m.somo||'Mtihani') + ' — ' + (m.darasa||''));
+  const meta = {
+    id: id || uid(), title, ngazi: (typeof currentNgazi!=='undefined'?currentNgazi:''),
+    darasa: m.darasa||'', somo: m.somo||'', mada: m.mada||'',
+    createdAt: prev ? prev.createdAt : now, updatedAt: now,
+    qCount: n, totalMarks: sumMarks(ex), hali: haliYa(ex,n),
+    assetIds: assets.map(a=>a.id), source: m.source||'ai'
+  };
+  return { meta, data:{ id:meta.id, exam:ex, examMeta:{ darasa:meta.darasa, somo:meta.somo, mada:meta.mada } }, assets };
+}
+async function putExam(rec){
+  await dbTx(['meta','data','assets'], tx=>{
+    tx.objectStore('meta').put(rec.meta);
+    tx.objectStore('data').put(rec.data);
+    const a = tx.objectStore('assets'); rec.assets.forEach(x=>a.put(x));
+  });
+}
+async function loadExam(id){
+  const [meta,data] = await Promise.all([dbGet('meta',id), dbGet('data',id)]);
+  if(!meta || !data) throw new Error('Mtihani huu haupatikani tena kwenye kifaa.');
+  const figs = {};
+  await Promise.all((meta.assetIds||[]).map(async i=>{ const a = await dbGet('assets',i); if(a) figs[i]=a; }));
+  return { meta, exam:data.exam, examMeta:data.examMeta||{}, figs };
+}
+async function deleteExam(id){
+  await dbTx(['meta','data'], tx=>{ tx.objectStore('meta').delete(id); tx.objectStore('data').delete(id); });
+  // Futa michoro isiyotumiwa tena na mtihani wowote (iliyoshirikiwa na mitihani mingine hubaki)
+  const metas = await dbAll('meta'); const used = new Set();
+  metas.forEach(m=>(m.assetIds||[]).forEach(i=>used.add(i)));
+  const assets = await dbAll('assets');
+  const orphan = assets.filter(a=>!used.has(a.id));
+  if(orphan.length) await dbTx(['assets'], tx=>{ const s=tx.objectStore('assets'); orphan.forEach(a=>s.delete(a.id)); });
+}
+
+/* ============================ 3. KUHIFADHI MTIHANI WA AI (inachukua nafasi ya saveExamToBank) ============================ */
+function legacyAdd(){ // maswali ya kuchagua yenye jibu linalopatikana yanaongezwa pia kwenye benki ya zamani — bila kuuliza, bila kukataa chochote
+  try{
+    if(typeof bankParseMcq!=='function' || typeof benkiSoma!=='function') return 0;
+    const list = benkiSoma();
+    const have = new Set(list.map(q=>q.darasa+'|'+q.somo+'|'+String(q.swali||'').trim().toLowerCase()));
+    let n = 0;
+    examData.sections.forEach(sec=>(sec.questions||[]).forEach(q=>{
+      const p = bankParseMcq(q.text); if(!p) return;
+      const k = examMeta.darasa+'|'+examMeta.somo+'|'+p.swali.toLowerCase(); if(have.has(k)) return;
+      const sahihi = bankFindAnswer(sec.number, q.roman, p.chaguo); if(!sahihi) return;
+      list.push({ id:Date.now()+'_'+Math.random().toString(36).slice(2,7), darasa:examMeta.darasa, somo:examMeta.somo, mada:examMeta.mada||'(Hakuna mada)', swali:p.swali, chaguo:p.chaguo, sahihi });
+      have.add(k); n++;
+    }));
+    if(n) benkiAndika(list);
+    return n;
+  }catch(e){ return 0; }
+}
+async function saveWholeExam(){
+  if(typeof examData==='undefined' || !examData || !examData.sections){ alert('Tengeneza mtihani kwanza kabla ya kuhifadhi kwenye benki.'); return; }
+  if(typeof examMeta==='undefined' || !examMeta) examMeta = { darasa:'', somo:'', mada:'' };
+  try{
+    let id = null, prev = null;
+    if(examMeta.mhId){
+      prev = await dbGet('meta', examMeta.mhId);
+      if(prev && confirm('Mtihani huu ulishahifadhiwa kwenye benki.\n\nOK = sasisha nakala ile ile.\nCancel = hifadhi kama nakala MPYA (ya zamani inabaki).')) id = examMeta.mhId; else prev = null;
+    }
+    const rec = buildRecord(id, prev);
+    await putExam(rec);
+    examMeta.mhId = rec.meta.id;
+    const nl = legacyAdd();
+    try{ const b=$('mt_bankBtn'); if(b){ const o=b.textContent; b.textContent='✓ Imehifadhiwa'; setTimeout(()=>{ b.textContent=o; },1800);} }catch(e){}
+    let msg = '✓ Mtihani mzima umehifadhiwa kwenye Benki ya Maswali (' + rec.meta.qCount + ' maswali, jumla ya alama ' + rec.meta.totalMarks + ').\nHali: ' + HALI[rec.meta.hali] + '.';
+    if(rec.meta.hali!=='kamili') msg += '\nHaikuhitaji majibu ili kuhifadhiwa — unaweza kuyaongeza baadaye.';
+    if(rec.assets.length) msg += '\nMichoro iliyoambatanishwa: ' + rec.assets.length + '.';
+    if(nl) msg += '\nMaswali ' + nl + ' ya kuchagua (yenye jibu) yameongezwa pia kwenye benki ya maswali ya kuchagua.';
+    msg += '\nUnaweza kuufungua kutoka: Benki ya Maswali → Mitihani Mizima Iliyohifadhiwa (hata bila intaneti).';
+    alert(msg);
+    if(typeof currentView!=='undefined' && currentView==='benki') refreshList();
+  }catch(e){
+    alert('Imeshindwa kuhifadhi mtihani: ' + (e && e.message || e) + '\n(Huenda hifadhi ya kifaa imejaa. Pakua nakala ya benki kisha futa mitihani isiyohitajika.)');
+  }
+}
+window.saveExamToBank = saveWholeExam;
+
+/* ============================ 4. ORODHA, UTAFUTAJI, KUFUNGUA ============================ */
+const MH = { cur:null };
+function fmtDate(t){ try{ return new Date(t).toLocaleDateString('sw-TZ',{day:'2-digit',month:'short',year:'numeric'}); }catch(e){ return ''; } }
+function setMsg(t){ const m=$('mh_msg'); if(m) m.textContent = t||''; }
+async function refreshList(){
+  const box = $('mh_list'); if(!box) return;
+  let metas;
+  try{ metas = (await dbAll('meta')).sort((a,b)=>b.updatedAt-a.updatedAt); }
+  catch(e){ box.innerHTML = '<p class="placeholder">Hifadhi ya ndani haipatikani: ' + E(e.message||e) + '</p>'; return; }
+  const fill = (id, vals, label)=>{ const s=$(id); if(!s) return; const cur=s.value; s.innerHTML = '<option value="">'+label+'</option>' + [...new Set(vals.filter(Boolean))].sort().map(v=>'<option>'+E(v)+'</option>').join(''); s.value = [...s.options].some(o=>o.value===cur)?cur:''; };
+  fill('mh_fg', metas.map(m=>m.darasa), 'Madarasa yote'); fill('mh_fs', metas.map(m=>m.somo), 'Masomo yote');
+  const q = ($('mh_q').value||'').trim().toLowerCase(), g=$('mh_fg').value, s=$('mh_fs').value;
+  const d1 = $('mh_fd1').value ? new Date($('mh_fd1').value+'T00:00:00').getTime() : 0;
+  const d2 = $('mh_fd2').value ? new Date($('mh_fd2').value+'T23:59:59').getTime() : Infinity;
+  const list = metas.filter(m=>(!g||m.darasa===g)&&(!s||m.somo===s)&&m.createdAt>=d1&&m.createdAt<=d2&&(!q||(m.title+' '+m.mada+' '+m.somo+' '+m.darasa).toLowerCase().includes(q)));
+  $('mh_cnt').textContent = list.length + ' kati ya ' + metas.length;
+  if(!list.length){ box.innerHTML = '<p class="placeholder" style="margin:0;">' + (metas.length?'Hakuna mtihani unaolingana na utafutaji.':'Bado hakuna mtihani mzima uliohifadhiwa. Tengeneza mtihani kwa AI kisha bonyeza "💾 Hifadhi kwenye Benki".') + '</p>'; return; }
+  box.innerHTML = list.map(m=>`<div class="mh-card">
+    <div style="flex:1;min-width:200px;"><strong>${E(m.title)}</strong>
+      <div class="mh-sub">${E(m.darasa)} • ${E(m.somo)}${m.mada?' • '+E(m.mada):''} • ${fmtDate(m.createdAt)}</div>
+      <div class="mh-sub">${m.qCount} maswali • alama ${m.totalMarks} • <span class="mh-badge mh-${m.hali}">${E(HALI[m.hali]||'')}</span>${(m.assetIds&&m.assetIds.length)?' • 🖼️ '+m.assetIds.length:''}</div></div>
+    <div class="mh-btns"><button onclick="mhOpen('${m.id}')">📂 Fungua</button><button class="mh-del" onclick="mhDel('${m.id}')">Futa</button></div></div>`).join('');
+}
+async function openExam(id){
+  try{
+    MH.cur = await loadExam(id);
+    $('mh_list').classList.add('hidden'); $('mh_filters').classList.add('hidden');
+    renderViewer();
+  }catch(e){ setMsg('Imeshindwa kufungua: '+(e.message||e)); }
+}
+function bodyHtml(ex, figs, o){
+  const fig = i => (figs && figs[i]) ? '<div class="mh-fig">'+figs[i].svg+'</div>' : '<div class="mh-fig miss">[Mchoro haupatikani kwenye nakala hii]</div>';
+  let h = (typeof renderExamHeaderHtml==='function') ? renderExamHeaderHtml(ex.header) : '';
+  h += '<h2 class="exam-title">' + E(ex.examTitle||'') + '</h2>';
+  (ex.examFigs||[]).forEach(i=>{ h += fig(i); });
+  (ex.sections||[]).forEach((s,si)=>{
+    h += '<h3 class="mh-sec">' + E(typeof secHeading==='function'?secHeading(s):('SEHEMU '+s.number)) + (s.note?' <small>('+E(s.note)+')</small>':'') + '</h3>';
+    (s.questions||[]).forEach((q,qi)=>{
+      const rn = q.roman==='' ? '' : E(q.roman || (typeof romanFromIndex==='function'?romanFromIndex(qi):(qi+1))) + '.';
+      h += '<div class="mh-q">' + (o.sel?'<input type="checkbox" class="mh-pick" data-s="'+si+'" data-q="'+qi+'">':'') +
+        '<span class="mh-n">' + rn + '</span><div class="mh-t">' + E(q.text||'') + (q.figs||[]).map(fig).join('') + '</div>' +
+        '<span class="mh-m">' + (q.marks!=null?'['+E(q.marks)+']':'') + '</span></div>';
+    });
+  });
+  if(o.answers){
+    h += '<h3 class="mh-sec">MWONGOZO WA MAJIBU</h3>';
+    h += ex.answerKey && String(ex.answerKey).trim() ? '<div class="mh-key">'+E(ex.answerKey)+'</div>' : '<div class="mh-key"><i>Hakuna majibu wala marking scheme vilivyohifadhiwa kwa mtihani huu.</i></div>';
+  }
+  return h;
+}
+function renderViewer(){
+  const r = MH.cur, v = $('mh_view'); if(!r || !v) return;
+  v.classList.remove('hidden');
+  v.innerHTML = `<div class="mh-bar">
+      <button onclick="mhBack()">← Orodha</button>
+      <button onclick="mhEdit()">✏️ Hariri (Kutunga Mitihani)</button>
+      <button onclick="mhPrint()">🖨️ Chapisha / PDF</button>
+      <button onclick="mhHtml()">⬇️ HTML (offline)</button>
+      <button onclick="mhJson()">⬇️ JSON</button>
+      <button onclick="mhReuse()">➕ Tumia maswali yaliyochaguliwa</button>
+    </div>
+    <div class="mh-sub" style="margin:6px 0 10px;">${E(r.meta.darasa)} • ${E(r.meta.somo)} • ${r.meta.qCount} maswali • alama ${r.meta.totalMarks} • ${E(HALI[r.meta.hali]||'')}. Tiki maswali unayotaka kutumia tena; nakala ya awali haiguswi.</div>
+    <div class="mh-paper">${bodyHtml(r.exam, r.figs, {sel:true, answers:true})}</div>`;
+  v.scrollIntoView({block:'start'});
+}
+function backToList(){ MH.cur=null; $('mh_view').classList.add('hidden'); $('mh_view').innerHTML=''; $('mh_list').classList.remove('hidden'); $('mh_filters').classList.remove('hidden'); refreshList(); }
+
+/* Hariri: mtihani uliohifadhiwa unapakiwa kwenye kihariri kilichopo (Kutunga Mitihani) bila kuhitaji AI */
+function editSaved(){
+  const r = MH.cur; if(!r) return;
+  examData = Object.assign({}, JSON.parse(JSON.stringify(r.exam)), { figs: JSON.parse(JSON.stringify(r.figs)) });
+  examMeta = { darasa:r.examMeta.darasa||r.meta.darasa, somo:r.examMeta.somo||r.meta.somo, mada:r.examMeta.mada||r.meta.mada, mhId:r.meta.id };
+  if(typeof mtWarning!=='undefined') mtWarning='';
+  showView('mitihani');
+  const hl=$('mt_headLabel'); if(hl) hl.textContent = examData.examTitle || r.meta.title;
+  renderExamEditor();
+  ['mt_copyBtn','mt_printBtn','mt_docxBtn','mt_bankBtn'].forEach(i=>{ const b=$(i); if(b) b.classList.remove('hidden'); });
+}
+/* Tumia tena maswali: nakala za kina (deep copy) zinaongezwa kwenye mtihani unaoandaliwa; mtihani uliohifadhiwa haubadilika */
+function reuseQuestions(){
+  const r = MH.cur; if(!r) return;
+  const picks = [...document.querySelectorAll('#mh_view .mh-pick:checked')].map(c=>[+c.dataset.s,+c.dataset.q]);
+  if(!picks.length){ alert('Tiki angalau swali moja kwanza.'); return; }
+  let target = (typeof examData!=='undefined' && examData && examData.sections) ? examData : null;
+  if(target && !confirm('Maswali '+picks.length+' yataongezwa kwenye mtihani unaoandaliwa sasa ("'+(target.examTitle||'bila jina')+'").\n\nOK = ongeza hapo.\nCancel = anza mtihani mpya.')) target = null;
+  if(!target){
+    examData = { header:{ lines:[(r.meta.somo||'MTIHANI').toUpperCase()], instructions:[], assessorTable:false }, examTitle:'MTIHANI MPYA — ' + (r.meta.somo||''), sections:[], answerKey:'', figs:{} };
+    examMeta = { darasa:r.meta.darasa, somo:r.meta.somo, mada:r.meta.mada, source:'nakala' };
+    target = examData;
+  }
+  target.figs = target.figs || {};
+  const qs = picks.map(([si,qi])=>JSON.parse(JSON.stringify(r.exam.sections[si].questions[qi])));
+  qs.forEach((q,i)=>{ q.roman = (typeof romanFromIndex==='function') ? romanFromIndex(i) : String(i+1); (q.figs||[]).forEach(id=>{ if(r.figs[id]) target.figs[id] = JSON.parse(JSON.stringify(r.figs[id])); }); });
+  const num = String.fromCharCode(65 + target.sections.length);
+  target.sections.push({ number:num, title:'', note:'Alama ' + qs.reduce((a,q)=>a+(parseFloat(q.marks)||0),0), questions:qs });
+  showView('mitihani');
+  const hl=$('mt_headLabel'); if(hl) hl.textContent = target.examTitle||'';
+  renderExamEditor();
+  ['mt_copyBtn','mt_printBtn','mt_docxBtn','mt_bankBtn'].forEach(i=>{ const b=$(i); if(b) b.classList.remove('hidden'); });
+  alert('✓ Maswali ' + qs.length + ' yameongezwa kama SEHEMU ' + num + ' kwenye mtihani unaoandaliwa. Mtihani uliohifadhiwa haujaguswa.');
+}
+
+/* ============================ 5. KUTOA MTIHANI: HTML / PDF (chapisha) / JSON — YOTE OFFLINE ============================ */
+const DOC_CSS = 'body{font-family:Georgia,"Times New Roman",serif;color:#111;max-width:800px;margin:0 auto;padding:18px;line-height:1.5}' +
+ '.exam-header-line{text-align:center}.exam-header-main{font-weight:700;font-size:1.1em}.exam-instructions{margin:10px 0}' +
+ '.exam-title{text-align:center;margin:14px 0}.md-table{border-collapse:collapse;margin:10px 0}.md-table th,.md-table td{border:1px solid #000;padding:4px 10px;text-align:center}' +
+ '.mh-sec{margin:20px 0 8px;border-bottom:1px solid #999}.mh-q{display:flex;gap:8px;margin:8px 0;page-break-inside:avoid}.mh-n{min-width:34px;font-weight:700}.mh-t{flex:1;white-space:pre-wrap}' +
+ '.mh-m{white-space:nowrap;font-style:italic}.mh-fig{margin:8px 0}.mh-fig svg{max-width:100%;height:auto;max-height:360px}.mh-fig.miss{color:#a33;font-style:italic}.mh-key{white-space:pre-wrap;background:#f6f6f0;padding:10px;border:1px solid #ccc}' +
+ '@media print{body{padding:0}@page{margin:14mm}}';
+function standalone(r, withAns){
+  return '<!DOCTYPE html><html lang="sw"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + E(r.meta.title) + '</title><style>' + DOC_CSS + '</style></head><body>' +
+    bodyHtml(r.exam, r.figs, {sel:false, answers:withAns}) + '</body></html>';
+}
+function printHtml(html){
+  const f = document.createElement('iframe'); f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(f);
+  f.srcdoc = html;
+  f.onload = ()=>{ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ alert('Kuchapisha kumeshindikana: '+e.message+'. Tumia "⬇️ HTML (offline)" kisha ufungue na uchapishe.'); } setTimeout(()=>f.remove(), 60000); };
+}
+function dl(text, name, type){ triggerBlobDownload(new Blob([text],{type}), name); }
+function curName(ext){ return dlSafeName(MH.cur.meta.title||'Mtihani', ext); }
+function examJson(r){ return JSON.stringify({ format:'msaidizi-mtihani', version:1, exportedAt:Date.now(), meta:r.meta, exam:r.exam, examMeta:r.examMeta, assets:Object.values(r.figs) }, null, 1); }
+
+/* ============================ 6. NAKALA RUDUFU / KUREJESHA (JSON) ============================ */
+const BAD_SVG = /<script|<foreignObject|<iframe|<object|<embed|\son[a-z]+\s*=|javascript:|data:text\/html/i;
+function safeAsset(a){
+  if(!a || !a.id) return null;
+  if(a.model){ const m = clean(a.model); if(m) return { id:a.id, svg:svgFrom(m), model:m, title:String(a.title||'') }; }
+  if(typeof a.svg==='string' && /^\s*<svg/i.test(a.svg) && !BAD_SVG.test(a.svg)) return { id:a.id, svg:a.svg, model:null, title:String(a.title||'') };
+  return null;
+}
+async function exportAll(){
+  try{
+    const [metas,datas,assets,mich] = await Promise.all([dbAll('meta'),dbAll('data'),dbAll('assets'),dbAll('michoro')]);
+    if(!metas.length && !mich.length){ alert('Hakuna kitu cha kuhifadhi nakala bado.'); return; }
+    const byId = {}; datas.forEach(d=>byId[d.id]=d);
+    const out = { format:'msaidizi-mitihani-backup', version:1, exportedAt:Date.now(), mitihani:metas.map(m=>({meta:m,data:byId[m.id]})).filter(x=>x.data), assets, michoro:mich };
+    dl(JSON.stringify(out), dlSafeName('Nakala_Mitihani_Msaidizi','json'), 'application/json');
+  }catch(e){ alert('Imeshindwa kutoa nakala: '+(e.message||e)); }
+}
+function importFile(ev){
+  const file = ev.target.files[0]; if(!file) return;
+  const rd = new FileReader();
+  rd.onload = async ()=>{
+    try{
+      const j = JSON.parse(rd.result); let items=[], assets=[], mich=[];
+      if(j && j.format==='msaidizi-mtihani'){ items=[{meta:j.meta, data:{id:j.meta&&j.meta.id, exam:j.exam, examMeta:j.examMeta}}]; assets=j.assets||[]; }
+      else if(j && j.format==='msaidizi-mitihani-backup'){ items=j.mitihani||[]; assets=j.assets||[]; mich=j.michoro||[]; }
+      else throw new Error('Faili hili si nakala ya mitihani ya Msaidizi.');
+      const have = new Set((await dbAll('meta')).map(m=>m.id));
+      const okAssets = assets.map(safeAsset).filter(Boolean);
+      let added=0, skipped=0;
+      const toPut = [];
+      items.forEach(it=>{
+        if(!it||!it.meta||!it.meta.id||!it.data||!it.data.exam||!Array.isArray(it.data.exam.sections)){ skipped++; return; }
+        if(have.has(it.meta.id)){ skipped++; return; }
+        it.data.id = it.meta.id; toPut.push(it); added++;
+      });
+      const okMich = mich.map(m=>{ const c = m && m.model ? clean(m.model) : null; return c ? { id:String(m.id||uid()), title:String(m.title||'Mchoro'), model:c, svg:svgFrom(c), updatedAt:+m.updatedAt||Date.now() } : null; }).filter(Boolean);
+      await dbTx(['meta','data','assets','michoro'], tx=>{
+        toPut.forEach(it=>{ tx.objectStore('meta').put(it.meta); tx.objectStore('data').put(it.data); });
+        okAssets.forEach(a=>tx.objectStore('assets').put(a));
+        okMich.forEach(m=>tx.objectStore('michoro').put(m));
+      });
+      setMsg('✓ Mitihani ' + added + ' imerejeshwa' + (skipped?(', '+skipped+' imeruka (ipo tayari au si sahihi)'):'') + (okMich.length?(', michoro '+okMich.length):'') + '.');
+      refreshList(); try{ refreshLib(); }catch(e){}
+    }catch(e){ setMsg('Faili halisomeki: '+(e.message||e)); }
+    ev.target.value='';
+  };
+  rd.readAsText(file);
+}
+
+/* ============================ 7. MICHORO KWENYE KIHARIRI CHA MITIHANI ============================ */
+function figMarkup(i, small){
+  const f = (typeof examData!=='undefined' && examData && examData.figs) ? examData.figs[i] : null;
+  return f ? '<span class="mh-thumb'+(small?' sm':'')+'">'+f.svg+'</span>' : '<span class="mh-thumb miss">?</span>';
+}
+const _rq = window.renderQuestionRow;
+window.renderQuestionRow = function(si,qi,q){
+  let h = _rq(si,qi,q);
+  const ids = q.figs||[];
+  h += '<div class="mh-qfig">' + ids.map(i=>'<span class="mh-attached">'+figMarkup(i,true)+'<button title="Hariri mchoro huu" onclick="mhEditFig('+si+','+qi+',\''+i+'\')">✏️</button><button title="Ondoa" onclick="mhDetachFig('+si+','+qi+',\''+i+'\')">✕</button></span>').join('') +
+       '<button class="mh-attach" onclick="mhPick('+si+','+qi+')">🖼️ '+(ids.length?'Ongeza mchoro':'Ambatanisha mchoro')+'</button></div>';
+  return h;
+};
+const _re = window.renderExamEditor;
+window.renderExamEditor = function(){
+  _re();
+  try{
+    const t = document.querySelector('#mt_output .exam-title'); if(!t) return;
+    const ids = (examData && examData.examFigs) || [];
+    t.insertAdjacentHTML('afterend', '<div class="mh-qfig mh-examfig"><b style="font-size:12px;">Michoro ya mtihani mzima:</b> ' +
+      ids.map(i=>'<span class="mh-attached">'+figMarkup(i,true)+'<button title="Hariri" onclick="mhEditFig(-1,-1,\''+i+'\')">✏️</button><button title="Ondoa" onclick="mhDetachFig(-1,-1,\''+i+'\')">✕</button></span>').join('') +
+      '<button class="mh-attach" onclick="mhPick(-1,-1)">🖼️ Ambatanisha mchoro wa pamoja</button></div>');
+  }catch(e){}
+};
+function attachFig(fig, ctx){
+  examData.figs = examData.figs || {};
+  examData.figs[fig.id] = { id:fig.id, svg:fig.svg, model:fig.model, title:fig.title||'' };
+  const put = (arr)=>{ if(arr.indexOf(fig.id)<0) arr.push(fig.id); return arr; };
+  if(ctx && ctx.si>=0){
+    const q = examData.sections[ctx.si].questions[ctx.qi]; q.figs = q.figs||[];
+    if(ctx.old && ctx.old!==fig.id){
+      // Mchoro ule ule ukitumika kwenye maswali mengine ya mtihani huu? Uliza wazi kabla ya kubadilisha yote.
+      const others = []; examData.sections.forEach((s,a)=>(s.questions||[]).forEach((x,b)=>{ if((x.figs||[]).includes(ctx.old) && !(a===ctx.si&&b===ctx.qi)) others.push(x); }));
+      const all = others.length && confirm('Mchoro huu unatumika pia kwenye maswali mengine '+others.length+' ya mtihani huu.\n\nOK = badilisha kila mahali (mchoro wa pamoja).\nCancel = badilisha kwenye swali hili tu.');
+      const swap = x=>{ x.figs = (x.figs||[]).map(i=>i===ctx.old?fig.id:i); };
+      swap(q); if(all) others.forEach(swap);
+    } else put(q.figs);
+  } else {
+    examData.examFigs = examData.examFigs||[];
+    if(ctx && ctx.old && ctx.old!==fig.id) examData.examFigs = examData.examFigs.map(i=>i===ctx.old?fig.id:i); else put(examData.examFigs);
+  }
+}
+window.mhDetachFig = function(si,qi,id){
+  if(si>=0){ const q=examData.sections[si].questions[qi]; q.figs=(q.figs||[]).filter(i=>i!==id); } else examData.examFigs=(examData.examFigs||[]).filter(i=>i!==id);
+  renderExamEditor();
+};
+window.mhEditFig = function(si,qi,id){
+  const f = examData.figs && examData.figs[id];
+  if(!f || !f.model){ alert('Mchoro huu hauna data ya kuhariri (ulitoka kwenye nakala ya zamani).'); return; }
+  mcLoad(f.model, null, f.title||''); MC.ctx = { si, qi, old:id }; showView('michoro');
+};
+window.mhPick = async function(si,qi){
+  if(typeof examData==='undefined'||!examData){ return; }
+  let list = []; try{ list = (await dbAll('michoro')).sort((a,b)=>b.updatedAt-a.updatedAt); }catch(e){}
+  closePick();
+  const m = document.createElement('div'); m.id='mh_modal'; m.className='mh-modal';
+  m.innerHTML = '<div class="mh-box"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;"><b>Chagua mchoro kutoka maktaba yako</b><button onclick="mhClosePick()">✕</button></div>' +
+    '<div class="mh-grid">' + (list.length ? list.map(x=>'<div class="mh-pi" onclick="mhDoPick(\''+x.id+'\','+si+','+qi+')"><div class="mc-th">'+x.svg+'</div><div class="mh-sub">'+E(x.title)+'</div></div>').join('') : '<p class="placeholder">Maktaba ya michoro ni tupu.</p>') + '</div>' +
+    '<div style="margin-top:10px;"><button onclick="mhNewDraw('+si+','+qi+')">✏️ Chora mchoro mpya</button></div></div>';
+  document.body.appendChild(m);
+};
+function closePick(){ const m=$('mh_modal'); if(m) m.remove(); }
+window.mhClosePick = closePick;
+window.mhDoPick = async function(id,si,qi){
+  const rec = await dbGet('michoro',id); if(!rec) return;
+  attachFig({ id:hash(rec.svg), svg:rec.svg, model:rec.model, title:rec.title }, { si, qi });
+  closePick(); renderExamEditor();
+};
+window.mhNewDraw = function(si,qi){ closePick(); mcNew(true); MC.ctx = { si, qi }; showView('michoro'); };
+
+/* ============================ 8. ZANA YA KUCHORA (SVG, OFFLINE KABISA) ============================ */
+const MC = { w:800, h:600, els:[], sel:null, tool:'select', undo:[], redo:[], grid:false, gridNum:false, snap:false, step:40, id:null, title:'', ctx:null, dirty:false,
+  st:{ stroke:'#1a1a1a', fill:'', sw:2, dash:false, size:22, sides:5 }, draw:null, pts:[], tmp:null, stamp:'dira' };
+window.MC = MC;
+const T_OK = ['rect','ell','tri','poly','ppoly','line','path','text','label','angle','node','stamp'];
+const colOk = c => (typeof c==='string' && (/^#[0-9a-f]{3,8}$/i.test(c) || /^[a-z]{3,20}$/i.test(c))) ? c : '';
+const num = v => (isFinite(+v) ? +v : 0);
+function clean(m){ // husafisha/huthibitisha modeli iliyoletwa (kutoka maktaba, JSON au mchoro uliohifadhiwa)
+  try{
+    if(!m || !Array.isArray(m.els)) return null;
+    const out = { w:Math.min(2000,Math.max(100,num(m.w)||800)), h:Math.min(2000,Math.max(100,num(m.h)||600)), grid:!!m.grid, gridNum:!!m.gridNum, step:Math.min(200,Math.max(10,num(m.step)||40)), els:[] };
+    m.els.slice(0,800).forEach(e=>{
+      if(!e || T_OK.indexOf(e.t)<0) return;
+      const c = { t:e.t, id:String(e.id||uid()).replace(/[^\w\-]/g,'') || uid(), stroke:colOk(e.stroke)||'#1a1a1a', fill:colOk(e.fill)||'', sw:Math.min(30,Math.max(0.5,num(e.sw)||2)), dash:!!e.dash };
+      ['x','y','w','h','x1','y1','x2','y2','size','n'].forEach(k=>{ if(e[k]!=null) c[k]=num(e[k]); });
+      ['text','labels','kind','shape'].forEach(k=>{ if(e[k]!=null) c[k]=String(e[k]).slice(0,500); });
+      if(e.arrow) c.arrow=true;
+      if(Array.isArray(e.pts)) c.pts = e.pts.slice(0,2000).map(p=>[num(p&&p[0]),num(p&&p[1])]);
+      out.els.push(c);
+    });
+    return out;
+  }catch(e){ return null; }
+}
+function sty(e){ return 'stroke="'+(colOk(e.stroke)||'#000')+'" stroke-width="'+(+e.sw||2)+'" fill="'+(colOk(e.fill)||'none')+'"'+(e.dash?' stroke-dasharray="8 6"':'')+' stroke-linejoin="round" stroke-linecap="round"'; }
+function tsp(text, x, cy, size, anchor, color){
+  const ls = String(text||'').split('\n'), lh = size*1.2, y0 = cy - (ls.length-1)*lh/2;
+  return ls.map((l,i)=>'<text x="'+r1(x)+'" y="'+r1(y0+i*lh)+'" font-size="'+size+'" text-anchor="'+anchor+'" dominant-baseline="middle" font-family="Arial,Helvetica,sans-serif" fill="'+color+'">'+E(l)+'</text>').join('');
+}
+function arrowHead(x1,y1,x2,y2,sw,color){
+  const a = Math.atan2(y2-y1,x2-x1), L = 10+sw*2.2, W = L*0.42, bx = x2-L*Math.cos(a), by = y2-L*Math.sin(a);
+  return '<polygon points="'+r1(x2)+','+r1(y2)+' '+r1(bx+W*Math.sin(a))+','+r1(by-W*Math.cos(a))+' '+r1(bx-W*Math.sin(a))+','+r1(by+W*Math.cos(a))+'" fill="'+color+'" stroke="'+color+'" stroke-width="1" stroke-linejoin="round"/>';
+}
+const ptsStr = p => p.map(q=>r1(q[0])+','+r1(q[1])).join(' ');
+/* Alama (stamps) zinachorwa kwenye kisanduku cha 100×100, kisha kupimwa kwa w/100 (mraba) */
+function stampSvg(e){
+  const K = colOk(e.stroke)||'#000', sw = +e.sw||2;
+  const S = 'stroke="'+K+'" stroke-width="'+sw+'" fill="none" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"';
+  const SF = 'stroke="'+K+'" stroke-width="'+sw+'" fill="'+K+'" vector-effect="non-scaling-stroke" stroke-linejoin="round"';
+  const L = (e.fill && colOk(e.fill)) || '';
+  const tx = (t,x,y,sz,a)=>'<text x="'+x+'" y="'+y+'" font-size="'+sz+'" text-anchor="'+(a||'middle')+'" dominant-baseline="middle" font-family="Arial,Helvetica,sans-serif" fill="'+K+'">'+E(t)+'</text>';
+  let g = '';
+  switch(e.kind){
+    case 'dira':
+      g = '<circle cx="50" cy="50" r="24" '+S+'/><path d="M50 22V78M22 50H78" '+S+'/><path d="M50 14L43 29H57Z" '+SF+'/>' +
+          '<path d="M30 30L70 70M70 30L30 70" stroke="'+K+'" stroke-width="1" vector-effect="non-scaling-stroke" opacity=".5"/>' +
+          tx('K',50,7,11)+tx('KS',50,93,11)+tx('M',90,50,11)+tx('MG',10,50,11); break;
+    case 'kaskazini':
+      g = '<path d="M50 88V26" '+S+'/><path d="M50 12L38 36H62Z" '+SF+'/>'+tx('K',50,6,12)+'<circle cx="50" cy="88" r="3" '+SF+'/>'; break;
+    case 'axes': {
+      g = '';
+      for(let i=-4;i<=4;i++){ const p = 50+i*10; if(i!==0){ g += '<path d="M'+p+' 8V92M8 '+p+'H92" stroke="#cfcfcf" stroke-width="0.6" vector-effect="non-scaling-stroke"/>'; g += '<path d="M'+p+' 47V53M47 '+p+'H53" '+S+'/>'+tx(i,p,60,5.5)+tx(-i,42,p,5.5,'end'); } }
+      g += '<path d="M6 50H94M50 94V6" '+S+'/>'+arrowHeadSmall(94,50,0,K)+arrowHeadSmall(50,6,-90,K)+tx('x',97,56,7)+tx('y',56,4,7)+tx('0',44,57,5.5,'end'); break; }
+    case 'gridLL': {
+      const parts = String(e.labels||'30°E,32°E,34°E,36°E,38°E;2°S,4°S,6°S,8°S,10°S').split(';');
+      const lon = (parts[0]||'').split(','), lat = (parts[1]||'').split(',');
+      g = '<rect x="14" y="6" width="80" height="80" '+S+'/>';
+      for(let i=0;i<5;i++){ const x = 14+i*20, y = 6+i*20;
+        if(i>0&&i<4) g += '<path d="M'+x+' 6V86M14 '+y+'H94" stroke="'+K+'" stroke-width="1" vector-effect="non-scaling-stroke" opacity=".6"/>';
+        g += tx((lon[i]||'').trim(),x,92,5.5)+tx((lat[i]||'').trim(),12,y,5.5,'end'); }
+      break; }
+    case 'mlima': g = '<path d="M8 86L50 14L92 86Z" '+SF+'/>'; break;
+    case 'mji': g = '<rect x="22" y="22" width="56" height="56" '+SF+'/>'; break;
+    case 'kijiji': g = '<circle cx="50" cy="50" r="22" '+SF+'/>'; break;
+    case 'shule': g = '<path d="M16 46L50 16L84 46V84H16Z" '+S+'/><path d="M42 84V60H58V84" '+S+'/><path d="M50 16V4" '+S+'/><path d="M50 4H66V12H50" '+SF+'/>'; break;
+    case 'hospitali': g = '<rect x="12" y="12" width="76" height="76" '+S+'/><path d="M42 24H58V42H76V58H58V76H42V58H24V42H42Z" '+SF+'/>'; break;
+    case 'pin': g = '<path d="M50 94C18 56 20 22 50 10C80 22 82 56 50 94Z" '+SF+'/><circle cx="50" cy="38" r="11" fill="#fff" stroke="none"/>'; break;
+    case 'ziwa': g = '<ellipse cx="50" cy="50" rx="44" ry="26" stroke="'+K+'" stroke-width="'+sw+'" fill="'+(L||'#bfe3f5')+'" vector-effect="non-scaling-stroke"/>'; break;
+    case 'beaker': g = '<path d="M30 40H70V80Q70 92 58 92H42Q30 92 30 80Z" stroke="none" fill="'+(L||'#cfe8f7')+'"/><path d="M26 10H74M30 10V80Q30 92 42 92H58Q70 92 70 80V10" '+S+'/><path d="M30 40H70M30 24H40M30 56H40M30 72H40" '+S+'/>'; break;
+    case 'flask': g = '<path d="M28 62H72L83 82Q86 92 76 92H24Q14 92 17 82Z" stroke="none" fill="'+(L||'#cfe8f7')+'"/><path d="M38 8H62M42 8V36L16 82Q12 92 24 92H76Q88 92 84 82L58 36V8" '+S+'/>'; break;
+    case 'tube': g = '<path d="M38 40H62V78A12 12 0 0 1 38 78Z" stroke="none" fill="'+(L||'#cfe8f7')+'"/><path d="M34 8H66M38 8V78A12 12 0 0 0 62 78V8" '+S+'/>'; break;
+    case 'bunsen': g = '<path d="M26 92H74L66 82H34Z" '+SF+'/><rect x="44" y="40" width="12" height="42" '+S+'/><path d="M40 40H60" '+S+'/><path d="M50 4C63 20 61 31 50 38C39 31 37 20 50 4Z" fill="#f5a623" stroke="#c0392b" stroke-width="1" vector-effect="non-scaling-stroke"/>'; break;
+    case 'thermo': g = '<rect x="44" y="8" width="12" height="68" rx="6" '+S+'/><circle cx="50" cy="82" r="11" '+S+'/><rect x="48" y="28" width="4" height="52" fill="#c0392b" stroke="none"/><circle cx="50" cy="82" r="7.5" fill="#c0392b" stroke="none"/><path d="M60 20H68M60 32H66M60 44H68M60 56H66" '+S+'/>'; break;
+    default: g = '<rect x="10" y="10" width="80" height="80" '+S+'/>';
+  }
+  return '<g transform="translate('+r1(e.x)+' '+r1(e.y)+') scale('+r1((+e.w||100)/100*1000)/1000+')">'+g+'</g>';
+}
+function arrowHeadSmall(x,y,deg,K){ return '<path d="M0 0L-5 -2.6L-5 2.6Z" fill="'+K+'" transform="translate('+x+' '+y+') rotate('+deg+')"/>'; }
+function elSvg(e, ed){
+  const S = sty(e), K = colOk(e.stroke)||'#000';
+  switch(e.t){
+    case 'rect': return '<rect x="'+r1(e.x)+'" y="'+r1(e.y)+'" width="'+r1(e.w)+'" height="'+r1(e.h)+'" '+S+'/>';
+    case 'ell': return '<ellipse cx="'+r1(e.x+e.w/2)+'" cy="'+r1(e.y+e.h/2)+'" rx="'+r1(e.w/2)+'" ry="'+r1(e.h/2)+'" '+S+'/>';
+    case 'tri': return '<polygon points="'+r1(e.x+e.w/2)+','+r1(e.y)+' '+r1(e.x+e.w)+','+r1(e.y+e.h)+' '+r1(e.x)+','+r1(e.y+e.h)+'" '+S+'/>';
+    case 'poly': { const n = Math.max(3,Math.min(24,e.n|0||5)), cx=e.x+e.w/2, cy=e.y+e.h/2, p=[];
+      for(let i=0;i<n;i++){ const a=-Math.PI/2+2*Math.PI*i/n; p.push([cx+e.w/2*Math.cos(a), cy+e.h/2*Math.sin(a)]); }
+      return '<polygon points="'+ptsStr(p)+'" '+S+'/>'; }
+    case 'ppoly': return '<polygon points="'+ptsStr(e.pts||[])+'" '+S+'/>';
+    case 'line': return (ed?'<line x1="'+r1(e.x1)+'" y1="'+r1(e.y1)+'" x2="'+r1(e.x2)+'" y2="'+r1(e.y2)+'" stroke="transparent" stroke-width="18" fill="none"/>':'') +
+      '<line x1="'+r1(e.x1)+'" y1="'+r1(e.y1)+'" x2="'+r1(e.x2)+'" y2="'+r1(e.y2)+'" '+S+'/>' + (e.arrow?arrowHead(e.x1,e.y1,e.x2,e.y2,e.sw,K):'');
+    case 'path': { const p = ptsStr(e.pts||[]);
+      const hit = ed?'<polyline points="'+p+'" fill="none" stroke="transparent" stroke-width="18"/>':'';
+      if(e.kind==='road') return hit+'<polyline points="'+p+'" fill="none" stroke="'+K+'" stroke-width="'+(+e.sw||7)+'" stroke-linejoin="round" stroke-linecap="round"/><polyline points="'+p+'" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="8 6"/>';
+      return hit+'<polyline points="'+p+'" fill="none" stroke="'+K+'" stroke-width="'+(+e.sw||2)+'" stroke-linejoin="round" stroke-linecap="round"'+(e.dash?' stroke-dasharray="8 6"':'')+'/>'; }
+    case 'text': return tsp(e.text, e.x, e.y, e.size||22, 'start', K);
+    case 'label': { const a=e.pts[0], b=e.pts[1];
+      return '<line x1="'+r1(a[0])+'" y1="'+r1(a[1])+'" x2="'+r1(b[0])+'" y2="'+r1(b[1])+'" stroke="'+K+'" stroke-width="'+(+e.sw||1.5)+'"/><circle cx="'+r1(a[0])+'" cy="'+r1(a[1])+'" r="3" fill="'+K+'"/>' +
+        '<rect x="'+r1(b[0]-3)+'" y="'+r1(b[1]-(e.size||18)*0.7)+'" width="'+r1(String(e.text||'').split('\n').reduce((m,l)=>Math.max(m,l.length),0)*(e.size||18)*0.58+6)+'" height="'+r1((e.size||18)*1.2*String(e.text||'').split('\n').length+2)+'" fill="#fff" fill-opacity=".85" stroke="none"/>' +
+        tsp(e.text, b[0], b[1], e.size||18, 'start', K); }
+    case 'angle': { const A=e.pts[0], B=e.pts[1], C=e.pts[2];
+      const v1=[A[0]-B[0],A[1]-B[1]], v2=[C[0]-B[0],C[1]-B[1]], l1=Math.hypot(v1[0],v1[1])||1, l2=Math.hypot(v2[0],v2[1])||1;
+      const u1=[v1[0]/l1,v1[1]/l1], u2=[v2[0]/l2,v2[1]/l2];
+      let ang = Math.acos(Math.max(-1,Math.min(1,u1[0]*u2[0]+u1[1]*u2[1])))*180/Math.PI;
+      const cr = u1[0]*u2[1]-u1[1]*u2[0], sweep = cr>0?1:0, R = Math.min(34, l1*0.6, l2*0.6);
+      const s=[B[0]+u1[0]*R,B[1]+u1[1]*R], en=[B[0]+u2[0]*R,B[1]+u2[1]*R];
+      let m=[u1[0]+u2[0],u1[1]+u2[1]]; const ml=Math.hypot(m[0],m[1]); m = ml<0.01 ? [-u1[1],u1[0]] : [m[0]/ml,m[1]/ml];
+      const lab = e.text!=null && e.text!=='' ? e.text : (Math.round(ang)+'°');
+      return '<polyline points="'+ptsStr([A,B,C])+'" fill="none" stroke="'+K+'" stroke-width="'+(+e.sw||2)+'" stroke-linejoin="round"/>' +
+        '<path d="M'+r1(s[0])+' '+r1(s[1])+' A'+r1(R)+' '+r1(R)+' 0 0 '+sweep+' '+r1(en[0])+' '+r1(en[1])+'" fill="none" stroke="'+K+'" stroke-width="1.5"/>' +
+        tsp(lab, B[0]+m[0]*(R+16), B[1]+m[1]*(R+16), e.size||16, 'middle', K); }
+    case 'node': { let g;
+      if(e.shape==='diamond') g='<polygon points="'+r1(e.x+e.w/2)+','+r1(e.y)+' '+r1(e.x+e.w)+','+r1(e.y+e.h/2)+' '+r1(e.x+e.w/2)+','+r1(e.y+e.h)+' '+r1(e.x)+','+r1(e.y+e.h/2)+'" '+S+'/>';
+      else g='<rect x="'+r1(e.x)+'" y="'+r1(e.y)+'" width="'+r1(e.w)+'" height="'+r1(e.h)+'" rx="'+(e.shape==='pill'?r1(e.h/2):3)+'" '+S+'/>';
+      return g + tsp(e.text, e.x+e.w/2, e.y+e.h/2, e.size||16, 'middle', K); }
+    case 'stamp': return stampSvg(e);
+  }
+  return '';
+}
+function gridSvg(m){
+  if(!m.grid) return '';
+  let g = '<g stroke="#d6d6d6" stroke-width="0.8">';
+  for(let x=m.step; x<m.w; x+=m.step) g += '<line x1="'+x+'" y1="0" x2="'+x+'" y2="'+m.h+'"/>';
+  for(let y=m.step; y<m.h; y+=m.step) g += '<line x1="0" y1="'+y+'" x2="'+m.w+'" y2="'+y+'"/>';
+  g += '</g>';
+  if(m.gridNum){
+    g += '<g font-size="10" fill="#777" font-family="Arial,Helvetica,sans-serif">';
+    for(let x=0,i=0; x<m.w; x+=m.step,i++) g += '<text x="'+(x+2)+'" y="11">'+i+'</text>';
+    for(let y=m.step,i=1; y<m.h; y+=m.step,i++) g += '<text x="2" y="'+(y-3)+'">'+i+'</text>';
+    g += '</g>';
+  }
+  return g;
+}
+function svgFrom(m){
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+m.w+' '+m.h+'" width="'+m.w+'" height="'+m.h+'" font-family="Arial,Helvetica,sans-serif"><rect width="'+m.w+'" height="'+m.h+'" fill="#fff"/>' +
+    gridSvg(m) + m.els.map(e=>'<g>'+elSvg(e,false)+'</g>').join('') + '</svg>';
+}
+const model = () => ({ w:MC.w, h:MC.h, grid:MC.grid, gridNum:MC.gridNum, step:MC.step, els:JSON.parse(JSON.stringify(MC.els)) });
+
+/* ---- jiometria ya uhariri ---- */
+function bbox(e){
+  switch(e.t){
+    case 'rect':case 'ell':case 'tri':case 'poly':case 'node': return {x:e.x,y:e.y,w:e.w,h:e.h};
+    case 'stamp': return {x:e.x,y:e.y,w:e.w,h:e.w};
+    case 'line': return {x:Math.min(e.x1,e.x2),y:Math.min(e.y1,e.y2),w:Math.abs(e.x2-e.x1),h:Math.abs(e.y2-e.y1)};
+    case 'text': { const ls=String(e.text||'').split('\n'), sz=e.size||22; return {x:e.x,y:e.y-sz*0.6,w:Math.max(...ls.map(l=>l.length))*sz*0.58+4,h:ls.length*sz*1.2}; }
+    default: { const p=e.pts||[[0,0]]; const xs=p.map(q=>q[0]), ys=p.map(q=>q[1]); const x=Math.min(...xs), y=Math.min(...ys); return {x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y}; }
+  }
+}
+function handles(e){
+  if(['rect','ell','tri','poly','node'].includes(e.t)) return [{k:'br',x:e.x+e.w,y:e.y+e.h}];
+  if(e.t==='stamp') return [{k:'br',x:e.x+e.w,y:e.y+e.w}];
+  if(e.t==='line') return [{k:'p0',x:e.x1,y:e.y1},{k:'p1',x:e.x2,y:e.y2}];
+  if(['ppoly','angle','label'].includes(e.t)) return (e.pts||[]).map((p,i)=>({k:'v'+i,x:p[0],y:p[1]}));
+  return [];
+}
+function setHandle(e,k,p){
+  if(k==='br'){ if(e.t==='stamp'){ const s=Math.max(20,Math.max(p.x-e.x,p.y-e.y)); e.w=s; } else { e.w=Math.max(8,p.x-e.x); e.h=Math.max(8,p.y-e.y); } }
+  else if(k==='p0'){ e.x1=p.x; e.y1=p.y; } else if(k==='p1'){ e.x2=p.x; e.y2=p.y; }
+  else if(k[0]==='v'){ e.pts[+k.slice(1)] = [p.x,p.y]; }
+}
+function mv(e,dx,dy){ if(e.pts) e.pts=e.pts.map(q=>[q[0]+dx,q[1]+dy]); else if(e.t==='line'){ e.x1+=dx;e.y1+=dy;e.x2+=dx;e.y2+=dy; } else { e.x+=dx; e.y+=dy; } }
+function sc(e,f){
+  if(e.pts){ const o=e.pts[e.t==='angle'?1:0]; e.pts=e.pts.map(q=>[o[0]+(q[0]-o[0])*f,o[1]+(q[1]-o[1])*f]); }
+  else if(e.t==='line'){ e.x2=e.x1+(e.x2-e.x1)*f; e.y2=e.y1+(e.y2-e.y1)*f; }
+  else if(e.t==='text'){ e.size=Math.max(6,(e.size||22)*f); }
+  else if(e.t==='stamp'){ e.w*=f; } else { e.w*=f; e.h*=f; }
+}
+const cur = () => MC.els.find(e=>e.id===MC.sel) || null;
+function push(){ MC.undo.push(JSON.stringify(MC.els)); if(MC.undo.length>60) MC.undo.shift(); MC.redo=[]; MC.dirty=true; }
+function pointer(ev){ const s=$('mc_svg'), p=s.createSVGPoint(); p.x=ev.clientX; p.y=ev.clientY; const q=p.matrixTransform(s.getScreenCTM().inverse()); return {x:q.x,y:q.y}; }
+const snap = v => MC.snap ? Math.round(v/MC.step)*MC.step : v;
+const kscale = () => { const s=$('mc_svg'); const w=s.getBoundingClientRect().width||MC.w; return MC.w/w; };
+
+function render(){
+  const s = $('mc_svg'); if(!s) return;
+  s.setAttribute('viewBox','0 0 '+MC.w+' '+MC.h);
+  let h = '<rect data-bg="1" width="'+MC.w+'" height="'+MC.h+'" fill="#fff"/>' + gridSvg(MC);
+  MC.els.forEach(e=>{ h += '<g data-id="'+e.id+'" style="pointer-events:all">'+elSvg(e,true)+'</g>'; });
+  if(MC.tmp) h += '<g style="pointer-events:none;opacity:.75">'+elSvg(MC.tmp,false)+'</g>';
+  const k = kscale();
+  if(MC.pts.length){ h += '<g style="pointer-events:none"><polyline points="'+ptsStr(MC.pts.map(p=>[p.x,p.y]))+'" fill="none" stroke="#e67e22" stroke-width="'+r1(1.5*k)+'" stroke-dasharray="'+r1(5*k)+' '+r1(4*k)+'"/>' + MC.pts.map(p=>'<circle cx="'+r1(p.x)+'" cy="'+r1(p.y)+'" r="'+r1(4*k)+'" fill="#e67e22"/>').join('') + '</g>'; }
+  const e = cur();
+  if(e){
+    const b = bbox(e), pad = 4*k;
+    h += '<g style="pointer-events:none"><rect x="'+r1(b.x-pad)+'" y="'+r1(b.y-pad)+'" width="'+r1(b.w+2*pad)+'" height="'+r1(b.h+2*pad)+'" fill="none" stroke="#e67e22" stroke-width="'+r1(1.5*k)+'" stroke-dasharray="'+r1(5*k)+' '+r1(4*k)+'"/></g>';
+    h += handles(e).map(q=>'<circle data-h="'+q.k+'" cx="'+r1(q.x)+'" cy="'+r1(q.y)+'" r="'+r1(11*k)+'" fill="#fff" stroke="#e67e22" stroke-width="'+r1(2*k)+'" style="pointer-events:all"/>').join('');
+  }
+  s.innerHTML = h;
+}
+const HINT = {
+  select:'Gusa kipengele kukichagua, buruta kukisogeza. Duara jeupe = kubadilisha ukubwa/umbo.',
+  rect:'Buruta kuchora mstatili.', sq:'Buruta kuchora mraba.', circ:'Buruta kuchora mduara.', ell:'Buruta kuchora duaradufu.', tri:'Buruta kuchora pembetatu.', poly:'Buruta kuchora poligoni ya pande ulizoweka (kwenye "Pande").',
+  ppoly:'Gusa kuweka pembe moja baada ya nyingine; gusa pembe ya kwanza au bonyeza "Maliza" kumaliza.',
+  line:'Buruta kuchora mstari.', arrow:'Buruta kuchora mshale.', angle:'Gusa nukta 3: mwisho wa kwanza, kipeo, kisha mwisho wa pili — digrii huhesabiwa kiotomatiki.',
+  pen:'Buruta kuchora kwa mkono.', mto:'Buruta kuchora mto.', road:'Buruta kuchora barabara.',
+  text:'Gusa mahali pa kuweka maandishi.', label:'Gusa kitu cha kuonyesha, kisha gusa mahali pa kuweka lebo.',
+  box:'Buruta kuchora kisanduku cha maandishi (mchakato).', diamond:'Buruta kuchora kisanduku cha uamuzi.', pill:'Buruta kuchora kisanduku cha mwanzo/mwisho.',
+  stamp:'Gusa mahali pa kuweka alama/kifaa kilichochaguliwa.'
+};
+function hint(t){ const h=$('mc_hint'); if(h) h.textContent = t; }
+function syncUI(){
+  document.querySelectorAll('.mc-t').forEach(b=>b.classList.toggle('on', b.dataset.tool===MC.tool));
+  const e = cur(); const st = e ? e : MC.st;
+  if($('mc_stroke')) $('mc_stroke').value = colOk(st.stroke)&&/^#[0-9a-f]{6}$/i.test(st.stroke) ? st.stroke : '#1a1a1a';
+  $('mc_fillOn').checked = !!(st.fill); if(st.fill && /^#[0-9a-f]{6}$/i.test(st.fill)) $('mc_fill').value = st.fill;
+  $('mc_sw').value = String(Math.round(st.sw||2)); $('mc_dash').checked = !!st.dash;
+  $('mc_fsize').value = (e && e.size) ? Math.round(e.size) : MC.st.size;
+  $('mc_sides').value = (e && e.t==='poly') ? e.n : MC.st.sides;
+  $('mc_page').value = MC.w+'x'+MC.h; $('mc_gridOn').checked=MC.grid; $('mc_gridNum').checked=MC.gridNum; $('mc_snap').checked=MC.snap; $('mc_step').value=String(MC.step);
+  $('mc_title').value = MC.title||'';
+  $('mc_useBtn').textContent = MC.ctx ? (MC.ctx.old ? '✔ Weka mabadiliko kwenye mtihani' : '✔ Tumia kwenye swali/mtihani') : '✔ Tumia kwenye mtihani';
+  $('mc_finish').classList.toggle('hidden', MC.tool!=='ppoly');
+  $('mc_ctx').textContent = MC.ctx ? (MC.ctx.si>=0 ? 'Mchoro huu utaambatanishwa na swali ulilochagua kwenye kihariri cha mtihani.' : 'Mchoro huu utaambatanishwa na mtihani mzima.') : '';
+}
+function setTool(t){ MC.tool=t; MC.pts=[]; MC.tmp=null; MC.draw=null; hint(HINT[t]||''); syncUI(); render(); }
+window.mcTool = setTool;
+window.mcStampSel = function(){ MC.stamp = $('mc_stamp').value; setTool('stamp'); };
+
+function create(tool,x0,y0,x1,y1){
+  const st = MC.st, b = { id:uid(), stroke:st.stroke, fill:st.fill, sw:st.sw, dash:st.dash };
+  const x=Math.min(x0,x1), y=Math.min(y0,y1), w=Math.abs(x1-x0), h=Math.abs(y1-y0), s=Math.max(w,h);
+  switch(tool){
+    case 'rect': return {...b,t:'rect',x,y,w,h};
+    case 'sq': return {...b,t:'rect',x:x1<x0?x0-s:x0,y:y1<y0?y0-s:y0,w:s,h:s};
+    case 'circ': return {...b,t:'ell',x:x1<x0?x0-s:x0,y:y1<y0?y0-s:y0,w:s,h:s};
+    case 'ell': return {...b,t:'ell',x,y,w,h};
+    case 'tri': return {...b,t:'tri',x,y,w,h};
+    case 'poly': return {...b,t:'poly',n:st.sides,x:x1<x0?x0-s:x0,y:y1<y0?y0-s:y0,w:s,h:s};
+    case 'line': return {...b,t:'line',x1:x0,y1:y0,x2:x1,y2:y1};
+    case 'arrow': return {...b,t:'line',x1:x0,y1:y0,x2:x1,y2:y1,arrow:true};
+    case 'box': return {...b,t:'node',shape:'box',x,y,w,h,text:'',size:st.size>20?16:st.size};
+    case 'diamond': return {...b,t:'node',shape:'diamond',x,y,w,h,text:'',size:st.size>20?16:st.size};
+    case 'pill': return {...b,t:'node',shape:'pill',x,y,w,h,text:'',size:st.size>20?16:st.size};
+  }
+  return null;
+}
+const DRAG_TOOLS = ['rect','sq','circ','ell','tri','poly','line','arrow','box','diamond','pill'];
+const STAMP_SIZE = { dira:130, kaskazini:90, axes:260, gridLL:280, mlima:60, mji:34, kijiji:30, shule:60, hospitali:50, pin:50, ziwa:140, beaker:90, flask:90, tube:90, bunsen:90, thermo:100 };
+function commit(e){ push(); MC.els.push(e); MC.sel=e.id; MC.tmp=null; setTool('select'); }
+
+function onDown(ev){
+  if(ev.button>0) return;
+  ev.preventDefault();
+  const s = $('mc_svg'); try{ s.setPointerCapture(ev.pointerId); }catch(e){}
+  let p = pointer(ev); const T = MC.tool;
+  if(T==='select'){
+    const hh = ev.target.closest && ev.target.closest('[data-h]');
+    if(hh && cur()){ MC.draw = { k:'h', h:hh.dataset.h, pushed:false }; return; }
+    const g = ev.target.closest && ev.target.closest('[data-id]');
+    if(g){ MC.sel = g.dataset.id; MC.draw = { k:'m', px:p.x, py:p.y, pushed:false }; syncUI(); render(); }
+    else { MC.sel=null; syncUI(); render(); }
+    return;
+  }
+  p = { x:snap(p.x), y:snap(p.y) };
+  if(DRAG_TOOLS.includes(T)){ MC.draw = { k:'c', x0:p.x, y0:p.y }; return; }
+  if(T==='pen'||T==='mto'||T==='road'){ MC.draw = { k:'f', pts:[[p.x,p.y]] }; return; }
+  if(T==='text'){
+    const t = prompt('Andika maandishi:',''); if(t){ commit({ id:uid(), t:'text', x:p.x, y:p.y, text:t, size:MC.st.size, stroke:MC.st.stroke, fill:'', sw:1, dash:false }); } return;
+  }
+  if(T==='stamp'){
+    const sz = STAMP_SIZE[MC.stamp]||100, e = { id:uid(), t:'stamp', kind:MC.stamp, x:p.x-sz/2, y:p.y-sz/2, w:sz, stroke:MC.st.stroke, fill:MC.st.fill, sw:MC.st.sw, dash:false };
+    if(MC.stamp==='gridLL') e.labels='30°E,32°E,34°E,36°E,38°E;2°S,4°S,6°S,8°S,10°S';
+    commit(e); hint('Alama imewekwa. Kwa gridi ya latitudo/longitudo, bonyeza "Hariri maandishi" kubadilisha namba. Ni kiolezo cha kufundishia, si ramani sahihi ya eneo.'); return;
+  }
+  if(T==='label'){
+    MC.pts.push(p);
+    if(MC.pts.length===2){ const t = prompt('Andika lebo:',''); const a=MC.pts[0], b=MC.pts[1]; MC.pts=[]; if(t) commit({ id:uid(), t:'label', pts:[[a.x,a.y],[b.x,b.y]], text:t, size:Math.min(MC.st.size,20), stroke:MC.st.stroke, fill:'', sw:1.5, dash:false }); else render(); }
+    else { hint('Sasa gusa mahali pa kuweka lebo.'); render(); } return;
+  }
+  if(T==='angle'){
+    MC.pts.push(p);
+    if(MC.pts.length===3){ const q=MC.pts.map(a=>[a.x,a.y]); MC.pts=[]; commit({ id:uid(), t:'angle', pts:q, text:'', size:Math.min(MC.st.size,18), stroke:MC.st.stroke, fill:'', sw:MC.st.sw, dash:false }); hint('Pembe imewekwa. "Hariri maandishi" hukuwezesha kuiita (mf. x) badala ya digrii.'); }
+    else { hint('Nukta ' + MC.pts.length + ' kati ya 3 imewekwa.'); render(); } return;
+  }
+  if(T==='ppoly'){
+    const k = kscale();
+    if(MC.pts.length>=3 && Math.hypot(p.x-MC.pts[0].x,p.y-MC.pts[0].y) < 16*k){ finishPoly(); return; }
+    MC.pts.push(p); render(); return;
+  }
+}
+function onMove(ev){
+  const d = MC.draw; if(!d) return;
+  const p = pointer(ev);
+  if(d.k==='m'){
+    const e = cur(); if(!e) return;
+    if(!d.pushed){ if(Math.hypot(p.x-d.px,p.y-d.py)<2) return; push(); d.pushed=true; }
+    mv(e,p.x-d.px,p.y-d.py); d.px=p.x; d.py=p.y; render();
+  } else if(d.k==='h'){
+    const e = cur(); if(!e) return;
+    if(!d.pushed){ push(); d.pushed=true; }
+    setHandle(e,d.h,{x:snap(p.x),y:snap(p.y)}); render();
+  } else if(d.k==='c'){
+    MC.tmp = create(MC.tool,d.x0,d.y0,snap(p.x),snap(p.y)); render();
+  } else if(d.k==='f'){
+    const l = d.pts[d.pts.length-1]; if(Math.hypot(p.x-l[0],p.y-l[1])>3){ d.pts.push([p.x,p.y]); MC.tmp = { id:'tmp', t:'path', kind:MC.tool==='road'?'road':'pen', pts:d.pts, stroke:MC.tool==='mto'?'#2e86c1':MC.tool==='road'?'#6b6b6b':MC.st.stroke, sw:MC.tool==='mto'?4:MC.tool==='road'?7:MC.st.sw, dash:false, fill:'' }; render(); }
+  }
+}
+function onUp(ev){
+  const d = MC.draw; MC.draw = null; if(!d) return;
+  if(d.k==='c'){
+    const t = MC.tmp; MC.tmp=null;
+    if(t){ const bb = bbox(t); if((t.t==='line') ? Math.hypot(t.x2-t.x1,t.y2-t.y1)>6 : (bb.w>5||bb.h>5)){
+      if(t.t==='node'){ const tx = prompt('Andika maandishi ndani ya kisanduku:',''); t.text = tx||''; }
+      commit(t); return; } }
+    render();
+  } else if(d.k==='f'){
+    const t = MC.tmp; MC.tmp=null;
+    if(t && d.pts.length>=2){ const e = { ...t, id:uid() }; if(MC.tool==='mto'){ e.stroke='#2e86c1'; e.sw=4; } commit(e); return; }
+    render();
+  }
+}
+function finishPoly(){
+  if(MC.pts.length<3){ alert('Poligoni inahitaji angalau pembe 3.'); return; }
+  const q = MC.pts.map(a=>[a.x,a.y]); MC.pts=[];
+  commit({ id:uid(), t:'ppoly', pts:q, stroke:MC.st.stroke, fill:MC.st.fill, sw:MC.st.sw, dash:MC.st.dash });
+}
+window.mcFinishPoly = finishPoly;
+
+/* ---- vitendo vya uhariri ---- */
+window.mcUndo = ()=>{ if(!MC.undo.length) return; MC.redo.push(JSON.stringify(MC.els)); MC.els = JSON.parse(MC.undo.pop()); MC.sel=null; render(); syncUI(); };
+window.mcRedo = ()=>{ if(!MC.redo.length) return; MC.undo.push(JSON.stringify(MC.els)); MC.els = JSON.parse(MC.redo.pop()); MC.sel=null; render(); syncUI(); };
+window.mcDel = ()=>{ const e=cur(); if(!e) return; push(); MC.els = MC.els.filter(x=>x!==e); MC.sel=null; render(); syncUI(); };
+window.mcDup = ()=>{ const e=cur(); if(!e) return; push(); const c=JSON.parse(JSON.stringify(e)); c.id=uid(); mv(c,20,20); MC.els.push(c); MC.sel=c.id; render(); syncUI(); };
+window.mcFront = ()=>{ const e=cur(); if(!e) return; push(); MC.els=MC.els.filter(x=>x!==e); MC.els.push(e); render(); };
+window.mcBack = ()=>{ const e=cur(); if(!e) return; push(); MC.els=MC.els.filter(x=>x!==e); MC.els.unshift(e); render(); };
+window.mcBigger = ()=>{ const e=cur(); if(!e) return; push(); sc(e,1.15); render(); };
+window.mcSmaller = ()=>{ const e=cur(); if(!e) return; push(); sc(e,1/1.15); render(); };
+window.mcEditText = ()=>{
+  const e=cur(); if(!e){ alert('Chagua kwanza kipengele chenye maandishi.'); return; }
+  if(e.t==='stamp' && e.kind==='gridLL'){
+    const parts = String(e.labels||'').split(';');
+    const lon = prompt('Namba za longitudo (tano, tenganisha kwa koma, kushoto→kulia):', parts[0]||''); if(lon===null) return;
+    const lat = prompt('Namba za latitudo (tano, tenganisha kwa koma, juu→chini):', parts[1]||''); if(lat===null) return;
+    push(); e.labels = lon+';'+lat; render(); return;
+  }
+  if(['text','label','node','angle'].includes(e.t)){ const t = prompt('Maandishi:', e.text||''); if(t===null) return; push(); e.text=t; render(); return; }
+  alert('Kipengele hiki hakina maandishi ya kuhariri.');
+};
+function applyStyle(){
+  MC.st.stroke = $('mc_stroke').value; MC.st.fill = $('mc_fillOn').checked ? $('mc_fill').value : '';
+  MC.st.sw = +$('mc_sw').value; MC.st.dash = $('mc_dash').checked; MC.st.size = Math.max(6,+$('mc_fsize').value||22); MC.st.sides = Math.max(3,Math.min(24,+$('mc_sides').value||5));
+  const e = cur();
+  if(e){ push(); e.stroke=MC.st.stroke; e.fill=MC.st.fill; e.sw=MC.st.sw; e.dash=MC.st.dash; if(e.size!=null||e.t==='text') e.size=MC.st.size; if(e.t==='poly') e.n=MC.st.sides; }
+  render();
+}
+window.mcStyle = applyStyle;
+window.mcPage = ()=>{ const [w,h]=$('mc_page').value.split('x').map(Number); MC.w=w; MC.h=h; MC.dirty=true; render(); };
+window.mcGrid = ()=>{ MC.grid=$('mc_gridOn').checked; MC.gridNum=$('mc_gridNum').checked; MC.snap=$('mc_snap').checked; MC.step=+$('mc_step').value||40; render(); };
+window.mcTitle = ()=>{ MC.title = $('mc_title').value; };
+
+function mcLoad(m, id, title){
+  const c = clean(m); if(!c){ alert('Mchoro huu haujakamilika, hauwezi kufunguliwa.'); return; }
+  MC.w=c.w; MC.h=c.h; MC.els=c.els; MC.grid=c.grid; MC.gridNum=c.gridNum; MC.step=c.step; MC.id=id||null; MC.title=title||''; MC.undo=[]; MC.redo=[]; MC.sel=null; MC.pts=[]; MC.tmp=null; MC.dirty=false; MC.ctx=null; MC.tool='select';
+}
+function mcNew(silent){
+  if(!silent && MC.els.length && MC.dirty && !confirm('Mchoro wa sasa haujahifadhiwa. Anzisha mpya na uache huu?')) return;
+  MC.els=[]; MC.id=null; MC.title=''; MC.undo=[]; MC.redo=[]; MC.sel=null; MC.pts=[]; MC.tmp=null; MC.dirty=false; MC.ctx=null; MC.tool='select'; MC.grid=false; MC.gridNum=false;
+  if($('mc_svg')){ syncUI(); render(); }
+}
+window.mcNew = mcNew;
+window.mcOpenFresh = function(){ MC.ctx=null; showView('michoro'); };
+
+async function mcSave(silent){
+  if(!MC.els.length){ if(!silent) alert('Mchoro ni mtupu — chora kitu kwanza.'); return null; }
+  MC.title = ($('mc_title').value||'').trim() || MC.title || ('Mchoro ' + fmtDate(Date.now()));
+  if(!MC.id) MC.id = uid();
+  const m = model(), rec = { id:MC.id, title:MC.title, model:m, svg:svgFrom(m), updatedAt:Date.now() };
+  try{ await dbPut('michoro', rec); }catch(e){ alert('Imeshindwa kuhifadhi mchoro: '+(e.message||e)); return null; }
+  MC.dirty=false; syncUI(); refreshLib(); if(!silent) hint('✓ Mchoro "'+MC.title+'" umehifadhiwa kwenye maktaba (offline).');
+  return rec;
+}
+window.mcSave = ()=>mcSave(false);
+async function refreshLib(){
+  const box = $('mc_lib'); if(!box) return;
+  let list=[]; try{ list=(await dbAll('michoro')).sort((a,b)=>b.updatedAt-a.updatedAt); }catch(e){}
+  $('mc_libCnt').textContent = list.length + ' zilizohifadhiwa';
+  box.innerHTML = list.length ? list.map(x=>'<div class="mh-pi"><div class="mc-th" onclick="mcOpenLib(\''+x.id+'\')">'+x.svg+'</div><div class="mh-sub">'+E(x.title)+'</div><div class="mh-btns"><button onclick="mcOpenLib(\''+x.id+'\')">Fungua</button><button class="mh-del" onclick="mcDelLib(\''+x.id+'\')">Futa</button></div></div>').join('') : '<p class="placeholder" style="margin:0;">Hakuna michoro iliyohifadhiwa bado.</p>';
+}
+window.mcOpenLib = async function(id){
+  if(MC.els.length && MC.dirty && !confirm('Mchoro wa sasa haujahifadhiwa. Fungua huu na uache wa sasa?')) return;
+  const r = await dbGet('michoro',id); if(!r) return; const ctx = MC.ctx; mcLoad(r.model, r.id, r.title); MC.ctx = ctx; syncUI(); render(); window.scrollTo({top:0,behavior:'smooth'});
+};
+window.mcDelLib = async function(id){
+  if(!confirm('Futa mchoro huu kwenye maktaba? (Nakala zilizokwisha ambatanishwa kwenye mitihani zinabaki.)')) return;
+  const d = await db(); await rq(d.transaction('michoro','readwrite').objectStore('michoro').delete(id));
+  if(MC.id===id) MC.id=null; refreshLib();
+};
+window.mcSvg = ()=>{ if(!MC.els.length){ alert('Mchoro ni mtupu.'); return; } dl(svgFrom(model()), dlSafeName(MC.title||'Mchoro','svg'), 'image/svg+xml'); };
+window.mcPng = ()=>{
+  if(!MC.els.length){ alert('Mchoro ni mtupu.'); return; }
+  const svg = svgFrom(model()), img = new Image(), url = URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+  img.onload = ()=>{ const c=document.createElement('canvas'); c.width=MC.w*2; c.height=MC.h*2; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url); c.toBlob(b=>triggerBlobDownload(b, dlSafeName(MC.title||'Mchoro','png')),'image/png'); };
+  img.onerror = ()=>{ URL.revokeObjectURL(url); alert('Imeshindwa kutengeneza PNG. Tumia "SVG" au "Chapisha".'); };
+  img.src = url;
+};
+window.mcPrint = ()=>{ if(!MC.els.length){ alert('Mchoro ni mtupu.'); return; } printHtml('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+E(MC.title||'Mchoro')+'</title><style>body{margin:0;padding:12px}svg{max-width:100%;height:auto}@page{margin:10mm}</style></head><body>'+svgFrom(model())+'</body></html>'); };
+window.mcUse = async function(){
+  if(typeof examData==='undefined' || !examData || !examData.sections){ alert('Hakuna mtihani unaoandaliwa. Fungua "Kutunga Mitihani" (tengeneza mtihani, au fungua uliohifadhiwa kwa "Hariri"), kisha ambatanisha mchoro kutoka kwenye swali.'); return; }
+  const rec = await mcSave(true); if(!rec) return;
+  const fig = { id:hash(rec.svg), svg:rec.svg, model:rec.model, title:rec.title };
+  let ctx = MC.ctx;
+  if(!ctx){
+    if(!confirm('Ambatanisha mchoro huu kwenye MTIHANI MZIMA unaoandaliwa?\n\nOK = ndiyo.\nCancel = nitauchagua kwenye swali ndani ya kihariri (kitufe cha "Ambatanisha mchoro").')) { showView('mitihani'); try{renderExamEditor();}catch(e){} return; }
+    ctx = { si:-1, qi:-1 };
+  }
+  attachFig(fig, ctx); MC.ctx=null;
+  showView('mitihani'); renderExamEditor();
+};
+
+/* ---- kuunganisha matukio ---- */
+let _bound = false;
+function bindOnce(){
+  if(_bound) return; const s = $('mc_svg'); if(!s) return; _bound = true;
+  s.addEventListener('pointerdown', onDown); s.addEventListener('pointermove', onMove); s.addEventListener('pointerup', onUp); s.addEventListener('pointercancel', onUp);
+  document.addEventListener('keydown', ev=>{
+    if(typeof currentView==='undefined' || currentView!=='michoro') return;
+    const tg = (ev.target&&ev.target.tagName)||''; if(/INPUT|TEXTAREA|SELECT/.test(tg)) return;
+    if(ev.key==='Delete'||ev.key==='Backspace'){ ev.preventDefault(); window.mcDel(); }
+    else if((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==='z'){ ev.preventDefault(); ev.shiftKey?window.mcRedo():window.mcUndo(); }
+    else if(ev.key==='Escape'){ MC.pts=[]; MC.sel=null; setTool('select'); }
+  });
+  window.addEventListener('resize', ()=>{ if(typeof currentView!=='undefined' && currentView==='michoro') render(); });
+}
+function initDraw(){ bindOnce(); syncUI(); hint(HINT[MC.tool]||''); render(); refreshLib(); }
+
+/* ============================ 9. KUUNGANISHA NA MFUMO (showView, vitufe) ============================ */
+const _sv = window.showView;
+window.showView = function(view){
+  _sv(view);
+  try{
+    if(view==='benki'){ if(MH.cur) backToList(); else refreshList(); }
+    if(view==='michoro') initDraw();
+  }catch(e){ console.warn('mh/mc init:', e); }
+};
+try{ titles.michoro = 'Zana za Kuchora (Offline)'; }catch(e){}
+window.mhRefresh = refreshList; window.mhOpen = openExam; window.mhBack = backToList; window.mhEdit = editSaved; window.mhReuse = reuseQuestions;
+window.mhDel = async function(id){ if(!confirm('Una uhakika unataka kufuta mtihani huu mzima kutoka kwenye benki? Hatua hii haiwezi kurudishwa (isipokuwa kwa nakala rudufu).')) return; try{ await deleteExam(id); setMsg('Mtihani umefutwa.'); refreshList(); }catch(e){ setMsg('Imeshindwa kufuta: '+(e.message||e)); } };
+window.mhPrint = ()=>{ if(!MH.cur) return; printHtml(standalone(MH.cur, confirm('Jumuisha mwongozo wa majibu kwenye chapisho?\nOK = ndiyo (nakala ya mwalimu)\nCancel = hapana (karatasi ya wanafunzi)'))); };
+window.mhHtml = ()=>{ if(!MH.cur) return; dl(standalone(MH.cur, confirm('Jumuisha mwongozo wa majibu kwenye faili la HTML?\nOK = ndiyo\nCancel = hapana')), curName('html'), 'text/html'); };
+window.mhJson = ()=>{ if(!MH.cur) return; dl(examJson(MH.cur), curName('json'), 'application/json'); };
+window.mhExportAll = exportAll; window.mhImport = importFile;
+window.__mh = { dbAll, dbGet, buildRecord, standalone, svgFrom, clean, saveWholeExam, loadExam, deleteExam, openExam, hash };
+})();
 
 </script>
 <script>
