@@ -7589,26 +7589,34 @@ function autoAIPrompt(txt, W, H){
   'Instruction: '+txt;
 }
 async function autoAICall(prompt){
-  let url='https://api.groq.com/openai/v1/chat/completions', auth;
-  const sel=$('groqModel'), model = sel && sel.value;
+  let url='https://api.groq.com/openai/v1/chat/completions', auth, viaProxy=false;
+  const sel=$('groqModel'); const models=[]; if(sel && sel.value) models.push(sel.value);
   const key = (($('groqApiKey')&&$('groqApiKey').value)||'').replace(/[^\x20-\x7E]/g,'').trim();
-  if(key){ auth=key; }
-  else if(typeof PH_PROXY_URL!=='undefined' && PH_PROXY_URL){ url=PH_PROXY_URL; try{ auth=await firebase.auth().currentUser.getIdToken(); }catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); } }
-  else throw new Error('Weka Groq API key juu ya ukurasa kwanza.');
-  const body = { model, temperature:0.2, max_tokens:3500, response_format:{type:'json_object'}, messages:[{role:'user',content:prompt}] };
-  let res;
-  for(let t=0;t<2;t++){
-    const ctl = new AbortController(); const tm = setTimeout(()=>ctl.abort(), 60000);
-    try{ res = await fetch(url,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+auth},body:JSON.stringify(body)}); }
-    catch(e){ clearTimeout(tm); throw new Error(e && e.name==='AbortError' ? 'AI imechelewa sana. Jaribu tena.' : 'Imeshindwa kuunganisha na seva ya AI. Angalia mtandao.'); }
-    clearTimeout(tm);
-    if(res.status===400 && t===0){ delete body.response_format; continue; }
-    break;
+  if(key){ auth=key; if(models.indexOf('llama-3.3-70b-versatile')<0) models.push('llama-3.3-70b-versatile'); }
+  else if(typeof PH_PROXY_URL!=='undefined' && PH_PROXY_URL){
+    viaProxy=true; url=PH_PROXY_URL;
+    try{ auth=await firebase.auth().currentUser.getIdToken(); }catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); }
+    if(typeof PH_MODELS!=='undefined') PH_MODELS.forEach(m=>{ if(models.indexOf(m)<0) models.push(m); }); // modeli ambazo seva yako tayari inazikubali (picha)
+  } else throw new Error('Weka Groq API key juu ya ukurasa kwanza.');
+  let res=null, detail='';
+  for(const m of models){
+    for(let t=0;t<2;t++){
+      const body = { model:m, temperature:0.2, max_tokens:3500, messages:[{role:'user',content:prompt}] };
+      if(t===0) body.response_format={type:'json_object'};
+      const ctl = new AbortController(); const tm = setTimeout(()=>ctl.abort(), 60000);
+      try{ res = await fetch(url,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+auth},body:JSON.stringify(body)}); }
+      catch(e){ clearTimeout(tm); throw new Error(e && e.name==='AbortError' ? 'AI imechelewa sana. Jaribu tena.' : 'Imeshindwa kuunganisha na seva ya AI. Angalia mtandao.'); }
+      clearTimeout(tm);
+      if(res.ok) break;
+      try{ const tx = await res.text(); detail = tx.slice(0,220); }catch(e){}
+      if(res.status!==400) break;      // 400: jaribu bila response_format, kisha modeli inayofuata
+    }
+    if(res.ok || (res.status!==400 && res.status!==404 && res.status!==410)) break;
   }
   if(!res.ok){
     if(res.status===401||res.status===403) throw new Error('AI imekataa ombi (ruhusa/ufunguo). Ingia tena au angalia Groq API key.');
     if(res.status===429) throw new Error('Umefikia kikomo cha maombi kwa sasa. Subiri kidogo kisha jaribu tena.');
-    throw new Error('Hitilafu ya seva ya AI: '+res.status);
+    throw new Error('Hitilafu ya seva ya AI: '+res.status+(detail?(' — '+detail.replace(/\s+/g,' ')):'')+(viaProxy?' (kupitia seva ya Cloudflare)':''));
   }
   const data = await res.json(); let out = (data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
   out = out.replace(/<think>[\s\S]*?<\/think>/g,'').replace(/```json|```/g,'');
