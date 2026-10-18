@@ -1,9 +1,14 @@
+
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="google" content="notranslate">
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js" crossorigin>
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js" crossorigin>
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js" crossorigin>
 <title>Msaidizi wa Mwalimu</title>
 <style>
   :root{
@@ -451,7 +456,7 @@ html.fb-locked body>.wrap{visibility:hidden}
 </style>
 <script>document.documentElement.classList.add('fb-locked');
 /* Kinga ya kuganda: kama script ya login haijaanza ndani ya sekunde 8, onyesha sababu. App INABAKI imefungwa. */
-window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');if(g&&g.classList.contains('fbwait')){g.classList.remove('fbwait');var m=document.getElementById('fbMsg');if(m){m.className='err';m.textContent='Login inachelewa kuanza. Mtandao ni polepole au Firebase haipatikani. Angalia intaneti kisha pakia ukurasa upya (refresh).';}}},25000);
+window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');if(g&&g.classList.contains('fbwait')){g.classList.remove('fbwait');var m=document.getElementById('fbMsg');if(m){m.className='err';m.textContent='Login inachelewa kuanza. Mtandao ni polepole au Firebase haipatikani. Angalia intaneti kisha pakia ukurasa upya (refresh).';}}},35000);
 </script>
 </head>
 <body translate="no">
@@ -467,13 +472,8 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
 </div></div>
 <div id="fbBar"><span id="fbWho"></span><button type="button" id="fbOut">Toka</button></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <!-- Maktaba za mfumo mpya wa upakuaji: Word (.docx) na Excel (.xlsx) -->
-<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- ExcelJS: pekee ndiyo inayoweza kuandika border/rangi/merge kwenye .xlsx (xlsx.full.min.js haiwezi kuandika mtindo/style) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <div class="wrap">
   <div class="topbar">
     <div>
@@ -8081,11 +8081,11 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
   function say(t,c){msg.textContent=t||'';msg.className=c||''}
   if(!/^https?:$/.test(location.protocol)){clearTimeout(window.__fbTimer);gate.classList.remove('fbwait');say('Umefungua faili moja kwa moja (file://). Login ya Firebase inahitaji http/https. Chaguo: (1) pakia faili kwenye Firebase Hosting / Netlify Drop / GitHub Pages, au (2) kwenye kompyuta fungua terminal kwenye folda ya faili uandike: python -m http.server 8000 kisha fungua http://localhost:8000','err');$('fbGo').disabled=true;return;}
   /* Pakia Firebase SDK bila kuzuia ukurasa (async) — kama mtandao ni polepole, ukurasa hauganda. */
-  function loadScript(src){return new Promise(function(res,rej){var t=document.createElement('script');t.src=src;t.onload=res;t.onerror=function(){rej(new Error('Imeshindwa kupakia: '+src));};document.head.appendChild(t);});}
-  function fail(t){clearTimeout(window.__fbTimer);gate.classList.remove('fbwait');say(t,'err');$('fbGo').disabled=true;}
+  function loadScript(src){return new Promise(function(res,rej){var t=document.createElement('script');t.async=false;t.src=src;t.onload=res;t.onerror=function(){rej(new Error('Imeshindwa kupakia: '+src));};document.head.appendChild(t);});}
+  function fail(t){clearTimeout(window.__fbTimer);gate.classList.remove('fbwait');say(t,'err');var b=$('fbGo');b.disabled=false;b.textContent='Jaribu tena (pakia upya)';b.onclick=function(){location.reload();};}
   var BASE='https://www.gstatic.com/firebasejs/10.12.5/';
-  var sdkTimeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},20000);});
-  Promise.race([loadScript(BASE+'firebase-app-compat.js').then(function(){return loadScript(BASE+'firebase-auth-compat.js');}),sdkTimeout])
+  var sdkTimeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},30000);});
+  Promise.race([Promise.all([loadScript(BASE+'firebase-app-compat.js'),loadScript(BASE+'firebase-auth-compat.js')]),sdkTimeout])
     .then(function(){
       if(typeof firebase==='undefined'){fail('Imeshindwa kupakia Firebase. Angalia intaneti kisha pakia ukurasa upya.');return;}
       start();
@@ -8839,6 +8839,21 @@ function phBar(){
   let n=0,t=setInterval(()=>{ if(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length&&firebase.auth){ clearInterval(t);
       firebase.auth().onAuthStateChanged(u=>{ if(u) phLoadDraft(); else { phLoading=true; ph.batches=[]; ph.done=false; document.getElementById('sm_input').value=''; phLoading=false; phBar(); } }); }
     else if(++n>200) clearInterval(t); },300);
+})();
+</script>
+<script>
+/* Maktaba nzito (PDF/Word/Excel) zinapakiwa NYUMA YA PAZIA baada ya ukurasa kufunguka — hazizuii tena login. */
+(function(){
+  var L=['https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+         'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+         'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',
+         'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+         'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'];
+  function one(src,tries){var t=document.createElement('script');t.src=src;t.async=true;
+    t.onerror=function(){t.remove();if(tries<3)setTimeout(function(){one(src,tries+1)},4000*tries);};document.head.appendChild(t);}
+  function go(){ if(window.__libsStarted)return; window.__libsStarted=true; L.forEach(function(s){one(s,1)}); }
+  window.__loadHeavyLibs=go;
+  if(document.readyState==='complete') setTimeout(go,1500); else window.addEventListener('load',function(){setTimeout(go,1500)});
 })();
 </script>
 </body>
