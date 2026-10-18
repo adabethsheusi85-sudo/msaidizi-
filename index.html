@@ -1101,6 +1101,10 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
   <!-- ============ ZANA ZA KUCHORA (SVG, offline) — KIPENGELE KIPYA ============ -->
   <div id="view-michoro" class="hidden">
     <div class="mc-bar">
+      <div class="mc-row mc-quick mc-auto"><span class="mc-gl">✨ Auto</span>
+        <textarea id="mc_autoTxt" rows="2" placeholder="Maelekezo ya mchoro, mf: Chora mraba wenye kila upande wa sentimita 5. / Chora duara lenye kipenyo cha sentimita 8. / Chora pembetatu yenye msingi sentimita 6 na kimo sentimita 4." style="flex:1;min-width:220px;font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--line,#bbb);font-family:inherit;resize:vertical"></textarea>
+        <button id="mc_autoBtn" class="mc-t on" onclick="mcAuto()">✨ Chora Kiotomatiki</button>
+      </div>
       <div class="mc-row mc-quick"><span class="mc-gl">Uwanja</span>
         <button id="mc_fullBtn" onclick="mcFull()">⤢ Panua Uwanja</button>
         <button class="mc-t" data-tool="pan" onclick="mcTool('pan')">✋ Sogeza</button>
@@ -7491,7 +7495,183 @@ function mcNew(silent){
   if($('mc_svg')){ const w=$('mc_wrap'); if(w){ w.classList.remove('pan'); w.scrollLeft=0; w.scrollTop=0; } syncUI(); render(); }
 }
 window.mcNew = mcNew;
-window.mcOpenFresh = function(){ MC.ctx=null; showView('michoro'); };
+
+/* ===== AUTO GENERATE (Chora Kiotomatiki) — maumbo ya jiometri kwa code ya ndani, bila AI ===== */
+const AUTO_KW = 'mraba|square|mstatili|rectangle|duara|circle|pembetatu|triangle';
+function autoNum(txt, keys){
+  const re = new RegExp('(?:'+keys+')([^\\d]{0,40}?)(\\d+(?:[.,]\\d+)?)\\s*(sentimita|cm|milimita|mm|mita|m)?(?![a-z])','i');
+  const m = re.exec(txt); if(!m) return null;
+  let v = parseFloat(m[2].replace(',','.')); if(!(v>0)) return null;
+  const u = (m[3] || (/milimita|\bmm\b/i.test(m[1])?'mm':(/\bmita\b|\bm\b/i.test(m[1])?'m':'cm'))).toLowerCase();
+  if(u==='mm'||u==='milimita') v/=10; else if(u==='m'||u==='mita') v*=100;
+  return v;
+}
+function autoFirstNums(txt){
+  const out=[], re=/(\d+(?:[.,]\d+)?)\s*(sentimita|cm|milimita|mm|mita|m)?(?![a-z])/gi; let m;
+  while((m=re.exec(txt))){ let v=parseFloat(m[1].replace(',','.')); if(!(v>0)) continue;
+    const u=(m[2]||'cm').toLowerCase(); if(u==='mm'||u==='milimita') v/=10; else if(u==='m'||u==='mita') v*=100; out.push(v); }
+  return out;
+}
+function autoPlan(text){
+  const shapes=[], notes=[];
+  let t = String(text||'').replace(/([.!?;])\s+/g,'$1\u0001');
+  t.split(/\u0001|\n+/).forEach(sent=>{
+    sent = sent.replace(/^\s*[-•*]\s*/,'').trim(); if(!sent) return;
+    const chunks = sent.split(new RegExp('\\s+(?:kisha|then|and|na)\\s+(?=.*?(?:'+AUTO_KW+'))','i'));
+    chunks.forEach(ch=>{
+      const s = ch.toLowerCase(); let m;
+      if((m=/mraba|square/.exec(s))){
+        let a = autoNum(s,'upande|side') ; if(a==null){ const n=autoFirstNums(s); a=n.length?n[0]:null; }
+        if(a==null) notes.push('Mraba: sikuona urefu wa upande (mf. "upande wa sentimita 5").'); else shapes.push({k:'sq', w:a, h:a});
+      } else if(/mstatili|rectangle/.test(s)){
+        let L = autoNum(s,'urefu|length|long'), W = autoNum(s,'upana|width|breadth');
+        if(L==null||W==null){ const n=autoFirstNums(s); if(n.length>=2){ L=n[0]; W=n[1]; } }
+        if(L==null||W==null) notes.push('Mstatili: sikuona urefu na upana (mf. "urefu sentimita 8 na upana sentimita 4").'); else shapes.push({k:'rect', w:L, h:W});
+      } else if(/duara|circle/.test(s)){
+        const r = autoNum(s,'nusu\\s*-?\\s*kipenyo|radius'); const d = autoNum(s.replace(/nusu\s*-?\s*kipenyo/g,'radius'),'kipenyo|diameter');
+        if(r!=null) shapes.push({k:'circ', w:2*r, h:2*r, r:r}); else if(d!=null) shapes.push({k:'circ', w:d, h:d, d:d});
+        else notes.push('Duara: sikuona kipenyo au radius (mf. "kipenyo cha sentimita 8").');
+      } else if(/pembetatu|triangle/.test(s)){
+        const b = autoNum(s,'msingi|base'), h = autoNum(s,'kimo|height|altitude');
+        if(b!=null && h!=null) shapes.push({k:'tri', w:b, h:h});
+        else if(/pande\s+(?:zote\s+)?sawa|equilateral/.test(s)){ const a=autoNum(s,'upande|side')||(autoFirstNums(s)[0]||null); if(a!=null) shapes.push({k:'tri', w:a, h:a*Math.sqrt(3)/2, eq:true}); else notes.push('Pembetatu yenye pande sawa: sikuona urefu wa upande.'); }
+        else notes.push('Pembetatu: sikuona msingi na kimo (mf. "msingi sentimita 6 na kimo sentimita 4").');
+      }
+    });
+  });
+  return { shapes, notes };
+}
+function autoBuild(shapes, s, W, H, st, uidf){
+  const gap=90, els=[], lab=v=>(+v.toFixed(2))+' cm';
+  const base=()=>({ id:uidf(), stroke:st.stroke, fill:st.fill, sw:st.sw, dash:false });
+  const dim=(x1,y1,x2,y2,text)=>({ id:uidf(), t:'dim', x1,y1,x2,y2, text, size:16, sw:1.5, stroke:st.stroke, fill:'', dash:false });
+  const tw = shapes.reduce((a,p)=>a+p.w*s,0) + (shapes.length-1)*gap;
+  let x = (W - tw)/2;
+  shapes.forEach(p=>{
+    const w=p.w*s, h=p.h*s, y=(H-h)/2-10;
+    if(p.k==='sq'||p.k==='rect'){
+      els.push({...base(), t:'rect', x, y, w, h});
+      els.push(dim(x, y+h+22, x+w, y+h+22, lab(p.w)));
+      els.push(dim(x+w+22, y+h, x+w+22, y, lab(p.h)));
+    } else if(p.k==='circ'){
+      els.push({...base(), t:'ell', x, y, w, h});
+      if(p.r!=null) els.push(dim(x+w/2, y+h/2, x+w, y+h/2, 'r = '+lab(p.r)));
+      else els.push(dim(x, y+h/2, x+w, y+h/2, 'd = '+lab(p.d)));
+    } else if(p.k==='tri'){
+      els.push({...base(), t:'tri', x, y, w, h});
+      els.push(dim(x, y+h+22, x+w, y+h+22, lab(p.w)));
+      if(!p.eq){
+        els.push({ id:uidf(), t:'line', x1:x+w/2, y1:y, x2:x+w/2, y2:y+h, stroke:st.stroke, fill:'', sw:1.5, dash:true });
+        els.push(dim(x+w+22, y+h, x+w+22, y, lab(p.h)));
+      }
+    }
+    x += w + gap;
+  });
+  return els;
+}
+/* ---- Auto Generate kwa AI: michoro ya sayansi, ramani, mazingira (inatumika tu pale maumbo ya jiometri ya ndani hayatoshi) ---- */
+const AUTO_AI_RE = /majina|jina la|label|sayansi|science|ramani|map\b|diagram|mazingira|environment|sehemu zake|parts of/i;
+const AUTO_AI_TYPES = ['rect','ell','tri','poly','line','text','label'];
+const AUTO_AI_CACHE = {};
+function autoAIPrompt(txt, W, H){
+  return 'You are a drawing assistant for a school teacher in Tanzania. Create a simple, clean, textbook-style diagram for the instruction below, as JSON ONLY (no explanation, no markdown).\n' +
+  'Canvas: '+W+' x '+H+' pixels, origin top-left. Keep every coordinate between 20 and '+(W-20)+' (x) and 20 and '+(H-20)+' (y).\n' +
+  'Output format: {"title":"short title","els":[ ... ]} with at most 45 elements. Allowed element types ONLY:\n' +
+  '- {"t":"rect","x":,"y":,"w":,"h":,"fill":"#hex or empty","stroke":"#1a1a1a","sw":2}\n' +
+  '- {"t":"ell","x":,"y":,"w":,"h":,...same style} (ellipse/circle inside that box)\n' +
+  '- {"t":"tri","x":,"y":,"w":,"h":,...} (isosceles triangle pointing up inside that box)\n' +
+  '- {"t":"poly","n":5,"x":,"y":,"w":,"h":,...} (regular polygon with n sides)\n' +
+  '- {"t":"line","x1":,"y1":,"x2":,"y2":,"sw":2,"arrow":true|false,"dash":true|false}\n' +
+  '- {"t":"text","x":,"y":,"text":"...","size":20} (text starts at x and baseline y)\n' +
+  '- {"t":"label","pts":[[px,py],[tx,ty]],"text":"Name","size":18} (a dot at [px,py] on the part, a line to [tx,ty], and the text starts at [tx,ty] and runs to the right, about 0.58*size pixels per character; place labels outside the drawing with enough room so text stays inside the canvas).\n' +
+  'Rules: draw the main parts large and clearly; use light pastel fills (e.g. #cfe8f7, #d9f0d3, #fde8c8); put a name label on every important part when names are requested; write all labels in the same language as the instruction (default Kiswahili); for maps add a north arrow (line with arrow plus text "N") and a small legend/key when relevant; no images; no overlapping text.\n' +
+  'Example: {"title":"Mfano","els":[{"t":"rect","x":300,"y":200,"w":200,"h":120,"fill":"#cfe8f7","stroke":"#1a1a1a","sw":2},{"t":"label","pts":[[400,200],[540,130]],"text":"Jina","size":18}]}\n' +
+  'Instruction: '+txt;
+}
+async function autoAICall(prompt){
+  let url='https://api.groq.com/openai/v1/chat/completions', auth;
+  const sel=$('groqModel'), model = sel && sel.value;
+  const key = (($('groqApiKey')&&$('groqApiKey').value)||'').replace(/[^\x20-\x7E]/g,'').trim();
+  if(key){ auth=key; }
+  else if(typeof PH_PROXY_URL!=='undefined' && PH_PROXY_URL){ url=PH_PROXY_URL; try{ auth=await firebase.auth().currentUser.getIdToken(); }catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); } }
+  else throw new Error('Weka Groq API key juu ya ukurasa kwanza.');
+  const body = { model, temperature:0.2, max_tokens:3500, response_format:{type:'json_object'}, messages:[{role:'user',content:prompt}] };
+  let res;
+  for(let t=0;t<2;t++){
+    const ctl = new AbortController(); const tm = setTimeout(()=>ctl.abort(), 60000);
+    try{ res = await fetch(url,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+auth},body:JSON.stringify(body)}); }
+    catch(e){ clearTimeout(tm); throw new Error(e && e.name==='AbortError' ? 'AI imechelewa sana. Jaribu tena.' : 'Imeshindwa kuunganisha na seva ya AI. Angalia mtandao.'); }
+    clearTimeout(tm);
+    if(res.status===400 && t===0){ delete body.response_format; continue; }
+    break;
+  }
+  if(!res.ok){
+    if(res.status===401||res.status===403) throw new Error('AI imekataa ombi (ruhusa/ufunguo). Ingia tena au angalia Groq API key.');
+    if(res.status===429) throw new Error('Umefikia kikomo cha maombi kwa sasa. Subiri kidogo kisha jaribu tena.');
+    throw new Error('Hitilafu ya seva ya AI: '+res.status);
+  }
+  const data = await res.json(); let out = (data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+  out = out.replace(/<think>[\s\S]*?<\/think>/g,'').replace(/```json|```/g,'');
+  const a=out.indexOf('{'), b=out.lastIndexOf('}'); if(a<0||b<=a) throw new Error('AI haikurudisha mchoro unaoeleweka. Jaribu tena kwa maelekezo mafupi zaidi.');
+  try{ return JSON.parse(out.slice(a,b+1)); }catch(e){ throw new Error('AI ilirudisha mchoro uliokatika. Jaribu tena.'); }
+}
+function autoAIClean(j, W, H){
+  if(!j || !Array.isArray(j.els)) return null;
+  const c = clean({ w:W, h:H, scale:MC.scale||40, els: j.els.filter(e=>e && AUTO_AI_TYPES.indexOf(e.t)>=0) });
+  if(!c) return null;
+  const cl=(v,mx)=>Math.max(0,Math.min(mx,v));
+  const ok = c.els.filter(e=>{
+    if(e.t==='rect'||e.t==='ell'||e.t==='tri'||e.t==='poly'){ e.x=cl(e.x,W); e.y=cl(e.y,H); e.w=Math.min(e.w,W-e.x); e.h=Math.min(e.h,H-e.y); return e.w>=2&&e.h>=2; }
+    if(e.t==='line'){ [e.x1,e.x2,e.y1,e.y2].every(Number.isFinite)&&(e.x1=cl(e.x1,W),e.x2=cl(e.x2,W),e.y1=cl(e.y1,H),e.y2=cl(e.y2,H)); return [e.x1,e.x2,e.y1,e.y2].every(Number.isFinite); }
+    if(e.t==='text'){ e.x=cl(e.x,W); e.y=cl(e.y,H); e.size=Math.min(40,Math.max(8,e.size||20)); return !!String(e.text||'').trim() && Number.isFinite(e.x) && Number.isFinite(e.y); }
+    if(e.t==='label'){ if(!e.pts||e.pts.length<2||!String(e.text||'').trim()) return false; e.pts=e.pts.slice(0,2).map(p=>[cl(p[0],W),cl(p[1],H)]); e.size=Math.min(30,Math.max(8,e.size||18)); return e.pts.every(p=>Number.isFinite(p[0])&&Number.isFinite(p[1])); }
+    return false;
+  });
+  return ok.length ? { els: ok, title: String(j.title||'').slice(0,80) } : null;
+}
+window.mcAuto = async function(){
+  const ta = $('mc_autoTxt'); const txt = ta ? ta.value.trim() : '';
+  if(!txt){ hint('⚠️ Andika kwanza maelekezo ya mchoro, mf. "Chora mraba wenye kila upande wa sentimita 5."'); return; }
+  const plan = autoPlan(txt);
+  const useAI = AUTO_AI_RE.test(txt) || (!plan.shapes.length && !plan.notes.length);
+  if(!useAI && !plan.shapes.length){ hint('⚠️ '+plan.notes.join(' ')); return; }
+  if(MC.els.length && !confirm('Ubao una mchoro. Auto Generate itaufuta ubao na kuweka mchoro mpya (unaweza kurudisha kwa ↶ Undo). Endelea?')) return;
+  const btn = $('mc_autoBtn');
+  if(useAI){
+    const ckey = txt.toLowerCase().replace(/\s+/g,' ');
+    try{
+      let j = AUTO_AI_CACHE[ckey];
+      if(!j){
+        if(btn){ btn.disabled=true; btn.textContent='⏳ Inatengeneza…'; } hint('⏳ AI inatengeneza mchoro, subiri sekunde chache…');
+        j = await autoAICall(autoAIPrompt(txt, MC.w, MC.h)); AUTO_AI_CACHE[ckey] = j;
+      }
+      const r = autoAIClean(j, MC.w, MC.h);
+      if(!r){ hint('⚠️ AI haikuweza kutengeneza mchoro unaotumika. Jaribu tena au tumia maelekezo mafupi zaidi.'); return; }
+      push(); MC.els = r.els; MC.id = null; MC.sel = null;
+      if(!MC.title && r.title){ MC.title = r.title; if($('mc_title')) $('mc_title').value = MC.title; }
+      if(!MC.cat){ const c = /ramani|map/i.test(txt)?'ramani':(/sayansi|science|seli|cell|mmea|plant/i.test(txt)?'sayansi':'nyingine'); MC.cat=c; if($('mc_cat')) $('mc_cat').value=c; }
+      setTool('select'); render(); syncUI();
+      hint('✓ Mchoro umetengenezwa kwa AI ('+r.els.length+' vipengele). Angalia usahihi wa sayansi/majina, uhariri kwa zana za mkono, kisha bonyeza "Hifadhi".');
+    }catch(e){ hint('⚠️ '+(e && e.message ? e.message : 'Imeshindikana kutengeneza mchoro.')); }
+    finally{ if(btn){ btn.disabled=false; btn.textContent='✨ Chora Kiotomatiki'; } }
+    return;
+  }
+  const wasEmpty = !MC.els.length;
+  let s = MC.scale||40;
+  if(wasEmpty){
+    const sumW = plan.shapes.reduce((a,p)=>a+p.w,0), maxH = plan.shapes.reduce((a,p)=>Math.max(a,p.h),0);
+    const smax = Math.min((MC.w-130-(plan.shapes.length-1)*90)/sumW, (MC.h-130)/maxH);
+    if(smax<s){ s = Math.max(5, Math.floor(smax)); MC.scale=s; if($('mc_scale')) $('mc_scale').value=s; }
+  }
+  push();
+  MC.els = autoBuild(plan.shapes, s, MC.w, MC.h, MC.st, uid);
+  MC.id = null; MC.sel = null;
+  if(!MC.title){ const nm={sq:'Mraba',rect:'Mstatili',circ:'Duara',tri:'Pembetatu'}; MC.title = plan.shapes.map(p=>nm[p.k]).join(' + '); if($('mc_title')) $('mc_title').value = MC.title; }
+  if(!MC.cat){ MC.cat='jiometria'; if($('mc_cat')) $('mc_cat').value='jiometria'; }
+  setTool('select'); render(); syncUI();
+  hint('✓ Mchoro umetengenezwa ('+plan.shapes.length+' '+(plan.shapes.length>1?'maumbo':'umbo')+', '+s+' px kwa cm, bila AI). Unaweza kuuhariri kwa zana za mkono, kisha bonyeza "Hifadhi".'+(plan.notes.length?(' ⚠️ '+plan.notes.join(' ')):''));
+};
+window.mcOpenFresh = function(){ MC.ctx=null; try{ if(MC.id && !MC.dirty) mcNew(true); }catch(e){} showView('michoro'); };
 
 const CAT = { jiometria:'Jiometria', hisabati:'Hisabati', sayansi:'Sayansi na viumbe', ramani:'Ramani / Jiografia', vifaa:'Vifaa na mashine', picha:'Picha zangu', nyingine:'Nyingine' };
 const isImgRec = x => !!(x && (x.hasImg || (x.model && Array.isArray(x.model.els) && x.model.els.some(e=>e && e.t==='img'))));
@@ -7503,7 +7683,7 @@ async function mcSave(silent){
   const m = model(); let old = null; try{ old = await dbGet('michoro', MC.id); }catch(e){}
   const rec = { id:MC.id, title:MC.title, model:m, svg:svgFrom(m), updatedAt:Date.now(), createdAt:(old&&old.createdAt)||Date.now(), cat:MC.cat||'', hasImg:m.els.some(e=>e.t==='img') };
   try{ await dbPut('michoro', rec); }catch(e){ alert('Imeshindwa kuhifadhi mchoro: '+(e.message||e)+quotaMsg(e)); return null; }
-  MC.dirty=false; syncUI(); refreshLib(); if(!silent) hint('✓ Mchoro "'+MC.title+'" umehifadhiwa kwenye maktaba (offline).');
+  MC.dirty=false; syncUI(); refreshLib(); if(!silent) hint(old ? ('✓ Mchoro uliopo "'+MC.title+'" umesasishwa (haukuongezwa kama mpya). Ili kuhifadhi kama mchoro MPYA bonyeza "Hifadhi kama Mpya".') : ('✓ Mchoro mpya "'+MC.title+'" umeongezwa kwenye maktaba (offline).'));
   return rec;
 }
 window.mcSave = ()=>mcSave(false);
