@@ -7220,12 +7220,12 @@ window.mhEditFig = function(si,qi,id){
 };
 window.mhPick = async function(si,qi){
   if(typeof examData==='undefined'||!examData){ return; }
-  let list = []; try{ list = (await dbAll('michoro')).sort((a,b)=>b.updatedAt-a.updatedAt); }catch(e){}
+  let list = [], dbErr = ''; try{ list = (await dbAll('michoro')).sort((a,b)=>b.updatedAt-a.updatedAt); }catch(e){ dbErr = (e&&e.message)||String(e); }
   closePick();
   const m = document.createElement('div'); m.id='mh_modal'; m.className='mh-modal';
   m.innerHTML = '<div class="mh-box"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;"><b>Chagua mchoro au picha kutoka maktaba yako</b><button onclick="mhClosePick()">✕</button></div>' +
     (list.length>3 ? '<input type="text" placeholder="🔍 Tafuta kwa jina" oninput="mhFilterPick(this.value)" style="width:100%;margin-bottom:8px;padding:6px 8px;">' : '') +
-    '<div class="mh-grid" id="mh_pickGrid">' + (list.length ? list.map(x=>'<div class="mh-pi" data-t="'+E(String(x.title||'').toLowerCase())+'" onclick="mhDoPick(\''+E(x.id)+'\','+si+','+qi+')"><div class="mc-th">'+x.svg+'</div><div class="mh-sub">'+(isImgRec(x)?'🖼️ ':'')+E(x.title)+'</div></div>').join('') : '<p class="placeholder">Maktaba ya michoro ni tupu.</p>') + '</div>' +
+    '<div class="mh-grid" id="mh_pickGrid">' + (list.length ? list.map(x=>'<div class="mh-pi" data-t="'+E(String(x.title||'').toLowerCase())+'" onclick="mhDoPick(\''+E(x.id)+'\','+si+','+qi+')"><div class="mc-th">'+x.svg+'</div><div class="mh-sub">'+(isImgRec(x)?'🖼️ ':'')+E(x.title)+'</div></div>').join('') : (dbErr ? '<p class="placeholder">Hifadhi ya michoro haipatikani: '+E(dbErr)+'</p>' : '<p class="placeholder">Maktaba ya michoro ni tupu.</p>')) + '</div>' +
     '<div style="margin-top:10px;"><button onclick="mhNewDraw('+si+','+qi+')">✏️ Chora mchoro mpya</button></div></div>';
   document.body.appendChild(m);
 };
@@ -7233,9 +7233,10 @@ window.mhFilterPick = function(v){ const q=String(v||'').trim().toLowerCase(); d
 function closePick(){ const m=$('mh_modal'); if(m) m.remove(); }
 window.mhClosePick = closePick;
 window.mhDoPick = async function(id,si,qi){
-  const rec = await dbGet('michoro',id); if(!rec) return;
-  attachFig({ id:hash(rec.svg), svg:rec.svg, model:rec.model, title:rec.title }, { si, qi });
-  closePick(); renderExamEditor();
+  try{ const rec = await dbGet('michoro',id); if(!rec) return;
+    attachFig({ id:hash(rec.svg), svg:rec.svg, model:rec.model, title:rec.title }, { si, qi });
+    closePick(); renderExamEditor(); }
+  catch(e){ alert('Imeshindwa kuambatisha mchoro: '+((e&&e.message)||e)); }
 };
 window.mhNewDraw = function(si,qi){ closePick(); mcNew(true); MC.ctx = { si, qi }; showView('michoro'); };
 
@@ -7881,7 +7882,8 @@ window.mcLibAct = function(act, el){
 };
 window.mcOpenLib = async function(id){
   if(MC.els.length && MC.dirty && !confirm('Mchoro wa sasa haujahifadhiwa. Fungua huu na uache wa sasa?')) return;
-  const r = await dbGet('michoro',id); if(!r) return; const ctx = MC.ctx; mcLoad(r.model, r.id, r.title, r.cat); MC.ctx = ctx; syncUI(); render(); window.scrollTo({top:0,behavior:'smooth'});
+  try{ const r = await dbGet('michoro',id); if(!r) return; const ctx = MC.ctx; mcLoad(r.model, r.id, r.title, r.cat); MC.ctx = ctx; syncUI(); render(); window.scrollTo({top:0,behavior:'smooth'}); }
+  catch(e){ alert('Imeshindwa kufungua mchoro: '+((e&&e.message)||e)); }
 };
 window.mcRenameLib = async function(id){
   const r = await dbGet('michoro',id); if(!r) return;
@@ -8018,24 +8020,29 @@ function blobUrl(k){
 }
 function toRuntime(els){ els.forEach(e=>{ if(e.t==='img' && e.href){ e.k=hash(e.href); IMG[e.k]=e.href; delete e.href; } }); return els; }
 async function readImage(f){
-  if(!/^image\/(jpeg|png|webp|gif|bmp)$/i.test(f.type||'') && !/\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name||'')) throw new Error('Aina ya picha haikubaliki. Tumia JPG, PNG, WEBP au GIF.');
+  // v34: Android mara nyingi hutoa faili bila kiendelezi na/au aina tupu ("application/octet-stream"). Usikatae kwa jina/aina — jaribu kusoma kwanza.
+  const nm=String(f.name||''), ty=String(f.type||'');
+  const info=' [aina: '+(ty||'haijulikani')+', '+(f.size/1048576).toFixed(1)+' MB]';
+  if(ty && !/^image\//i.test(ty) && ty!=='application/octet-stream' && !/\.(jpe?g|png|webp|gif|bmp|heic|heif|avif)$/i.test(nm)) throw new Error('Hii si picha'+info+'. Tumia JPG, PNG, WEBP au GIF.');
   if(f.size>25*1024*1024) throw new Error('Picha ni kubwa mno (zaidi ya MB 25). Chagua ndogo zaidi.');
   const url = URL.createObjectURL(f);
   try{
-    const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('Picha haiwezi kusomwa (huenda aina yake, mf. HEIC, haikubaliki kwenye kivinjari hiki). Jaribu picha ya JPG au PNG.')); i.src=url; });
-    const W=img.naturalWidth, H=img.naturalHeight; if(!W||!H) throw new Error('Picha haina ukubwa unaosomeka.');
+    let src=null, W=0, H=0;
+    try{ const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('img')); i.src=url; }); src=img; W=img.naturalWidth; H=img.naturalHeight; }
+    catch(e1){ try{ const bm=await createImageBitmap(f); src=bm; W=bm.width; H=bm.height; }catch(e2){ src=null; } }   // njia mbadala
+    if(!src||!W||!H) throw new Error('Picha haiwezi kusomwa (huenda aina yake, mf. HEIC/HEIF, haikubaliki kwenye kivinjari hiki). Jaribu picha ya JPG au PNG; kwenye Kamera weka mpangilio wa JPEG/"Most compatible".'+info);
     const k=Math.min(1,1400/Math.max(W,H)), w=Math.max(1,Math.round(W*k)), h=Math.max(1,Math.round(H*k));
-    const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.drawImage(img,0,0,w,h);
+    const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.drawImage(src,0,0,w,h);
     let data = null;
     if(/png|gif/i.test(f.type||'') && w*h<=1200000){ const p=c.toDataURL('image/png'); if(p.length<=1300000) data=p; }
     if(!data){ data=c.toDataURL('image/jpeg',0.82); if(data.length>3000000) data=c.toDataURL('image/jpeg',0.65); }
-    if(!/^data:image\/(png|jpeg);base64,/.test(data)) throw new Error('Kivinjari hakikuweza kuandaa picha.');
+    if(!/^data:image\/(png|jpeg);base64,/.test(data)) throw new Error('Kivinjari hakikuweza kuandaa picha.'+info);
     return { data, w, h, name:(f.name||'Picha').replace(/\.[^.]+$/,'') };
   } finally { URL.revokeObjectURL(url); }
 }
 window.mcPickImg = () => { const f=$('mc_file'); f.value=''; f.click(); };
 window.mcImgFile = async function(ev){
-  const f = ev.target.files && ev.target.files[0]; ev.target.value=''; if(!f) return;
+  const f = ev.target.files && ev.target.files[0]; if(!f) return;   // v34: input haifutwi kabla ya kusoma (Android inaweza kufuta faili la muda); mcPickImg husafisha kabla ya uteuzi unaofuata
   if(MC.els.filter(e=>e.t==='img').length>=12){ alert('Mchoro mmoja unaweza kuwa na picha hadi 12. Hifadhi huu kisha anza mchoro mpya.'); return; }
   hint('Inasoma picha…');
   try{
@@ -8799,14 +8806,14 @@ async function phLoad(file){
       } finally { URL.revokeObjectURL(url); }
     }
   ];
-  let bmp=null;
+  let bmp=null; const errs=[];
   for(const way of ways){
-    try{ const b=await way(); if(b&&b.width>0&&b.height>0&&!phBlank(b)){ bmp=b; break; } if(b&&b.close) try{ b.close(); }catch(e){} }
-    catch(e){ console.warn('phLoad: njia imeshindwa',e); }
+    try{ const b=await way(); if(b&&b.width>0&&b.height>0&&!phBlank(b)){ bmp=b; break; } errs.push(b&&b.width>0?'nyeusi':'tupu'); if(b&&b.close) try{ b.close(); }catch(e){} }
+    catch(e){ errs.push((e&&e.message)||String(e)); console.warn('phLoad: njia imeshindwa',e); }
   }
   if(!bmp){
     ph.bmp=null; if(rb) rb.disabled=true;
-    if(msg) msg.textContent='Picha imeshindwa kufunguliwa au inaonekana nyeusi. Jaribu "Chagua picha" (au "Piga picha") tena, au tumia picha ya JPG/PNG.';
+    if(msg) msg.textContent='Picha imeshindwa kufunguliwa au inaonekana nyeusi. Jaribu "Chagua picha" (au "Piga picha") tena, au tumia picha ya JPG/PNG (HEIC/HEIF haikubaliki kwenye baadhi ya vivinjari). [aina: '+(file.type||'haijulikani')+', '+(file.size/1048576).toFixed(1)+' MB; '+errs.join(' | ').slice(0,160)+']';
     return;
   }
   ph.bmp=bmp; ph.rot=0; phDraw(); if(msg) msg.textContent=''; if(rb) rb.disabled=false;
@@ -9080,5 +9087,4 @@ function phBar(){
 </script>
 </body>
 </html>
-
 
