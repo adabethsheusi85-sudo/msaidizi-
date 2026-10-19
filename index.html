@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="google" content="notranslate">
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js" crossorigin>
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js" crossorigin>
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js" crossorigin>
 <title>Msaidizi wa Mwalimu</title>
 <style>
   :root{
@@ -451,7 +455,7 @@ html.fb-locked body>.wrap{visibility:hidden}
 </style>
 <script>document.documentElement.classList.add('fb-locked');
 /* Kinga ya kuganda: kama script ya login haijaanza ndani ya sekunde 8, onyesha sababu. App INABAKI imefungwa. */
-window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');if(g&&g.classList.contains('fbwait')){g.classList.remove('fbwait');var m=document.getElementById('fbMsg');if(m){m.className='err';m.textContent='Login inachelewa kuanza. Mtandao ni polepole au Firebase haipatikani. Angalia intaneti kisha pakia ukurasa upya (refresh).';}}},25000);
+window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');if(g&&g.classList.contains('fbwait')){g.classList.remove('fbwait');var m=document.getElementById('fbMsg');if(m){m.className='err';m.textContent='Login inachelewa kuanza. Mtandao ni polepole au Firebase haipatikani. Angalia intaneti kisha pakia ukurasa upya (refresh).';}}},35000);
 </script>
 </head>
 <body translate="no">
@@ -467,13 +471,8 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
 </div></div>
 <div id="fbBar"><span id="fbWho"></span><button type="button" id="fbOut">Toka</button></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <!-- Maktaba za mfumo mpya wa upakuaji: Word (.docx) na Excel (.xlsx) -->
-<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- ExcelJS: pekee ndiyo inayoweza kuandika border/rangi/merge kwenye .xlsx (xlsx.full.min.js haiwezi kuandika mtindo/style) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <div class="wrap">
   <div class="topbar">
     <div>
@@ -970,7 +969,7 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
           <label>Ingiza alama kwa mpangilio wowote — mstari mmoja kwa kila alama: <b>Jina _Somo Alama</b><br>AU kwa makundi: andika <b>Somo;</b> kisha chini yake <b>Jina Alama</b> kila mstari</label>
           <textarea id="sm_input" class="sm-textarea" rows="18" spellcheck="false" placeholder="Kiswahili;&#10;ADABETH SHEUSI 50&#10;MUSA BILAURI 70&#10;Joyce minaz 70&#10;M/jamii;&#10;Ayubu kamwela 80&#10;ADABETH SHEUSI 70&#10;&#10;(au mpangilio wa zamani: Maiko Chaote _Hisabati 80)"></textarea>
         </div>
-        <div class="hint" style="margin-top:8px;">Jina la mwanafunzi halihitaji kuwepo kwenye database. Mfumo hutengeneza mwanafunzi mara jina linapoonekana kwa mara ya kwanza, na jina lile lile likirudi huongeza alama kwenye masomo yake. <b style="color:var(--amber);">[Toleo v25 — kisanduku kikubwa chenye urefu thabiti; maandishi yanapanda juu ndani yake + mpangilio wa makundi]</b> Namba ya mwanzo (1. 2. 3.) ni hiari. Katika mpangilio wa makundi, jina la somo huishia na <b>;</b> (au <b>:</b>) na linatumika kwa mistari yote inayofuata hadi somo jingine; mstari wenye <b>_Somo</b> ndani yake hubaki kama ulivyo.</div>
+        <div class="hint" style="margin-top:8px;">Jina la mwanafunzi halihitaji kuwepo kwenye database. Mfumo hutengeneza mwanafunzi mara jina linapoonekana kwa mara ya kwanza, na jina lile lile likirudi kwenye somo <b>lingine</b> huongeza alama kwenye masomo yake. Jina likirudi kwenye <b>somo lilelile</b> (au S/N tofauti), mfumo unaliweka kama mwanafunzi mwingine mwenye jina sawa na kukuuliza uthibitishe — haufuti wala kuunganisha kimyakimya. Unaweza kuandika S/N ya karatasi kwa <b>#5 Jina _Somo Alama</b>. <b style="color:var(--amber);">[Toleo v25 — kisanduku kikubwa chenye urefu thabiti; maandishi yanapanda juu ndani yake + mpangilio wa makundi]</b> Namba ya mwanzo (1. 2. 3.) ni hiari. Katika mpangilio wa makundi, jina la somo huishia na <b>;</b> (au <b>:</b>) na linatumika kwa mistari yote inayofuata hadi somo jingine; mstari wenye <b>_Somo</b> ndani yake hubaki kama ulivyo.</div>
         <div id="sm_stale" class="sm-box warn hidden" style="margin-top:12px;margin-bottom:0;">Maandishi yamebadilika tangu uchambuzi wa mwisho. Bonyeza "Chambua" tena kabla ya kuhifadhi.</div>
         <div class="sm-btnrow">
           <button class="sm-primary" onclick="smAnalyze()">Chambua</button>
@@ -4866,6 +4865,16 @@ function smSplitEntries(raw){
 }
 
 function smExtract(raw, known){
+  // v33: "#5 Jina _Somo Alama" => 5 ni S/N halisi ya karatasi (inasaidia kutofautisha wanafunzi wenye jina sawa).
+  // Namba ya kawaida mwanzoni ("1." "2)") bado hupuuzwa kwa sababu inaweza kuwa namba ya mstari tu.
+  let s0 = String(raw||'').replace(/\u00A0/g,' ').trim(), regNo = null;
+  const mr = s0.match(/^#\s*(\d{1,4})\s*[.):\-]?\s+/);
+  if(mr){ regNo = parseInt(mr[1],10)||null; s0 = s0.slice(mr[0].length).trim(); }
+  const p = smExtract0(s0, known);
+  if(p) p.regNo = regNo;
+  return p;
+}
+function smExtract0(raw, known){
   let s = raw.replace(/\u00A0/g,' ').trim();
   if(!s) return null;
   s = smStripSerial(s);
@@ -4949,7 +4958,7 @@ function smDerive(columns, base, max){
     const total = smRound(vals.reduce((x,y)=>x+y,0),2);
     const count = vals.length;
     const avgExact = count? total/count : 0;
-    return {key:b.key, sn:i+1, name:b.name, marks:b.marks, total, count, avgExact,
+    return {key:b.key, sn:i+1, name:b.name, regNos:b.regNos||[], marks:b.marks, total, count, avgExact,
             avg:smRound(avgExact,1), grade:count? smGrade(avgExact/max*100) : '', rank:null};
   });
   // Panga kwa JUMLA (total) kubwa kwenda ndogo. Wastani (avgExact) hutumika tu kama kigezo cha
@@ -4966,14 +4975,21 @@ function smDerive(columns, base, max){
                             : {n:0,avg:0,high:0,low:0};
   });
   return {
-    rows: rows.map(r=>({key:r.key, sn:r.sn, name:r.name, marks:r.marks, total:r.total, count:r.count, avg:r.avg, grade:r.grade, rank:r.rank})),
+    rows: rows.map(r=>({key:r.key, sn:r.sn, name:r.name, regNos:r.regNos, marks:r.marks, total:r.total, count:r.count, avg:r.avg, grade:r.grade, rank:r.rank})),
     stats
   };
 }
 
-/* ---------- kuunda data set ya assessment ---------- */
+/* ---------- kuunda data set ya assessment ----------
+   v33: MWANAFUNZI SI JINA PEKEE. Kila mstari unapewa mwanafunzi hivi:
+   (1) S/N ya karatasi ("#5 Jina _Somo Alama") ikilingana na mwanafunzi aliyekwisha tambuliwa kwa jina hilo;
+   (2) vinginevyo, mwanafunzi wa kwanza mwenye jina hilo ambaye bado hajapewa alama ya SOMO HILO (kwa mpangilio);
+   (3) hakuna nafasi => mwanafunzi MPYA mwenye jina lilelile (hajafutwa, hajaunganishwa).
+   Kitambulisho (key) = jina lililosanifishwa kwa mwanafunzi wa kwanza, "jina#2", "jina#3"... kwa wengine —
+   hubaki thabiti kwa maandishi yale yale. Jina lenye wanafunzi zaidi ya mmoja linahitaji uthibitisho wa mwalimu. */
 function smCompile(){
   const st = smState;
+  st.identMerge = st.identMerge||{}; st.sameOk = st.sameOk||{};
   const grade = document.getElementById('sm_grade').value;
   const max = smGetMax();
   const classSubs = smClassSubjects(grade);
@@ -4989,26 +5005,87 @@ function smCompile(){
     if(p && p.delimited && p.subject) known.add(smNorm(p.subject));
   });
 
+  const cleanName = n=>String(n||'').replace(/^[\s,:\-\u2013\u2014]+|[\s,:\-\u2013\u2014]+$/g,'');
+
+  /* ---- Hatua 1: soma kila mstari ---- */
+  const pre = [];
+  st.lines.forEach(L=>{
+    if(L.ignored) return;
+    const p0 = smExtract(L.raw,known);
+    const p = L.ov ? L.ov : p0;
+    if(!p) return;
+    const e = {L, name:cleanName(p.name), subj:String(p.subject||'').trim(),
+               sc:String(p.scoreStr==null?'':p.scoreStr).trim().replace(',','.'),
+               regNo:(p0 && p0.regNo!=null) ? p0.regNo : null, ident:null, key:null};
+    e.hasName = !!smNorm(e.name);
+    e.nk = e.hasName ? smResolve(st.studAlias, smNorm(e.name)) : null;
+    e.skey = smNorm(e.subj) ? smResolve(st.subjAlias, smSubjectKey(e.subj)) : '';
+    // mstari wenye kosa (somo/alama) haupewi mwanafunzi MPYA — unaonyeshwa kwa jina lake kwa mwanafunzi aliyepo
+    const sv = /^-?\d+(\.\d+)?$/.test(e.sc) ? parseFloat(e.sc) : NaN;
+    e.valid = e.hasName && !!smNorm(e.subj) && !isNaN(sv) && sv>=0 && sv<=max;
+    pre.push(e);
+  });
+
+  /* ---- Hatua 2: tambua mwanafunzi wa kila mstari (jina + S/N + somo + mpangilio) ---- */
+  const idents = new Map();       // jina lililosanifishwa -> [{key, regNos}]
+  const groups = new Map();       // jina + somo -> mistari yake kwa mpangilio
+  pre.forEach(e=>{
+    if(!e.valid) return;
+    const gk = e.nk+'\u0001'+e.skey;
+    if(!groups.has(gk)) groups.set(gk,[]);
+    groups.get(gk).push(e);
+  });
+  groups.forEach(g=>{
+    const nk = g[0].nk;
+    let list = idents.get(nk); if(!list){ list=[]; idents.set(nk,list); }
+    const used = new Set(), todo = [];
+    g.forEach(e=>{                                   // kwanza: S/N inayojulikana tayari
+      const hit = e.regNo!=null ? list.find(x=>x.regNos.indexOf(e.regNo)>=0) : null;
+      if(hit){ e.ident = hit; used.add(hit); } else todo.push(e);
+    });
+    const localSn = {};
+    todo.forEach(e=>{                                // kisha: nafasi ya kwanza isiyotumika kwa somo hili
+      let id = e.regNo!=null ? localSn[e.regNo] : null;
+      if(!id){
+        // S/N iliyo wazi na tofauti na ya mwanafunzi aliyekwisha tambuliwa => ni mwanafunzi mwingine (usiunganishe kwa jina pekee)
+        id = list.find(x=>!used.has(x) && (e.regNo==null || x.regNos.length===0));
+        if(!id){ id = {key: list.length ? nk+'#'+(list.length+1) : nk, regNos:[]}; list.push(id); }
+        used.add(id);
+      }
+      if(e.regNo!=null) localSn[e.regNo] = id;
+      e.ident = id;
+    });
+    g.forEach(e=>{ if(e.regNo!=null && e.ident.regNos.indexOf(e.regNo)<0) e.ident.regNos.push(e.regNo); });
+  });
+  pre.forEach(e=>{                                   // mistari yenye kosa: mwanafunzi aliyepo (kwa S/N ikiwezekana), la sivyo wa kwanza
+    if(e.valid || !e.hasName) return;
+    let list = idents.get(e.nk); if(!list){ list=[]; idents.set(e.nk,list); }
+    if(!list.length) list.push({key:e.nk, regNos:[]});
+    e.ident = (e.regNo!=null && list.find(x=>x.regNos.indexOf(e.regNo)>=0)) || list[0];
+  });
+  const regsByKey = {};
+  pre.forEach(e=>{
+    if(!e.ident) return;
+    e.key = smResolve(st.identMerge, e.ident.key);
+    const s = regsByKey[e.key] || (regsByKey[e.key]=[]);
+    e.ident.regNos.forEach(n=>{ if(s.indexOf(n)<0) s.push(n); });
+  });
+
+  /* ---- Hatua 3: weka alama ---- */
   const students = new Map();
   const subjects = new Map();
   const errors=[], dups=[];
-  let okCount=0;
+  const acct = {total:pre.length, ok:0, err:0, dupPending:0, dupResolved:0, deleted:0};
+  const mkStu = e=>({key:e.key, nk:e.nk, name:st.studNames[e.nk]||smTitle(e.name), regNos:regsByKey[e.key]||[], marks:{}, lines:{}});
 
-  st.lines.forEach(L=>{
-    if(L.ignored) return;
-    const p = L.ov ? L.ov : smExtract(L.raw,known);
-    if(!p) return;
-    const name = String(p.name||'').replace(/^[\s,:\-\u2013\u2014]+|[\s,:\-\u2013\u2014]+$/g,'');
-    const subj = String(p.subject||'').trim();
-    const sc = String(p.scoreStr==null?'':p.scoreStr).trim().replace(',','.');
-
-    const hasName = !!smNorm(name);
-    const nkey = hasName ? smResolve(st.studAlias, smNorm(name)) : null;
-    if(nkey && st.deleted[nkey]) return;          // mwalimu amefuta mwanafunzi huyu kwenye jedwali
+  pre.forEach(e=>{
+    const L = e.L, name = e.name, subj = e.subj, sc = e.sc;
+    const nkey = e.hasName ? e.key : null;
+    if(nkey && st.deleted[nkey]){ acct.deleted++; return; }   // mwalimu amefuta mwanafunzi huyu kwenye jedwali
 
     const reasons=[];
     let score=NaN;
-    if(!hasName) reasons.push('Jina limekosekana');
+    if(!e.hasName) reasons.push('Jina limekosekana');
     if(!smNorm(subj)) reasons.push('Somo limekosekana');
     if(sc==='') reasons.push('Alama haipo');
     else if(!/^-?\d+(\.\d+)?$/.test(sc)) reasons.push('Alama si namba ("'+sc+'")');
@@ -5017,31 +5094,27 @@ function smCompile(){
       if(score<0 || score>max) reasons.push('Alama '+score+' iko nje ya range inayoruhusiwa (0–'+max+')');
     }
     if(reasons.length){
+      acct.err++;
       errors.push({no:L.no, label:L.label, raw:L.raw, name, subject:subj, scoreStr:sc, reasons});
       // Jina halipotei: mwanafunzi huonekana kwenye jedwali hata kama mstari wake una kosa
-      if(hasName && !students.has(nkey)){
-        students.set(nkey,{key:nkey, name:st.studNames[nkey]||smTitle(name), marks:{}, lines:{}});
-      }
+      if(e.hasName && !students.has(nkey)) students.set(nkey, mkStu(e));
       return;
     }
 
-    const skey = smResolve(st.subjAlias, smSubjectKey(subj));
+    const skey = e.skey;
     let stu = students.get(nkey);
-    if(!stu){
-      stu = {key:nkey, name:st.studNames[nkey]||smTitle(name), marks:{}, lines:{}};
-      students.set(nkey,stu);
-    }
+    if(!stu){ stu = mkStu(e); students.set(nkey,stu); }
     if(!subjects.has(skey)){
       subjects.set(skey,{key:skey, display:canon[skey]||st.subjNames[skey]||smTitle(subj), order:subjects.size});
     }
     if(stu.marks[skey]===undefined){
-      stu.marks[skey]=score; stu.lines[skey]=L.label; okCount++;
+      stu.marks[skey]=score; stu.lines[skey]=L.label; acct.ok++;
     } else {
       const choice = st.dupChoice[L.no];
-      if(choice==='new'){ stu.marks[skey]=score; stu.lines[skey]=L.label; }
-      else if(choice==='keep'){ /* mwalimu ameamua kubaki na ya kwanza */ }
-      else dups.push({no:L.no, label:L.label, student:stu.name, subject:subjects.get(skey).display,
-                      oldScore:stu.marks[skey], oldLine:stu.lines[skey], newScore:score});
+      if(choice==='new'){ stu.marks[skey]=score; stu.lines[skey]=L.label; acct.dupResolved++; }
+      else if(choice==='keep'){ acct.dupResolved++; /* mwalimu ameamua kubaki na ya kwanza */ }
+      else { acct.dupPending++; dups.push({no:L.no, label:L.label, student:stu.name, subject:subjects.get(skey).display,
+                      oldScore:stu.marks[skey], oldLine:stu.lines[skey], newScore:score}); }
     }
   });
 
@@ -5054,6 +5127,16 @@ function smCompile(){
     });
   });
 
+  // Majina yenye wanafunzi zaidi ya mmoja (hayajaunganishwa) — yanahitaji uthibitisho wa mwalimu
+  const same = [];
+  idents.forEach((list,nk)=>{
+    const keys = Array.from(new Set(list.map(x=>smResolve(st.identMerge,x.key)))).filter(k=>students.has(k));
+    if(keys.length>1){
+      const sig = keys.join('|');
+      same.push({nk, name:students.get(keys[0]).name, keys, sig, ok: st.sameOk[nk]===sig});
+    }
+  });
+
   const classOrder = classSubs.map(smSubjectKey);
   const cols = Array.from(subjects.values()).sort((a,b)=>{
     const ia=classOrder.indexOf(a.key), ib=classOrder.indexOf(b.key);
@@ -5063,12 +5146,16 @@ function smCompile(){
     return a.order-b.order;
   });
   const columns = cols.map(c=>({key:c.key,name:c.display}));
-  const d = smDerive(columns, Array.from(students.values()).map(s=>({key:s.key,name:s.name,marks:s.marks})), max);
+  const d = smDerive(columns, Array.from(students.values()).map(s=>({key:s.key,name:s.name,regNos:s.regNos,marks:s.marks})), max);
+
+  // "Majina yanayofanana" (tahajia karibu) hulinganisha majina tofauti tu — wanafunzi wenye jina sawa wako kwenye `same`
+  const byNk = new Map();
+  students.forEach(s=>{ if(!byNk.has(s.nk)) byNk.set(s.nk,{key:s.nk,name:s.name}); });
 
   const model = {max, columns, rows:d.rows, stats:d.stats};
   return {
-    model, errors, dups, okCount,
-    simStud: smSimilar(Array.from(students.values()).map(s=>({key:s.key,name:s.name})),'stud',st.dismissed),
+    model, errors, dups, okCount:acct.ok, acct, same,
+    simStud: smSimilar(Array.from(byNk.values()),'stud',st.dismissed),
     simSubj: smSimilar(cols.map(c=>({key:c.key,name:c.display})),'subj',st.dismissed)
   };
 }
@@ -5077,6 +5164,15 @@ function smCompile(){
 // Rekodi za zamani (kabla ya S/No) hazina "sn": wape namba kwa mpangilio zilizohifadhiwa
 function smNormModel(m){
   if(m.rows.some(r=>r.sn===undefined)) m.rows.forEach((r,i)=>{ r.sn=i+1; });
+  // v33: kila mwanafunzi lazima awe na kitambulisho (key) cha kipekee ndani ya jedwali; rekodi za zamani zenye key
+  // iliyorudiwa au iliyokosekana hupewa key mpya mara moja (haibadiliki tena baada ya kuhifadhiwa).
+  const seenK = new Set();
+  m.rows.forEach(r=>{
+    let k = r.key || smNorm(r.name) || 'mwanafunzi';
+    if(seenK.has(k)){ let n=2; while(seenK.has(k+'#'+n)) n++; k = k+'#'+n; }
+    r.key = k; seenK.add(k);
+    if(!Array.isArray(r.regNos)) r.regNos = [];
+  });
   m.rows.forEach(r=>{ if(r.rank===undefined) r.rank=null; });
   return m;
 }
@@ -5113,6 +5209,7 @@ function smTableHtml(model, opts){
   const cols = model.columns;
   const c = 'text-align:center;';
   const rows = smSortedRows(model, opts.sort||smSort);
+  const nameCount = {}; model.rows.forEach(r=>{ const k=smNorm(r.name); nameCount[k]=(nameCount[k]||0)+1; });
   let h = '';
   if(!opts.print){
     h += '<div class="hint" style="margin:0 0 8px;">Alama zinahesabiwa kati ya '+model.max+'. "—" = hana alama ya somo hilo (wastani huhesabiwa kwa masomo yenye alama). S/No ni mpangilio wa kuingiza; Nafasi hupangwa kwa JUMLA ya alama (jumla kubwa = nafasi ya juu; jumla sawa = nafasi moja) — wastani ni taarifa ya ziada tu.</div>';
@@ -5140,6 +5237,7 @@ function smTableHtml(model, opts){
     }
     const missing = cols.length - r.count;
     h += '<tr><td style="'+c+'">'+dispNo+'</td><td class="name">'+escapeHtml(r.name)+
+         (nameCount[smNorm(r.name)]>1 ? ' <span class="sm-miss sm-miss-note" style="font-size:11px;">('+(r.regNos&&r.regNos.length?'S/N '+r.regNos.join('/'):'jina sawa')+')</span>' : '')+
          (r.count===0 ? ' <span class="sm-miss sm-miss-note" style="font-size:11px;">(hana alama sahihi)</span>'
                       : (missing>0?' <span class="sm-miss sm-miss-note" style="font-size:11px;">(hana somo '+missing+')</span>':''))+'</td>';
     cols.forEach(col=>{
@@ -5172,7 +5270,9 @@ function smTableHtml(model, opts){
 function smRender(){
   const st = smState, r = st.result, box = document.getElementById('sm_preview');
   let h = '';
-  const nWarn = r.dups.length + r.simStud.length + r.simSubj.length;
+  const nSameOpen = r.same.filter(g=>!g.ok).length;
+  const blocked = smBlocked(r);
+  const nWarn = r.dups.length + r.simStud.length + r.simSubj.length + nSameOpen;
   h += '<div class="panel" style="margin-bottom:16px;"><h3 style="font-family:\'Helvetica Neue\',Arial,sans-serif;font-size:15px;margin:0;">Preview — bado haijahifadhiwa</h3>'+
        '<div class="stat-grid">'+
        '<div class="stat-box"><div class="num">'+r.model.rows.length+'</div><div class="lbl">Wanafunzi</div></div>'+
@@ -5181,6 +5281,8 @@ function smRender(){
        '<div class="stat-box"><div class="num" style="color:'+(r.errors.length?'#F2B8A8':'var(--amber)')+';">'+r.errors.length+'</div><div class="lbl">Zenye makosa</div></div>'+
        '<div class="stat-box"><div class="num">'+nWarn+'</div><div class="lbl">Maonyo</div></div>'+
        '</div></div>';
+  h += smCountHtml(r);
+  h += smSameHtml(r);
 
   if(r.errors.length){
     h += '<div class="sm-box err"><h4>Rekodi zenye makosa ('+r.errors.length+') — hazijaingia kwenye matokeo. Zirekebishe au uziondoe.</h4>';
@@ -5224,9 +5326,10 @@ function smRender(){
 
   if(r.model.rows.length){
     h += '<div class="panel" style="margin-bottom:16px;">'+smHeadHtml('pv',smSchool)+smTableHtml(r.model,{mode:'pv',editSn:st.editSn})+'</div>';
-    h += '<div class="sm-btnrow" style="margin-top:0;margin-bottom:6px;"><button class="sm-primary" id="sm_saveBtn" onclick="smSave()"'+(st.stale?' disabled':'')+'>Thibitisha na Hifadhi</button></div>';
+    h += '<div class="sm-btnrow" style="margin-top:0;margin-bottom:6px;"><button class="sm-primary" id="sm_saveBtn" onclick="smSave()"'+((st.stale||blocked)?' disabled':'')+'>Thibitisha na Hifadhi</button></div>';
+    if(blocked) h += '<div class="hint" style="margin-top:4px;color:var(--amber);">Huwezi kuhifadhi bado: kuna '+(r.dups.length?'alama zilizorudiwa (zichague)':'')+(r.dups.length&&nSameOpen?' na ':'')+(nSameOpen?'majina yanayofanana yanayosubiri uthibitisho wako':'')+'. Hakuna rekodi itakayopotea kimyakimya.</div>';
     if(r.errors.length || r.dups.length){
-      h += '<div class="hint" style="margin-top:4px;">Rekodi zenye makosa hazitahifadhiwa (jina la mwanafunzi hubaki kwenye jedwali bila alama hizo). Kwa alama zilizorudiwa ambazo hujachagua, alama ya kwanza ndiyo itahifadhiwa.</div>';
+      h += '<div class="hint" style="margin-top:4px;">Rekodi zenye makosa hazitahifadhiwa (jina la mwanafunzi hubaki kwenye jedwali bila alama hizo).</div>';
     }
     h += '<div class="hint" style="margin-top:4px;">Hariri/Futa kwenye jedwali hubadilisha uchambuzi huu tu. Ukibonyeza "Chambua" tena, marekebisho hayo yanaanza upya.</div>';
   } else {
@@ -5268,7 +5371,7 @@ function smAnalyze(){
     document.getElementById('sm_preview').classList.add('hidden');
     smState=null; return;
   }
-  smState = {lines, studAlias:{}, subjAlias:{}, studNames:{}, subjNames:{}, dismissed:{}, dupChoice:{}, edits:{}, deleted:{}, editSn:null, result:null, stale:false};
+  smState = {lines, studAlias:{}, subjAlias:{}, studNames:{}, subjNames:{}, dismissed:{}, dupChoice:{}, edits:{}, deleted:{}, identMerge:{}, sameOk:{}, editSn:null, result:null, stale:false};
   document.getElementById('sm_stale').classList.add('hidden');
   smRecompute();
 }
@@ -5289,6 +5392,61 @@ function smIgnoreLine(no){
   L.ignored = true; smRecompute();
 }
 function smDup(no,choice){ smState.dupChoice[no]=choice; smRecompute(); }
+/* ---- v33: majina yanayofanana (wanafunzi wenye jina sawa) ---- */
+function smBlocked(r){ return r.dups.length>0 || r.same.some(g=>!g.ok); }
+function smSameOk(gi){ const g = smState.result.same[gi]; if(!g) return; smState.sameOk[g.nk] = g.sig; smRecompute(); }
+function smSameMerge(gi,mi){            // mwalimu mwenyewe anaamua kuwa ni mwanafunzi mmoja
+  const g = smState.result.same[gi]; if(!g||mi<1) return;
+  const from = g.keys[mi], to = g.keys[0]; if(!from||from===to) return;
+  smState.identMerge[from] = to; smRecompute();
+}
+function smSameHtml(r){
+  if(!r.same.length) return '';
+  const rowBy = {}; r.model.rows.forEach(x=>{ rowBy[x.key]=x; });
+  let h = '<div class="sm-box warn"><h4>Wanafunzi wenye jina lilelile ('+r.same.length+') — kila mmoja amebaki mwanafunzi tofauti</h4>'+
+          '<div class="hint" style="margin:0 0 6px;">Mfumo haujaunganisha wala kufuta yeyote. Linganisha na karatasi, kisha thibitisha kuwa ni wanafunzi tofauti — au unganisha ikiwa ni mtu mmoja aliyeandikwa mara mbili. Kuhifadhi kunaruhusiwa baada ya uthibitisho.</div>';
+  r.same.forEach((g,gi)=>{
+    h += '<div class="sm-item'+(gi===0?' first':'')+'"><div><b>'+escapeHtml(g.name)+'</b> — wanafunzi '+g.keys.length+(g.ok?' ✓ umethibitisha':'')+'</div>';
+    g.keys.forEach((k,mi)=>{
+      const x = rowBy[k]; if(!x) return;
+      const subs = r.model.columns.filter(c=>x.marks[c.key]!==undefined).map(c=>escapeHtml(c.name)+' '+x.marks[c.key]).join(', ');
+      h += '<div class="hint" style="margin:3px 0 3px 10px;">• S/No '+x.sn+(x.regNos&&x.regNos.length?' · S/N ya karatasi '+x.regNos.join('/'):' · hakuna S/N ya karatasi')+' · '+(subs||'hana alama')+
+           (mi>0?' <button class="rowBtn" onclick="smSameMerge('+gi+','+mi+')">Ni mmoja na wa kwanza — unganisha</button>':'')+'</div>';
+    });
+    if(!g.ok) h += '<div class="sm-actions"><button class="rowBtn" onclick="smSameOk('+gi+')">Nathibitisha: ni wanafunzi tofauti</button></div>';
+    h += '</div>';
+  });
+  return h+'</div>';
+}
+/* ---- v33: ulinganisho wa idadi (hakuna rekodi inayopotea kimyakimya) ---- */
+function smCountHtml(r){
+  const m = r.model, a = r.acct, N = m.rows.length;
+  const unacc = a.total - (a.ok + a.err + a.dupPending + a.dupResolved + a.deleted);
+  let cls = unacc ? 'err' : 'ok', h = '';
+  h += '<div>Mistari iliyosomwa: <b>'+a.total+'</b> = sahihi '+a.ok+' + yenye makosa '+a.err+' + zilizorudiwa (zinasubiri uamuzi) '+a.dupPending+
+       (a.dupResolved?' + zilizorudiwa (ulizoamua) '+a.dupResolved:'')+(a.deleted?' + za wanafunzi uliowafuta '+a.deleted:'')+'. '+
+       (unacc?'<b>⚠ Mistari '+unacc+' haijulikani ilipo — usihifadhi, ripoti hitilafu.</b>':'Hakuna mstari uliopotea.')+'</div>';
+  h += '<div style="margin-top:4px;">Wanafunzi kwenye jedwali: <b>'+N+'</b></div>';
+  m.columns.forEach(c=>{
+    const n = m.stats[c.key].n, miss = N - n;
+    if(miss>0){ cls = cls==='err'?'err':'warn';
+      const who = m.rows.filter(x=>x.marks[c.key]===undefined).map(x=>x.name+(x.regNos&&x.regNos.length?' (S/N '+x.regNos.join('/')+')':''));
+      h += '<div style="margin-top:2px;">'+escapeHtml(c.name)+': '+n+' kati ya '+N+' — hawana: '+who.slice(0,8).map(escapeHtml).join(', ')+(who.length>8?' … (+'+(who.length-8)+')':'')+'</div>';
+    } else h += '<div style="margin-top:2px;">'+escapeHtml(c.name)+': '+n+' kati ya '+N+' ✓</div>';
+  });
+  try{
+    const grade = document.getElementById('sm_grade').value, ros = phRoster(grade);
+    if(ros.length){
+      const rc = {}, tc = {}; ros.forEach(s=>{ rc[s.key]=(rc[s.key]||0)+1; }); m.rows.forEach(x=>{ const k=smNorm(x.name); tc[k]=(tc[k]||0)+1; });
+      const miss = [], nw = []; Object.keys(rc).forEach(k=>{ for(let i=(tc[k]||0);i<rc[k];i++) miss.push(k); });
+      Object.keys(tc).forEach(k=>{ for(let i=(rc[k]||0);i<tc[k];i++) nw.push(k); });
+      const nm = k=>{ const s=ros.find(z=>z.key===k); return s?s.name:k; };
+      h += '<div style="margin-top:6px;">Orodha ya msingi (Assessment zilizohifadhiwa za '+escapeHtml(grade)+'): <b>'+ros.length+'</b> • hawapo kwenye jedwali hili: '+miss.length+(miss.length?' ('+miss.slice(0,8).map(k=>escapeHtml(nm(k))).join(', ')+(miss.length>8?' …':'')+')':'')+' • wapya (hawapo kwenye orodha): '+nw.length+'</div>';
+      if(miss.length||nw.length) cls = cls==='err'?'err':'warn';
+    }
+  }catch(e){}
+  return '<div class="sm-box '+cls+'"><h4>Ulinganisho wa idadi</h4>'+h+'</div>';
+}
 function smSimAct(kind,i,act){
   const list = kind==='stud' ? smState.result.simStud : smState.result.simSubj;
   const p = list[i]; if(!p) return;
@@ -5350,7 +5508,7 @@ function smSetSort(v){
 
 function smRederive(a){
   const m = a.model;
-  const base = m.rows.slice().sort((x,y)=>x.sn-y.sn).map(r=>({key:r.key, name:r.name, marks:r.marks}));
+  const base = m.rows.slice().sort((x,y)=>x.sn-y.sn).map(r=>({key:r.key, name:r.name, regNos:r.regNos||[], marks:r.marks}));
   const d = smDerive(m.columns, base, m.max);
   m.rows = d.rows; m.stats = d.stats;
 }
@@ -5365,7 +5523,8 @@ function smReadEdit(model, sn){
   const nm = document.getElementById('sm_e_name').value.replace(/\s+/g,' ').trim();
   if(!nm){ alert('Jina la mwanafunzi haliwezi kuwa tupu.'); return null; }
   if(model.rows.some(r=>r.sn!==sn && smNorm(r.name)===smNorm(nm))){
-    alert('Jina "'+nm+'" tayari lipo kwenye jedwali. Tumia jina tofauti.'); return null;
+    // v33: wanafunzi wawili wanaweza kuwa na jina sawa; mwalimu anathibitisha, hakuna kinachounganishwa
+    if(!confirm('Jina "'+nm+'" tayari lipo kwa mwanafunzi mwingine kwenye jedwali. Je, ni wanafunzi wawili tofauti wenye jina sawa? (Hawataunganishwa.)')) return null;
   }
   const marks = {};
   for(let i=0;i<model.columns.length;i++){
@@ -5493,6 +5652,8 @@ function smSave(){
   if(!smState || !smState.result || smState.stale) return;
   const r = smState.result;
   if(!r.model.rows.length){ smMsg('Hakuna rekodi sahihi za kuhifadhi.','warn'); return; }
+  if(smBlocked(r)){ smMsg('Haihifadhiwi bado: thibitisha majina yanayofanana na uchague alama zilizorudiwa kwanza.','warn'); smRender(); return; }
+  if(r.acct.total !== r.acct.ok + r.acct.err + r.acct.dupPending + r.acct.dupResolved + r.acct.deleted){ smMsg('Haihifadhiwi: idadi ya mistari haikubaliani (hitilafu ya ndani). Hakuna kilichopotea kwenye maandishi yako.','err'); return; }
   if(r.errors.length || r.dups.length){
     const ok = confirm('Rekodi '+r.errors.length+' zenye makosa hazitahifadhiwa (majina yake yatabaki bila alama hizo), na alama '+r.dups.length+' zilizorudiwa ambazo hujachagua zitatumia alama ya kwanza. Endelea kuhifadhi?');
     if(!ok) return;
@@ -8081,11 +8242,11 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
   function say(t,c){msg.textContent=t||'';msg.className=c||''}
   if(!/^https?:$/.test(location.protocol)){clearTimeout(window.__fbTimer);gate.classList.remove('fbwait');say('Umefungua faili moja kwa moja (file://). Login ya Firebase inahitaji http/https. Chaguo: (1) pakia faili kwenye Firebase Hosting / Netlify Drop / GitHub Pages, au (2) kwenye kompyuta fungua terminal kwenye folda ya faili uandike: python -m http.server 8000 kisha fungua http://localhost:8000','err');$('fbGo').disabled=true;return;}
   /* Pakia Firebase SDK bila kuzuia ukurasa (async) — kama mtandao ni polepole, ukurasa hauganda. */
-  function loadScript(src){return new Promise(function(res,rej){var t=document.createElement('script');t.src=src;t.onload=res;t.onerror=function(){rej(new Error('Imeshindwa kupakia: '+src));};document.head.appendChild(t);});}
-  function fail(t){clearTimeout(window.__fbTimer);gate.classList.remove('fbwait');say(t,'err');$('fbGo').disabled=true;}
+  function loadScript(src){return new Promise(function(res,rej){var t=document.createElement('script');t.async=false;t.src=src;t.onload=res;t.onerror=function(){rej(new Error('Imeshindwa kupakia: '+src));};document.head.appendChild(t);});}
+  function fail(t){clearTimeout(window.__fbTimer);gate.classList.remove('fbwait');say(t,'err');var b=$('fbGo');b.disabled=false;b.textContent='Jaribu tena (pakia upya)';b.onclick=function(){location.reload();};}
   var BASE='https://www.gstatic.com/firebasejs/10.12.5/';
-  var sdkTimeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},20000);});
-  Promise.race([loadScript(BASE+'firebase-app-compat.js').then(function(){return loadScript(BASE+'firebase-auth-compat.js');}),sdkTimeout])
+  var sdkTimeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},30000);});
+  Promise.race([Promise.all([loadScript(BASE+'firebase-app-compat.js'),loadScript(BASE+'firebase-auth-compat.js')]),sdkTimeout])
     .then(function(){
       if(typeof firebase==='undefined'){fail('Imeshindwa kupakia Firebase. Angalia intaneti kisha pakia ukurasa upya.');return;}
       start();
@@ -8534,11 +8695,17 @@ function phSubset(a,b){   // jina moja lina maneno machache, yote yako kwenye ji
 }
 function phMatch(name, no, roster){
   const k=smNorm(name); if(!k||!roster.length) return {t:'none',c:[]};
-  const ex=roster.find(s=>s.key===k);
-  if(ex) return {t:'exact', st:ex, snConflict: !!(no && ex.sns.length && ex.sns.indexOf(no)<0)};
+  const snHit=s=>!!(no&&s.sns.indexOf(no)>=0);
+  // v33: jina linaweza kulingana na wanafunzi zaidi ya mmoja kwenye orodha — usichague kwa kubahatisha
+  const exs=roster.filter(s=>s.key===k);
+  if(exs.length===1) return {t:'exact', st:exs[0], snConflict: !!(no && exs[0].sns.length && !snHit(exs[0]))};
+  if(exs.length>1){
+    const hit=exs.filter(snHit);
+    if(hit.length===1) return {t:'exact', st:hit[0], snConflict:false};
+    return {t:'cands', c:exs, same:true};
+  }
   const cands=roster.filter(s=>phDist(name,s.name)<=2||phSubset(name,s.name));
   if(!cands.length) return {t:'none',c:[]};
-  const snHit=s=>!!(no&&s.sns.indexOf(no)>=0);
   let pool=cands.filter(s=>{ const d=phDist(name,s.name); return (d<=1&&k.length>=5)||(d<=2&&snHit(s)); });
   let bySn=false;
   if(pool.length>1){ const p2=pool.filter(snHit); if(p2.length===1){ pool=p2; bySn=true; } }
@@ -8553,9 +8720,9 @@ function phMatch(name, no, roster){
    hawezi kudaiwa na mistari miwili. Jina la picha huhifadhiwa kwenye r.fix.from ili mwalimu aweze kulirudisha. */
 function phApply(rows, roster){
   const taken=new Set(); let n=0;
-  rows.forEach(r=>{ const m=phMatch(r.jina,r.no,roster); if(m.t==='exact') taken.add(m.st.key); });
+  rows.forEach(r=>{ const m=phMatch(r.jina,r.no,roster); if(m.t==='exact') taken.add(m.st.id); });
   rows.forEach(r=>{ if(!r.jina) return; const m=phMatch(r.jina,r.no,roster);
-    if(m.t==='fix'&&!taken.has(m.st.key)){ r.fix={from:r.jina,to:m.st.name}; r.jina=m.st.name; taken.add(m.st.key); n++; } });
+    if(m.t==='fix'&&!taken.has(m.st.id)){ r.fix={from:r.jina,to:m.st.name}; r.jina=m.st.name; taken.add(m.st.id); n++; } });
   return n;
 }
 /*PH_MATCH_END*/
@@ -8570,13 +8737,23 @@ function phCheck(rows, max, roster){
     else if(m<0||m>max) hard.push('Alama inazidi alama za juu ('+max+')');
     if(r.hakika!=='juu') soft.push('Haina uhakika wa kutosha — linganisha na karatasi');
     if(keys[i]){
-      if(keys.some((k,j)=>j!==i&&rows[j].on&&k===keys[i])) soft.push('Jina limerudiwa kwenye karatasi hii');
-      else { const o=keys.findIndex((k,j)=>j!==i&&rows[j].on&&k&&k.length>=4&&smLev(k,keys[i])<=1); if(o>=0) soft.push('Linafanana na "'+rows[o].jina+'" (mstari mwingine wa karatasi hii)'); }
+      const sameJ = rows.map((x,j)=>(j!==i&&x.on&&keys[j]===keys[i])?j:-1).filter(j=>j>=0);
+      if(sameJ.length){
+        const sameSn = sameJ.filter(j=>r.no&&rows[j].no&&rows[j].no===r.no);
+        const diffSn = sameJ.filter(j=>r.no&&rows[j].no&&rows[j].no!==r.no);
+        if(sameSn.length) soft.push('Jina na S/N '+r.no+' vimerudiwa (mstari '+(sameSn[0]+1)+') — huenda mstari umerudiwa; hakikisha si mwanafunzi mmoja aliyeandikwa mara mbili.');
+        else if(diffSn.length===sameJ.length) soft.push('Jina sawa na mstari '+(sameJ[0]+1)+' (S/N '+rows[sameJ[0]].no+') lakini S/N tofauti — wataendelea kuwa wanafunzi wawili tofauti; thibitisha.');
+        else soft.push('Jina limerudiwa kwenye karatasi hii (mstari '+(sameJ[0]+1)+') na S/N haitofautishi. Andika S/N ya karatasi kwenye kisanduku cha S/N ili wasichanganywe, au thibitisha kuwa ni wanafunzi wawili.');
+      }
+      if(r.no && rows.some((x,j)=>j!==i&&x.on&&x.no===r.no&&keys[j]!==keys[i])) soft.push('S/N '+r.no+' imetumika pia kwenye mstari wa jina tofauti — kagua S/N.');
+      if(!sameJ.length){ const o=keys.findIndex((k,j)=>j!==i&&rows[j].on&&k&&k.length>=4&&smLev(k,keys[i])<=1); if(o>=0) soft.push('Linafanana na "'+rows[o].jina+'" (mstari mwingine wa karatasi hii)'); }
       if(r.fix) info.push('Jina limesahihishwa kutoka Assessment: "'+r.fix.from+'" → "'+r.fix.to+'". Alama haikubadilishwa.');
       if(roster.length){
         const mm=phMatch(r.jina,r.no,roster);
         if(mm.t==='exact'){
           if(mm.snConflict) soft.push('Jina linalingana na Assessment, lakini S/N ya karatasi ('+r.no+') si ile iliyohifadhiwa ('+mm.st.sns.join(', ')+'). Hakikisha ni mwanafunzi yule yule, si mwingine mwenye jina sawa.');
+        } else if(mm.t==='cands'&&mm.same){
+          soft.push('Kwenye Assessment zilizohifadhiwa kuna wanafunzi '+mm.c.length+' wenye jina hili (S/N: '+mm.c.map(s=>s.sns.join('/')).join(' | ')+'). Hakuna atakayechaguliwa kwa kubahatisha — andika S/N sahihi ya karatasi na uthibitishe.');
         } else if(mm.t==='fix'||mm.t==='cands'){
           const list=mm.t==='fix'?[mm.st]:mm.c;
           soft.push('Halipo kwenye Assessment kama lilivyo. Linafanana na: '+list.map(s=>'"'+s.name+'"').join(', ')+'. Chagua kama ni yeye, au thibitisha kuwa ni mwanafunzi mpya.');
@@ -8588,12 +8765,13 @@ function phCheck(rows, max, roster){
   });
 }
 function phLines(rows, somo){
-  return rows.filter(r=>r.on).map(r=>smTitle(r.jina).replace(/_/g,' ')+' _'+somo.replace(/[_\d]+/g,' ').trim()+' '+r.alama);
+  return rows.filter(r=>r.on).map(r=>(r.no?'#'+r.no+' ':'')+smTitle(r.jina).replace(/_/g,' ')+' _'+somo.replace(/[_\d]+/g,' ').trim()+' '+r.alama);
 }
-function phRoster(grade){   // majina yaliyohifadhiwa kwenye Assessment za darasa husika + S/N zao
-  const map={}; try{ smLoad().forEach(rec=>{ if(rec.grade===grade&&rec.model&&rec.model.rows) rec.model.rows.forEach((r,i)=>{
-    if(!r.name) return; const k=smNorm(r.name); if(!k) return; const o=map[k]||(map[k]={key:k,name:r.name,sns:[]});
-    const sn=r.sn!==undefined?r.sn:i+1; if(o.sns.indexOf(sn)<0) o.sns.push(sn); }); }); }catch(e){}
+function phRoster(grade){   // wanafunzi waliohifadhiwa kwenye Assessment za darasa husika (kila mwanafunzi mmoja, hata kama majina yanafanana) + S/N zao
+  const map={}; try{ smLoad().forEach(rec=>{ if(rec.grade===grade&&rec.model&&rec.model.rows){ smNormModel(rec.model); rec.model.rows.forEach((r,i)=>{
+    if(!r.name) return; const k=smNorm(r.name); if(!k) return; const id=r.key||k; const o=map[id]||(map[id]={id,key:k,name:r.name,sns:[]});
+    const list=(r.regNos&&r.regNos.length)?r.regNos:[r.sn!==undefined?r.sn:i+1];
+    list.forEach(sn=>{ if(o.sns.indexOf(sn)<0) o.sns.push(sn); }); }); } }); }catch(e){}
   return Object.values(map);
 }
 /* ---- picha ---- */
@@ -8713,7 +8891,10 @@ function phMerge(parts){
   let out=parts[0].slice(); const warn=[];
   for(let p=1;p<parts.length;p++){
     const nx=parts[p], win=PH_OV+2, tail=out.slice(-win); let skip=0;
-    while(skip<nx.length&&skip<win&&tail.some(t=>phSame(t,nx[skip]))) skip++;
+    // v33: mwingiliano lazima uwe mfululizo (mistari ya mwisho ya sehemu iliyopita = mistari ya mwanzo ya hii); si "yoyote inayofanana"
+    for(let k=Math.min(win,tail.length,nx.length);k>=1;k--){ const t=tail.slice(-k); if(t.every((r,i)=>phSame(r,nx[i]))){ skip=k; break; } }
+    const dropNoSn=nx.slice(0,skip).filter(r=>!r.no);
+    if(dropNoSn.length) warn.push('Mistari '+dropNoSn.length+' (hakuna S/N: '+dropNoSn.map(r=>r.jina||'?').join(', ')+') iliondolewa kwenye mpaka wa sehemu kama nakala — hakikisha hakuna mwanafunzi halisi aliyeondolewa');
     nx.slice(skip,skip+win).forEach(r=>{ const t=r.no&&tail.find(t=>t.no===r.no); if(t){ t.hakika=r.hakika='chini'; warn.push('S/N '+r.no+' imesomwa tofauti kwenye mpaka wa sehemu'); } });
     out=out.concat(nx.slice(skip));
   }
@@ -8749,6 +8930,7 @@ async function phRead(){
 /* ---- mapitio ---- */
 function phRender(){
   document.getElementById('ph_rows').innerHTML = ph.rows.map((r,i)=>'<div class="ph-row" id="ph_r'+i+'"><span class="ph-n">'+(i+1)+'</span>'+
+    '<input data-i="'+i+'" data-f="no" value="'+smAttr(r.no==null?'':r.no)+'" inputmode="numeric" placeholder="S/N" title="S/N ya karatasi (inamtofautisha mwanafunzi mwenye jina sawa)" style="flex:none;width:54px;">'+
     '<input data-i="'+i+'" data-f="jina" value="'+smAttr(r.jina)+'" placeholder="Jina"><input data-i="'+i+'" data-f="alama" value="'+smAttr(r.alama)+'" inputmode="decimal" placeholder="Alama" style="width:70px">'+
     '<button type="button" data-i="'+i+'" data-f="on" title="Ondoa/Rudisha">✕</button><div class="ph-fl" id="ph_f'+i+'"></div></div>').join('');
   phStatus();
@@ -8766,7 +8948,15 @@ function phStatus(){
     if(c.hard.length) bad++; else if(c.soft.length&&!r.ok) unconf++;
   });
   const on=ph.rows.filter(r=>r.on).length, somo=document.getElementById('ph_somo').value.trim(), ack=document.getElementById('ph_ack').checked;
-  document.getElementById('ph_sum').textContent='Wanafunzi '+on+' • yanayohitaji marekebisho: '+bad+' • ya kuthibitisha: '+unconf;
+  let cmp='';
+  if(ph.roster&&ph.roster.length){
+    const matched=new Set(), pend=new Set(); let ex=0,am=0,nw=0;
+    ph.rows.forEach(r=>{ if(!r.on||!r.jina) return; const m=phMatch(r.jina,r.no,ph.roster);
+      if(m.t==='exact'){ matched.add(m.st.id); ex++; } else if(m.t==='fix'){ pend.add(m.st.id); am++; } else if(m.t==='cands'){ m.c.forEach(s=>pend.add(s.id)); am++; } else nw++; });
+    const miss=ph.roster.filter(s=>!matched.has(s.id)&&!pend.has(s.id));
+    cmp=' • orodha ya msingi: '+ph.roster.length+' (wamelingana '+ex+', wenye utata '+am+', wapya '+nw+', hawapo kwenye karatasi hii '+miss.length+(miss.length?': '+miss.slice(0,8).map(s=>s.name).join(', ')+(miss.length>8?' …':''):'')+')';
+  }
+  document.getElementById('ph_sum').textContent='Wanafunzi '+on+' • yanayohitaji marekebisho: '+bad+' • ya kuthibitisha: '+unconf+cmp;
   document.getElementById('ph_ins').disabled=!(on&&!bad&&!unconf&&somo&&ack);
 }
 function phInsert(){
@@ -8794,7 +8984,7 @@ function phOpen(){
   ['ph_cam','ph_gal'].forEach(id=>document.getElementById(id).addEventListener('change',e=>phLoad(e.target.files[0])));
   document.getElementById('ph_enh').addEventListener('change',phDraw); document.getElementById('ph_somo').addEventListener('input',phStatus); document.getElementById('ph_ack').addEventListener('change',phStatus);
   const rows=document.getElementById('ph_rows');
-  rows.addEventListener('input',e=>{ const t=e.target,i=+t.dataset.i,f=t.dataset.f; if(f==='ok'||isNaN(i)) return; ph.rows[i][f]=t.value; if(f==='alama') ph.rows[i].raw=''; if(f==='jina') ph.rows[i].fix=null; ph.rows[i].hakika='juu'; ph.rows[i].ok=false; phStatus(); });
+  rows.addEventListener('input',e=>{ const t=e.target,i=+t.dataset.i,f=t.dataset.f; if(f==='ok'||isNaN(i)) return; if(f==='no'){ ph.rows[i].no=parseInt(t.value,10)||null; ph.rows[i].ok=false; phStatus(); return; } ph.rows[i][f]=t.value; if(f==='alama') ph.rows[i].raw=''; if(f==='jina') ph.rows[i].fix=null; ph.rows[i].hakika='juu'; ph.rows[i].ok=false; phStatus(); });
   rows.addEventListener('change',e=>{ const t=e.target; if(t.dataset.f==='ok'){ ph.rows[+t.dataset.i].ok=t.checked; phStatus(); } });
   rows.addEventListener('click',e=>{ const t=e.target; if(t.tagName!=='BUTTON') return; const r=ph.rows[+t.dataset.i]; if(!r) return;
     if(t.dataset.f==='on'){ r.on=!r.on; phStatus(); }
@@ -8841,6 +9031,20 @@ function phBar(){
     else if(++n>200) clearInterval(t); },300);
 })();
 </script>
+<script>
+/* Maktaba nzito (PDF/Word/Excel) zinapakiwa NYUMA YA PAZIA baada ya ukurasa kufunguka — hazizuii tena login. */
+(function(){
+  var L=['https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+         'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+         'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',
+         'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+         'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'];
+  function one(src,tries){var t=document.createElement('script');t.src=src;t.async=true;
+    t.onerror=function(){t.remove();if(tries<3)setTimeout(function(){one(src,tries+1)},4000*tries);};document.head.appendChild(t);}
+  function go(){ if(window.__libsStarted)return; window.__libsStarted=true; L.forEach(function(s){one(s,1)}); }
+  window.__loadHeavyLibs=go;
+  if(document.readyState==='complete') setTimeout(go,1500); else window.addEventListener('load',function(){setTimeout(go,1500)});
+})();
+</script>
 </body>
 </html>
-
