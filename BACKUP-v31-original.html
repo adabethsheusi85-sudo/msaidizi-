@@ -8775,15 +8775,47 @@ function phRoster(grade){   // wanafunzi waliohifadhiwa kwenye Assessment za dar
   return Object.values(map);
 }
 /* ---- picha ---- */
+/* v34: picha nyeusi/tupu. Kila njia ya kufungua picha hukaguliwa (si nyeusi, ina ukubwa) na njia inayofuata hujaribiwa kama ya kwanza imeshindwa. */
+function phBlank(src){
+  try{ const t=document.createElement('canvas'); t.width=24; t.height=24; const x=t.getContext('2d',{willReadFrequently:true});
+    x.drawImage(src,0,0,24,24); const p=x.getImageData(0,0,24,24).data;
+    for(let i=0;i<p.length;i+=4){ if(p[i+3]>0&&(p[i]|p[i+1]|p[i+2])>0) return false; } return true;
+  }catch(e){ return false; }
+}
 async function phLoad(file){
   if(!file) return;
-  try{ ph.bmp = await createImageBitmap(file,{imageOrientation:'from-image'}); }catch(e){ ph.bmp = await createImageBitmap(file); }
-  ph.rot=0; phDraw(); document.getElementById('ph_readBtn').disabled=false;
+  const msg=document.getElementById('ph_msg'), rb=document.getElementById('ph_readBtn');
+  const ways=[
+    async()=>{ try{ return await createImageBitmap(file,{imageOrientation:'from-image'}); }catch(e){ return await createImageBitmap(file); } },
+    async()=>await createImageBitmap(file),
+    async()=>{                                    // njia ya mwisho: <img> kisha canvas (picha kubwa sana hupunguzwa kuokoa kumbukumbu)
+      const url=URL.createObjectURL(file);
+      try{
+        const im=new Image(); await new Promise((ok,no)=>{ im.onload=ok; im.onerror=()=>no(new Error('img')); im.src=url; });
+        const w0=im.naturalWidth, h0=im.naturalHeight; if(!w0||!h0) throw new Error('size');
+        const k=Math.min(1,PH_MAX_W/w0,Math.sqrt(16e6/(w0*h0)));
+        const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(w0*k)); c.height=Math.max(1,Math.round(h0*k));
+        const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(im,0,0,c.width,c.height); return c;
+      } finally { URL.revokeObjectURL(url); }
+    }
+  ];
+  let bmp=null;
+  for(const way of ways){
+    try{ const b=await way(); if(b&&b.width>0&&b.height>0&&!phBlank(b)){ bmp=b; break; } if(b&&b.close) try{ b.close(); }catch(e){} }
+    catch(e){ console.warn('phLoad: njia imeshindwa',e); }
+  }
+  if(!bmp){
+    ph.bmp=null; if(rb) rb.disabled=true;
+    if(msg) msg.textContent='Picha imeshindwa kufunguliwa au inaonekana nyeusi. Jaribu "Chagua picha" (au "Piga picha") tena, au tumia picha ya JPG/PNG.';
+    return;
+  }
+  ph.bmp=bmp; ph.rot=0; phDraw(); if(msg) msg.textContent=''; if(rb) rb.disabled=false;
 }
 function phDraw(){
   const b=ph.bmp, c=document.getElementById('ph_cv'); if(!b) return;
   const k=Math.min(1,1800/Math.max(b.width,b.height)), w=Math.round(b.width*k), h=Math.round(b.height*k), sw=ph.rot%180!==0;
   c.width=sw?h:w; c.height=sw?w:h; const x=c.getContext('2d');
+  x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height);   // mandharinyuma nyeupe (PNG/skrini zenye uwazi hazionekani nyeusi)
   x.save(); x.translate(c.width/2,c.height/2); x.rotate(ph.rot*Math.PI/180); x.drawImage(b,-w/2,-h/2,w,h); x.restore();
   if(!document.getElementById('ph_enh').checked) return;
   const d=x.getImageData(0,0,c.width,c.height), p=d.data, hist=new Array(256).fill(0);   // kuongeza utofauti wa picha hafifu
@@ -8873,7 +8905,7 @@ function phEnhance(c){   // husawazisha kivuli/mwanga kwa rangi zile zile; hakun
 async function phPrep(){
   const b=ph.bmp; if(!b) throw new Error('hakuna picha');
   const sw=ph.rot%180!==0, W0=sw?b.height:b.width, H0=sw?b.width:b.height, k=Math.min(1,PH_MAX_W/W0), W=Math.round(W0*k), H=Math.round(H0*k);
-  const src=document.createElement('canvas'); src.width=W; src.height=H; const sx=src.getContext('2d');
+  const src=document.createElement('canvas'); src.width=W; src.height=H; const sx=src.getContext('2d'); sx.fillStyle='#fff'; sx.fillRect(0,0,W,H);
   sx.translate(W/2,H/2); sx.rotate(ph.rot*Math.PI/180); sx.drawImage(b,-(sw?H:W)/2,-(sw?W:H)/2,sw?H:W,sw?W:H);
   const s=Math.min(1,1400/Math.max(W,H)), aw=Math.max(8,Math.round(W*s)), ah=Math.max(8,Math.round(H*s));
   const ac=document.createElement('canvas'); ac.width=aw; ac.height=ah; const ax=ac.getContext('2d',{willReadFrequently:true}); ax.drawImage(src,0,0,aw,ah);
@@ -8981,7 +9013,7 @@ function phOpen(){
    '<div class="sm-btnrow"><button type="button" class="sm-primary" id="ph_ins" disabled onclick="phInsert()">Ingiza kwenye Ingizo la Haraka</button></div></div>';
   document.body.appendChild(o);
   document.getElementById('ph_x').onclick=phClose;
-  ['ph_cam','ph_gal'].forEach(id=>document.getElementById(id).addEventListener('change',e=>phLoad(e.target.files[0])));
+  ['ph_cam','ph_gal'].forEach(id=>document.getElementById(id).addEventListener('change',e=>{ const inp=e.target, f=inp.files&&inp.files[0]; Promise.resolve(phLoad(f)).catch(err=>{ const m=document.getElementById('ph_msg'); if(m) m.textContent='Picha imeshindwa kufunguliwa: '+(err&&err.message||err); }).finally(()=>{ try{ inp.value=''; }catch(_){} }); }));
   document.getElementById('ph_enh').addEventListener('change',phDraw); document.getElementById('ph_somo').addEventListener('input',phStatus); document.getElementById('ph_ack').addEventListener('change',phStatus);
   const rows=document.getElementById('ph_rows');
   rows.addEventListener('input',e=>{ const t=e.target,i=+t.dataset.i,f=t.dataset.f; if(f==='ok'||isNaN(i)) return; if(f==='no'){ ph.rows[i].no=parseInt(t.value,10)||null; ph.rows[i].ok=false; phStatus(); return; } ph.rows[i][f]=t.value; if(f==='alama') ph.rows[i].raw=''; if(f==='jina') ph.rows[i].fix=null; ph.rows[i].hakika='juu'; ph.rows[i].ok=false; phStatus(); });
@@ -9048,4 +9080,5 @@ function phBar(){
 </script>
 </body>
 </html>
+
 
