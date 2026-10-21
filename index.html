@@ -451,6 +451,11 @@ html.fb-locked body>.wrap{visibility:hidden}
 #fbLoad{display:none;color:#f4efe1;font-size:15px}
 #fbGate.fbwait #fbLoad{display:block}
 #fbGate.fbwait .fbc{display:none}
+#fbGate .fbg{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:11px;border:1px solid #bbb;border-radius:6px;background:#fff;color:#222;font-weight:700;font-size:14px;cursor:pointer;margin-bottom:6px}
+#fbGate .fbg:disabled{opacity:.6;cursor:wait}
+#fbGate .fbiab{display:none;background:#fff4d6;border:1px solid #d9932f;border-radius:6px;padding:10px;margin:0 0 10px;font-size:12.5px;line-height:1.45}#fbGate .fbiab button{margin:8px 6px 0 0;padding:7px 10px;border:0;border-radius:6px;background:#1f3a2e;color:#fff;font-weight:700;font-size:12.5px;cursor:pointer}
+#fbGate .fbn{font-size:11.5px;color:#666;margin:0 0 12px;line-height:1.4;text-align:center}
+#fbGate .fbor{display:flex;align-items:center;gap:10px;color:#888;font-size:12px;margin:0 0 12px}#fbGate .fbor:before,#fbGate .fbor:after{content:'';flex:1;border-top:1px solid #ccc}
 @media print{#fbGate,#fbBar{display:none!important}}
 </style>
 <script>document.documentElement.classList.add('fb-locked');
@@ -463,6 +468,10 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
 <h2>Msaidizi wa Mwalimu</h2><p class="fbs" id="fbSub">Ingia au jisajili ili kuendelea.</p>
 <div class="fbt"><button type="button" id="fbTabIn" class="on">Ingia</button><button type="button" id="fbTabUp">Jisajili</button></div>
 <p id="fbMsg"></p>
+<div class="fbiab" id="fbIab"><b>Umefungua ndani ya Facebook/Messenger/Instagram.</b> Google haikubali kuingia hapa. Fungua kwenye Chrome (au ⋮ → "Fungua kwenye kivinjari"), au ingia kwa barua pepe hapa chini.<br><button type="button" id="fbChrome">Fungua kwenye Chrome</button><button type="button" id="fbCopy">Nakili kiungo</button></div>
+<button type="button" class="fbg" id="fbGoogle" disabled><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Endelea na Google</span></button>
+<p class="fbn">Hatuoni nenosiri lako la Google. Tunapokea jina na barua pepe tu.</p>
+<div class="fbor">au tumia barua pepe</div>
 <input type="email" id="fbEmail" placeholder="Barua pepe (email)" autocomplete="email">
 <input type="password" id="fbPass" placeholder="Nenosiri (angalau herufi 6)" autocomplete="current-password">
 <input type="password" id="fbPass2" placeholder="Rudia nenosiri" autocomplete="new-password" style="display:none">
@@ -8030,7 +8039,27 @@ async function readImage(f){
     let src=null, W=0, H=0;
     try{ const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('img')); i.src=url; }); src=img; W=img.naturalWidth; H=img.naturalHeight; }
     catch(e1){ try{ const bm=await createImageBitmap(f); src=bm; W=bm.width; H=bm.height; }catch(e2){ src=null; } }   // njia mbadala
-    if(!src||!W||!H) throw new Error('Picha haiwezi kusomwa (huenda aina yake, mf. HEIC/HEIF, haikubaliki kwenye kivinjari hiki). Jaribu picha ya JPG au PNG; kwenye Kamera weka mpangilio wa JPEG/"Most compatible".'+info);
+    if(!src||!W||!H){   // v35: HEIC/HEIF — tambua kwa baiti za faili, kisha ibadilishe kuwa JPG ndani ya kivinjari (kazi zilezile za 'Soma Matokeo kwa Picha')
+      let kind=''; try{ kind = window.phSniff ? await window.phSniff(f) : ''; }catch(e){}
+      if(kind==='heic' || /hei[cf]/i.test(ty+' '+nm)){
+        try{ hint('Picha ni ya aina ya HEIC/HEIF. Inabadilishwa kuwa JPG… (sekunde 5–30; usifunge ukurasa)'); }catch(e){}
+        let why='';
+        try{
+          if(!window.phLoadHeic) throw new Error('nolib');
+          const h=await window.phLoadHeic();
+          const out=await Promise.race([h({blob:f,toType:'image/jpeg',quality:0.92}), new Promise((_,no)=>setTimeout(()=>no(new Error('muda')),60000))]);
+          const blob=Array.isArray(out)?out[0]:out; if(!blob||!blob.size) throw new Error('tupu');
+          const u2=URL.createObjectURL(blob);
+          try{ const img2=await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('img')); i.src=u2; }); src=img2; W=img2.naturalWidth; H=img2.naturalHeight; }
+          finally{ URL.revokeObjectURL(u2); }
+        }catch(eh){
+          const m=(eh&&eh.message)||String(eh);
+          why = m==='nolib' ? 'Zana ya kubadilisha HEIC haikupakiwa (inahitaji intaneti mara ya kwanza).' : m==='muda' ? 'Kubadilisha kumechukua muda mrefu mno (picha kubwa au simu ina kumbukumbu kidogo).' : 'Kubadilisha HEIC kumeshindwa ('+m.slice(0,80)+').';
+          src=null;
+        }
+        if(!src||!W||!H) throw new Error('Picha hii ni HEIC na haikuweza kubadilishwa kiotomatiki. '+why+' Njia mbadala: fungua picha kwenye Gallery, piga screenshot ya picha hiyo kisha uichague.'+info);
+      } else throw new Error('Picha haiwezi kusomwa (aina ya faili haitumiki au limeharibika). Tumia JPG, PNG au HEIC.'+info);
+    }
     const k=Math.min(1,1400/Math.max(W,H)), w=Math.max(1,Math.round(W*k)), h=Math.max(1,Math.round(H*k));
     const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.drawImage(src,0,0,w,h);
     let data = null;
@@ -8276,6 +8305,40 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
     'auth/operation-not-allowed':'Email/Password haijawashwa kwenye Firebase Console (Authentication > Sign-in method).',
     'auth/unauthorized-domain':'Domain hii haijaruhusiwa kwenye Firebase (Authentication > Settings > Authorized domains).'
   };
+  /* v35: Endelea na Google (Firebase GoogleAuthProvider). Popup kwanza; ikizuiwa, redirect. */
+  var gBtn=$('fbGoogle'); if(gBtn) gBtn.disabled=false;
+  function inApp(){ var ua=navigator.userAgent||''; return /; wv\)|FBAN|FBAV|FB_IAB|Instagram|MicroMessenger|TikTok|musical_ly|BytedanceWebview|WhatsApp|Line\//i.test(ua); }
+  if(inApp()&&$('fbIab')){
+    $('fbIab').style.display='block';
+    $('fbChrome').onclick=function(){
+      var u=location.href;
+      if(/Android/i.test(navigator.userAgent)){ location.href='intent://'+u.replace(/^https?:\/\//,'')+'#Intent;scheme='+location.protocol.replace(':','')+';package=com.android.chrome;end'; }
+      else say('Gusa ⋯ au ⋮ kisha uchague "Fungua kwenye Safari/kivinjari".','ok');
+    };
+    $('fbCopy').onclick=function(){
+      var u=location.href;
+      function done(){ say('Kiungo kimenakiliwa. Kibandike kwenye Chrome.','ok'); }
+      try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(u).then(done,function(){ window.prompt('Nakili kiungo hiki:',u); }); return; } }catch(e){}
+      window.prompt('Nakili kiungo hiki:',u);
+    };
+  }
+  function gErr(e){
+    var c=e&&e.code;
+    if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request'){ say(''); return; }
+    if(c==='auth/operation-not-allowed'){ say('Kuingia kwa Google bado hakujawashwa kwenye Firebase Console (Authentication > Sign-in method > Google).','err'); return; }
+    if(c==='auth/account-exists-with-different-credential'){ say('Barua pepe hii tayari ina akaunti kwa njia nyingine. Ingia kwa barua pepe na nenosiri.','err'); return; }
+    say(E[c]||('Hitilafu ya Google: '+((e&&e.message)||c)),'err');
+  }
+  if(gBtn) gBtn.onclick=function(){
+    if(inApp()){ say('Google hairuhusu kuingia ndani ya kivinjari cha app nyingine (WhatsApp, Facebook n.k.). Fungua ukurasa huu kwenye Chrome kisha ujaribu tena, au ingia kwa barua pepe.','err'); return; }
+    var prov=new firebase.auth.GoogleAuthProvider(); prov.setCustomParameters({prompt:'select_account'});
+    gBtn.disabled=true; busy(true); say('Inafungua Google...');
+    auth.signInWithPopup(prov).then(function(){ say(''); }).catch(function(e){
+      if(e&&(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')){ say('Inaelekeza kwenye Google...'); return auth.signInWithRedirect(prov); }
+      gErr(e);
+    }).catch(gErr).then(function(){ gBtn.disabled=false; busy(false); });
+  };
+  auth.getRedirectResult().catch(gErr);
   function setMode(m){
     mode=m; var up=m==='up';
     $('fbTabIn').className=up?'':'on'; $('fbTabUp').className=up?'on':'';
@@ -8789,9 +8852,41 @@ function phBlank(src){
     for(let i=0;i<p.length;i+=4){ if(p[i+3]>0&&(p[i]|p[i+1]|p[i+2])>0) return false; } return true;
   }catch(e){ return false; }
 }
-async function phLoad(file){
-  if(!file) return;
-  const msg=document.getElementById('ph_msg'), rb=document.getElementById('ph_readBtn');
+/* v35: HEIC/HEIF — hutambuliwa kwa baiti za faili (si jina/aina pekee). Kivinjari kikishindwa kuifungua, hubadilishwa kuwa JPEG ndani ya kivinjari (heic2any; hupakiwa pale inapohitajika tu). */
+async function phSniff(file){
+  try{
+    const b=new Uint8Array(await file.slice(0,64).arrayBuffer());
+    if(b.length<4) return 'tupu';
+    const s=(x,z)=>String.fromCharCode.apply(null,Array.from(b.slice(x,z)));
+    if(b[0]===0xFF&&b[1]===0xD8) return 'jpeg';
+    if(b[0]===0x89&&s(1,4)==='PNG') return 'png';
+    if(s(0,4)==='RIFF'&&s(8,12)==='WEBP') return 'webp';
+    if(s(0,3)==='GIF') return 'gif';
+    if(s(0,4)==='%PDF') return 'pdf';
+    if(b.length>=12&&s(4,8)==='ftyp'){
+      const end=Math.min(b.length,(b[0]<<24|b[1]<<16|b[2]<<8|b[3])>>>0||b.length), brands=[s(8,12).toLowerCase()];
+      for(let i=16;i+4<=end;i+=4) brands.push(s(i,i+4).toLowerCase());
+      if(brands.some(x=>x==='avif'||x==='avis')) return 'avif';
+      if(brands.some(x=>/^(heic|heix|hevc|hevx|heim|heis|hevm|hevs|mif1|msf1)$/.test(x))) return 'heic';
+    }
+    return 'nyingine';
+  }catch(e){ return 'haijulikani'; }
+}
+let _heicLib=null;
+function phLoadHeic(){
+  if(window.heic2any) return Promise.resolve(window.heic2any);
+  if(_heicLib) return _heicLib;
+  const urls=['https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js','https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js'];
+  _heicLib=(async()=>{
+    for(const u of urls){
+      try{ await new Promise((ok,no)=>{ const t=document.createElement('script'); t.src=u; t.onload=ok; t.onerror=()=>no(new Error('load')); setTimeout(()=>no(new Error('muda')),20000); document.head.appendChild(t); }); if(window.heic2any) return window.heic2any; }catch(e){}
+    }
+    _heicLib=null; throw new Error('nolib');
+  })();
+  return _heicLib;
+}
+window.phSniff=phSniff; window.phLoadHeic=phLoadHeic;
+async function phOpenBlob(file){   // njia tatu za kufungua picha; kila moja hukaguliwa (si nyeusi, ina ukubwa)
   const ways=[
     async()=>{ try{ return await createImageBitmap(file,{imageOrientation:'from-image'}); }catch(e){ return await createImageBitmap(file); } },
     async()=>await createImageBitmap(file),
@@ -8811,12 +8906,45 @@ async function phLoad(file){
     try{ const b=await way(); if(b&&b.width>0&&b.height>0&&!phBlank(b)){ bmp=b; break; } errs.push(b&&b.width>0?'nyeusi':'tupu'); if(b&&b.close) try{ b.close(); }catch(e){} }
     catch(e){ errs.push((e&&e.message)||String(e)); console.warn('phLoad: njia imeshindwa',e); }
   }
-  if(!bmp){
-    ph.bmp=null; if(rb) rb.disabled=true;
-    if(msg) msg.textContent='Picha imeshindwa kufunguliwa au inaonekana nyeusi. Jaribu "Chagua picha" (au "Piga picha") tena, au tumia picha ya JPG/PNG (HEIC/HEIF haikubaliki kwenye baadhi ya vivinjari). [aina: '+(file.type||'haijulikani')+', '+(file.size/1048576).toFixed(1)+' MB; '+errs.join(' | ').slice(0,160)+']';
-    return;
+  return {bmp,errs};
+}
+async function phLoad(file){
+  if(!file) return;
+  const my=(phLoad._n=(phLoad._n||0)+1);            // picha mpya ikichaguliwa, matokeo ya ya zamani yanapuuzwa
+  const msg=document.getElementById('ph_msg'), rb=document.getElementById('ph_readBtn');
+  const say=t=>{ if(msg&&my===phLoad._n) msg.textContent=t; };
+  const info=' [aina: '+(file.type||'haijulikani')+', '+(file.size/1048576).toFixed(1)+' MB]';
+  const fail=t=>{ if(my!==phLoad._n) return; ph.bmp=null; if(rb) rb.disabled=true; say(t); };
+  const HOW=' Njia mbadala: fungua picha kwenye Gallery, piga screenshot ya picha hiyo kisha uchague screenshot; au tumia kitufe cha "Piga picha" hapa ndani ya app.';
+  if(!file.size){ fail('Faili hili ni tupu (halina data). Chagua picha nyingine.'); return; }
+  if(file.size>40*1048576){ fail('Picha ni kubwa mno (zaidi ya MB 40). Chagua ndogo zaidi.'+info); return; }
+  say('Inafungua picha…');
+  const kind=await phSniff(file); if(my!==phLoad._n) return;
+  if(kind==='pdf'){ fail('Hili ni faili la PDF, si picha. Chagua picha ya JPG, PNG au HEIC.'+info); return; }
+  let r=await phOpenBlob(file); if(my!==phLoad._n) return;
+  let conv=false, why='';
+  if(!r.bmp && (kind==='heic' || /hei[cf]/i.test((file.type||'')+' '+(file.name||'')))){
+    say('Picha ni ya aina ya HEIC/HEIF. Inabadilishwa kuwa JPG… (sekunde 5–30; usifunge ukurasa)');
+    try{
+      const h=await phLoadHeic();
+      const out=await Promise.race([h({blob:file,toType:'image/jpeg',quality:0.92}), new Promise((_,no)=>setTimeout(()=>no(new Error('muda')),60000))]);
+      const blob=Array.isArray(out)?out[0]:out; if(!blob||!blob.size) throw new Error('tupu');
+      r=await phOpenBlob(blob); conv=!!r.bmp;
+      if(!r.bmp) why='Picha ilibadilishwa lakini bado haionyeshi data.';
+    }catch(e){
+      const m=(e&&e.message)||String(e);
+      why= m==='nolib' ? 'Zana ya kubadilisha HEIC haikupakiwa (inahitaji intaneti mara ya kwanza).' : m==='muda' ? 'Kubadilisha kumechukua muda mrefu mno (picha kubwa au simu ina kumbukumbu kidogo).' : 'Kubadilisha HEIC kumeshindwa ('+m.slice(0,80)+').';
+      r={bmp:null,errs:[m]};
+    }
+    if(my!==phLoad._n) return;
   }
-  ph.bmp=bmp; ph.rot=0; phDraw(); if(msg) msg.textContent=''; if(rb) rb.disabled=false;
+  if(!r.bmp){
+    const hint = kind==='heic' ? 'Picha hii ni HEIC na haikuweza kubadilishwa kiotomatiki. '+why : (kind==='nyingine'||kind==='haijulikani') ? 'Aina ya faili hili haitumiki au limeharibika. Tumia JPG, PNG au HEIC.' : 'Picha imeshindwa kufunguliwa au inaonekana nyeusi. Jaribu kuchagua tena.';
+    fail(hint+HOW+info.slice(0,-1)+'; '+r.errs.join(' | ').slice(0,120)+']'); return;
+  }
+  ph.bmp=r.bmp; ph.rot=0; phDraw(); if(rb) rb.disabled=false;
+  const small=Math.max(r.bmp.width,r.bmp.height)<800;
+  say((conv?'✓ Picha ya HEIC imebadilishwa kuwa JPG. ':'')+(small?'⚠️ Picha ni ndogo (chini ya 800px); maandishi yanaweza kutosomeka — sogea karibu na upige tena. ':''));
 }
 function phDraw(){
   const b=ph.bmp, c=document.getElementById('ph_cv'); if(!b) return;
