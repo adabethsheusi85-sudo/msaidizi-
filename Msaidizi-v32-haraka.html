@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -122,6 +121,15 @@
   @keyframes pulse{0%,80%,100%{opacity:0.2;}40%{opacity:1;}}
   .error-box{margin:18px 22px;padding:13px 15px;background:#F6DEDE;border:1px solid #D98F8F;color:#7A2B2B;border-radius:6px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12.5px;}
 
+
+  /* ===== Hisabati Darasa la 3: safu za KAZI na JIBU (kiongezeo) ===== */
+  .q-work{flex:0 0 120px;min-height:44px;border:1px solid var(--paper-line);border-radius:3px;}
+  .q-work.q-ans{flex:0 0 90px;}
+  .q-colhead{font-family:'Helvetica Neue',Arial,sans-serif;font-weight:700;font-size:12px;color:var(--muted);padding-bottom:0;}
+  .q-colhead .q-text{padding:2px 9px;}
+  .q-colhead .q-work{min-height:0;text-align:center;border:none;}
+  .exam-end{text-align:center;font-style:italic;font-weight:700;margin:20px 0 10px;letter-spacing:2px;}
+  @media print{.q-work{border:1px solid #000;} .q-colhead .q-work{border:none;}}
   /* Question management (editable exam) */
   .exam-title{font-size:19px;margin:0 0 14px;}
   /* ===== Kichwa cha habari cha mtihani (maelekezo + jedwali la assessor) — kiongezeo kipya, hiari ===== */
@@ -276,7 +284,9 @@
     @page{size:A4;margin:10mm;}
   }
 
-  /* Groq API key bar */
+  /* Groq API key bar — imefichwa: AI inapita seva ya Cloudflare */
+  .apikey-bar{display:none !important;}
+
   .apikey-bar{background:var(--board-dark);border:1px solid rgba(217,147,47,0.4);border-radius:8px;padding:12px 16px;margin-bottom:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-family:'Helvetica Neue',Arial,sans-serif;}
   .apikey-bar label{font-size:12.5px;color:var(--sage);white-space:nowrap;}
   .apikey-bar input[type="password"],.apikey-bar input[type="text"]{flex:1;min-width:180px;padding:9px 12px;border-radius:6px;border:1px solid rgba(244,239,225,0.3);background:rgba(244,239,225,0.06);color:var(--chalk);font-size:13.5px;}
@@ -2466,53 +2476,46 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 async function callClaude(prompt, maxTokens, extra){
-  let apiKey = document.getElementById('groqApiKey').value.trim();
-  const model = document.getElementById('groqModel').value;
-  if(!apiKey){
-    throw new Error("Tafadhali weka Groq API key yako kwenye kisanduku juu ya ukurasa kabla ya kutengeneza.");
+  // AI sasa inapita kwenye seva ya Cloudflare (msaidizi-seva) — hakuna Groq API key kwenye kivinjari.
+  // Inatumia tokeni ya Firebase ya mwalimu aliyeingia, kama kipengele cha Soma Matokeo kwa Picha.
+  if(typeof PH_PROXY_URL === 'undefined' || !PH_PROXY_URL){
+    throw new Error("Anwani ya seva ya Cloudflare haijawekwa kwenye faili (PH_PROXY_URL).");
   }
-  // Safisha ufunguo: ondoa herufi zozote zisizo za kawaida (mfano alama za kunakili kutoka Word/PDF)
-  // zinazoweza kusababisha hitilafu ya kivinjari wakati wa kutuma ombi (ISO-8859-1 header error).
-  const cleanedKey = apiKey.replace(/[^\x20-\x7E]/g, '');
-  if(cleanedKey !== apiKey){
-    apiKey = cleanedKey;
-    const status = document.getElementById('apikeyStatus');
-    if(status){ status.textContent = 'Ufunguo ulikuwa na herufi zisizo za kawaida — umesafishwa moja kwa moja ✓'; status.className = 'apikey-status ok'; }
-  }
-  if(!apiKey){
-    throw new Error("Ufunguo wa API una herufi zisizokubalika pekee. Futa kisanduku kisha andika (usibandike) ufunguo wako wa Groq upya.");
-  }
-  let response;
-  try{
-    response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "Authorization":"Bearer " + apiKey
-      },
-      body: JSON.stringify({
-        model: model,
-        max_tokens: maxTokens || 2000,
-        messages: [{ role:"user", content: prompt }],
-        ...(extra || {})
-      })
-    });
-  }catch(fetchErr){
-    if(String(fetchErr.message||'').includes('ISO-8859-1') || String(fetchErr.message||'').includes('headers')){
-      throw new Error("Ufunguo wa API una herufi zisizokubalika (labda ulizibandika kutoka Word/PDF). Futa kisanduku cha Groq API Key, kisha andika upya ufunguo wako moja kwa moja (au bandika kwenye Notepad kwanza kuusafisha), kisha jaribu tena.");
+  let token;
+  try{ token = await firebase.auth().currentUser.getIdToken(); }
+  catch(e){ throw new Error("Hujaingia. Toka (log out) kisha ingia tena."); }
+  const selected = document.getElementById('groqModel').value;
+  const models = [selected];
+  if(typeof PH_MODELS !== 'undefined') PH_MODELS.forEach(m=>{ if(models.indexOf(m) < 0) models.push(m); }); // akiba ikiwa seva haikubali modeli iliyochaguliwa
+  let response = null, detail = "";
+  for(const m of models){
+    const body = { model: m, max_tokens: maxTokens || 2000, messages: [{ role:"user", content: prompt }] };
+    if(extra){ Object.assign(body, extra); if(!/gpt-oss/i.test(m)) delete body.reasoning_effort; } // reasoning_effort ni ya gpt-oss tu
+    try{
+      response = await fetch(PH_PROXY_URL, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + token },
+        body: JSON.stringify(body)
+      });
+    }catch(fetchErr){
+      throw new Error("Imeshindwa kuunganisha na seva. Angalia mtandao wako kisha jaribu tena. (" + fetchErr.message + ")");
     }
-    throw new Error("Imeshindwa kuunganisha na seva. Angalia mtandao wako kisha jaribu tena. (" + fetchErr.message + ")");
+    if(response.ok) break;
+    detail = "";
+    try{ const t = await response.clone().text(); try{ const j = JSON.parse(t); detail = (j && j.error && (j.error.message || j.error)) || j.message || t; }catch(e){ detail = t; } }catch(e){}
+    detail = String(detail||"").replace(/\s+/g," ").slice(0,220);
+    if(response.status === 401 || response.status === 429) break;
+    if(response.status !== 400 && response.status !== 403 && response.status !== 404 && response.status !== 410) break; // jaribu modeli inayofuata kwa makosa haya tu
   }
   if(!response.ok){
-    let detail = "";
-    try{ const errData = await response.json(); detail = errData?.error?.message || ""; }catch(e){}
-    if(response.status === 401) throw new Error("Ufunguo wa API si sahihi. Angalia Groq API key yako.");
+    if(response.status === 401) throw new Error("Hujaingia au kikao kimeisha. Toka (log out) kisha ingia tena.");
     if(response.status === 429) throw new Error("Umefikia kikomo cha maombi kwa sasa. Subiri kidogo kisha jaribu tena.");
-    throw new Error("Server error: " + response.status + (detail ? (" — " + detail) : ""));
+    throw new Error("Server error: " + response.status + (detail ? (" — " + detail) : "") + " (kupitia seva ya Cloudflare)");
   }
   const data = await response.json();
   callClaude.lastFinish = data?.choices?.[0]?.finish_reason || "";
-  const txt = data?.choices?.[0]?.message?.content || "";
+  let txt = data?.choices?.[0]?.message?.content || "";
+  txt = txt.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   if(!txt) throw new Error("Hakuna majibu yaliyorudi.");
   return txt;
 }
@@ -3064,230 +3067,130 @@ async function generateSw4Exam(topics, gradeNum){
   return { exam: sw4BuildExam(best.data, gradeNum), warning };
 }
 
-/* ===================== SAYANSI NA TEKNOLOJIA DARASA LA 4 — MUUNDO WA KARATASI HALISI (KIONGEZEO) =====================
-   Muundo (kutoka karatasi halisi ya Sayansi na Teknolojia, Darasa la IV):
-   1. SEHEMU A: Chagua herufi ya jibu sahihi (i-v), A-D, jibu kwenye mabano.
-   2. SEHEMU B: Oanisha Fungu A na Fungu B (i-v) - Fungu B lina chaguo 7 (A-G), 2 ni za ziada.
-   3. SEHEMU C: Jaza nafasi kwa kuchagua maneno kwenye kisanduku (i-v).
-   4. SEHEMU D: Andika KWELI au SIKWELI (i-v).
-   5. SEHEMU E: Michoro - (i) mchoro wa wenzo (lever), (ii) alama ya sakiti ya umeme, (iii-v) jaza nafasi fupi.
-   AI inaombwa YALIYOMO tu (JSON); muundo, namba, kuchanganya Fungu B, michoro (SVG) na mwongozo wa majibu vinajengwa na programu.
-   Idadi na alama zinabadilishwa hapa chini kwa urahisi. */
-const SCI4_SPEC  = { mcq:5, match:5, extra:2, fill:5, tf:5, short:3 };
-const SCI4_MARKS = { mcq:2, match:2, fill:2, tf:2, diag:2 };               // kila swali = alama 2 (kila sehemu = 10, jumla 50)
-const SCI4_TERM_TEXT = 'MTIHANI WA NUSU MUHULA WA I';                       // badilisha hapa kama muhula ni tofauti
 
-// Michoro inayopatikana (programu huichora yenyewe; AI huchagua 2 zinazofaa mada, au programu huweka chaguo-msingi)
-const SCI4_DIAGS = {
-  lever_B:  { kind:'lever',  ask:'Sehemu iliyoonyeshwa kwa herufi B inawakilisha nini katika wenzo?', ans:'Egemeo (fulcrum)', desc:'wenzo, swali kuhusu herufi B (egemeo)' },
-  lever_A:  { kind:'lever',  ask:'Sehemu iliyoonyeshwa kwa herufi A inawakilisha nini katika wenzo?', ans:'Mzigo (load)', desc:'wenzo, swali kuhusu herufi A (mzigo)' },
-  lever_C:  { kind:'lever',  ask:'Sehemu iliyoonyeshwa kwa herufi C inawakilisha nini katika wenzo?', ans:'Nguvu / juhudi (effort)', desc:'wenzo, swali kuhusu herufi C (nguvu/juhudi)' },
-  sw_open:  { kind:'symbol', sym:'sw_open',   ask:'Alama hii katika sakiti ya umeme huonyesha nini?', ans:'Swichi iliyofunguliwa (wazi)', desc:'alama ya swichi iliyofunguliwa' },
-  sw_closed:{ kind:'symbol', sym:'sw_closed', ask:'Alama hii katika sakiti ya umeme huonyesha nini?', ans:'Swichi iliyofungwa', desc:'alama ya swichi iliyofungwa' },
-  cell:     { kind:'symbol', sym:'cell',      ask:'Alama hii katika sakiti ya umeme huonyesha nini?', ans:'Betri (seli kavu)', desc:'alama ya betri/seli' },
-  bulb:     { kind:'symbol', sym:'bulb',      ask:'Alama hii katika sakiti ya umeme huonyesha nini?', ans:'Balbu', desc:'alama ya balbu' }
-};
+/* ===================== HISABATI DARASA LA 3 — MUUNDO WA KARATASI HALISI (KIONGEZEO) =====================
+   Muundo (kama karatasi ya Halmashauri): jedwali lenye safu NA | SWALI | KAZI | JIBU, MUDA 1:30.
+   Maswali 5 makuu, kila moja ina vipengele i-v:
+   1 Namba (kusoma/kuandika, thamani ya tarakimu, namba kwa kifupi, jumla kwa maneno)
+   2 Mpangilio wa namba, mfuatano, sehemu (visehemu)
+   3 Kujumlisha/kutoa kwa safu, vipimo (kg-g), fedha (Sh na senti), majina ya maumbo
+   4 Sehemu iliyotiwa kivuli, fedha, noti, kutoa, kuzidisha kwa 0
+   5 Jedwali la bei za bidhaa + maswali matano.
+   AI inaombwa YALIYOMO tu; hesabu za safu (Swali 3 i na ii) zinakokotolewa na programu yenyewe. */
+const MATH3_TERM_TEXT = 'MTIHANI WA MUHULA WA ______ ' + new Date().getFullYear();
+const MATH3_MARKS = 1; // alama kwa kila kipengele (i-v)
 
-function sci4Svg(d){
-  const H = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 W H" width="W" height="H" font-family="Arial,Helvetica,sans-serif"><rect width="W" height="H" fill="#fff"/>';
-  const L = (x1,y1,x2,y2,w) => '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#000" stroke-width="'+(w||3)+'" stroke-linecap="round"/>';
-  if(d.kind === 'lever'){
-    return H.replace(/W/g,'420').replace(/H/g,'200') +
-      L(40,110,380,110,5) +
-      '<polygon points="150,112 124,158 176,158" fill="#fff" stroke="#000" stroke-width="3" stroke-linejoin="round"/>' +
-      '<rect x="318" y="68" width="52" height="42" fill="#fff" stroke="#000" stroke-width="3"/>' +
-      L(62,44,62,92,3) + '<polygon points="62,104 53,88 71,88" fill="#000"/>' +
-      '<text x="62" y="32" font-size="22" text-anchor="middle" font-weight="bold">C</text>' +
-      '<text x="150" y="182" font-size="22" text-anchor="middle" font-weight="bold">B</text>' +
-      '<text x="344" y="140" font-size="22" text-anchor="middle" font-weight="bold">A</text></svg>';
-  }
-  const dot = (x,y) => '<circle cx="'+x+'" cy="'+y+'" r="5" fill="#000"/>';
-  let s = H.replace(/W/g,'300').replace(/H/g,'110');
-  if(d.sym === 'sw_open')   s += L(20,70,100,70) + dot(100,70) + L(100,70,178,30) + dot(190,70) + L(190,70,280,70);
-  if(d.sym === 'sw_closed') s += L(20,70,100,70) + dot(100,70) + L(100,70,190,70) + dot(190,70) + L(190,70,280,70);
-  if(d.sym === 'cell')      s += L(20,55,120,55) + L(120,22,120,88,3) + L(150,38,150,72,9) + L(150,55,280,55);
-  if(d.sym === 'bulb')      s += L(20,55,110,55) + '<circle cx="150" cy="55" r="40" fill="#fff" stroke="#000" stroke-width="3"/>' + L(122,27,178,83,3) + L(178,27,122,83,3) + L(190,55,280,55);
-  return s + '</svg>';
-}
+function math3BuildPrompt(topics, problems){
+  let p = `You are a Tanzanian primary-school MATHEMATICS (Hisabati) examiner (TAMISEMI / Halmashauri style) for STANDARD III (pupils aged 8-9).
+Write the content of a Standard III terminal mathematics test on these topics: "${topics}". Every item must fit the topics where possible and Standard III level (numbers up to 9999 for most items, Tanzanian shillings, kilograms and grams, simple fractions with denominators 2,3,4,5,6,8,10, 12, 14 for same-denominator subtraction).
+Write ALL text in simple standard Kiswahili (numerals stay numerals). Use Tanzanian names, items and money (Sh, senti).
 
-function sci4BuildPrompt(topics, problems){
-  const S = SCI4_SPEC;
-  const ids = Object.keys(SCI4_DIAGS).map(k => k + ' = ' + SCI4_DIAGS[k].desc).join('; ');
-  const ex = '{"mcq":[{"q":"Msaada wa awali anaopata mgonjwa kabla hajapelekwa hospitali huitwa","a":"Chango","b":"Sanduku","c":"Huduma ya kwanza","d":"Operesheni","ans":"C"}],\n' +
-    ' "match":{"pairs":[{"a":"Kusikia, kuona, kuonja, kuhisi, kunusa","b":"Milango ya fahamu"},{"a":"Vyakula vya kujenga mwili","b":"Protini"}],"extra":["Upepo mkali","Kichocho"]},\n' +
-    ' "fill":{"words":["jokofu","mvuke","mlo kamili","fueli","Anofelesi"],"items":[{"q":"Kifaa cha kuhifadhia vitu katika hali ya ubaridi ili visiharibike ni ______","ans":"jokofu"}]},\n' +
-    ' "tf":[{"q":"Viumbe hai ni binadamu na wanyama tu ______","ans":"SIKWELI"},{"q":"Mwanga husafiri katika mstari ulionyooka ______","ans":"KWELI"}],\n' +
-    ' "diag":["lever_B","sw_open"],\n' +
-    ' "short":[{"q":"Madini ya ______ huimarisha mifupa na meno","ans":"kalisi"},{"q":"Hali ya kupoteza fahamu huitwa ______","ans":"kuzimia"}]}';
-  let p = 'MTIHANI MZIMA UNATAKIWA UANDIKWE KWA KISWAHILI SANIFU - USIANDIKE SENTENSI HATA MOJA YA KIINGEREZA. Hii ni karatasi ya somo la SAYANSI NA TEKNOLOJIA.\n' +
-    'Wewe ni mtunzi wa mitihani ya shule za msingi Tanzania (mtindo wa TAMISEMI / NECTA).\n' +
-    'Andika YALIYOMO ya mtihani wa Sayansi na Teknolojia wa DARASA LA IV (wanafunzi wa miaka 9-10) kuhusu mada hizi: "' + topics + '".\n' +
-    'Kila swali lihusiane na mada zilizotolewa. Lugha rahisi inayolingana na darasa. Majibu yawe sahihi kisayansi.\n\n' +
-    'Rudisha OBJECT MOJA TU ya JSON halali - bila markdown, bila maelezo, bila maandishi kabla au baada yake. Tumia alama za nukuu mbili za kawaida; ndani ya sentensi tumia nukuu moja ikihitajika.\n' +
-    'Lazima ujaze kila kipengele kwa IDADI KAMILI hapa chini. Usiruke, usiunganishe wala kufupisha vipengele.\n\n' +
-    'Q1 "mcq": maswali ' + S.mcq + ' ya kuchagua jibu sahihi, kila moja na chaguo NNE a, b, c, d na herufi sahihi katika "ans" (A, B, C au D). Badilisha herufi sahihi (usiweke jibu sahihi mara zote kwenye herufi moja). Swali liwe kamili au lenye nafasi ______.\n' +
-    'Q2 "match": "pairs" ' + S.match + ' za "a" (maelezo au kikundi cha vitu kwa Fungu A) na "b" (jibu fupi sahihi lake kwa Fungu B, mfano jina la dhana). Kila "b" lilingane na "a" moja tu. Kisha "extra": maneno ' + S.extra + ' ya ziada (vivuruga) yanayofanana na mada lakini YASIOLINGANA na "a" yoyote. Programu itachanganya orodha ya Fungu B.\n' +
-    'Q3 "fill": "words" maneno ' + S.fill + ' tofauti ya kisanduku, na "items" ' + S.fill + ' - kila moja ni sentensi au maelezo yenye nafasi ______ na jibu katika "ans" LINALOTOKA KATIKA "words" (kila neno litumike mara moja tu).\n' +
-    'Q4 "tf": ' + S.tf + ' kauli fupi zinazoweza kuamuliwa kuwa KWELI au SIKWELI, kila moja ikiishia na ______ na "ans" ni "KWELI" au "SIKWELI". Angalau mbili ziwe KWELI na angalau mbili SIKWELI.\n' +
-    'Q5 "diag": majina (ids) 2 ya michoro iliyopo kwenye orodha hii, ukichagua inayolingana zaidi na mada (mchoro wa kwanza uwe wa wenzo (lever_...), wa pili uwe wa alama ya sakiti): ' + ids + '. Kama mada hazihusiani na hizo, tumia "lever_B" na "sw_open".\n' +
-    'Q5 "short": maswali ' + S.short + ' mafupi ya kujaza nafasi ______ (jibu la neno moja au mawili) na "ans".\n\n' +
-    'MFANO WA MUUNDO (muundo tu - USINAKILI maudhui; toa idadi kamili katika kila array):\n' + ex +
-    '\nUKUMBUSHO WA MWISHO: JSON yote iwe kwa Kiswahili. Idadi: mcq ' + S.mcq + ', match.pairs ' + S.match + ', match.extra ' + S.extra + ', fill.words ' + S.fill + ', fill.items ' + S.fill + ', tf ' + S.tf + ', diag 2, short ' + S.short + '.';
+Return ONLY ONE valid JSON object - no markdown, no comments, no text before or after. Use straight double quotes only.
+The paper has 5 questions. Each of q1,q2,q3,q4 is an array of EXACTLY 5 items {"q":"...","ans":"..."}; q5 has a price table and 5 questions. Never skip, merge or shorten items. Double-check every answer arithmetically.
+
+q1 (numbers): item1 "Andika kwa maneno 4009" style (give a numeral, ans = words); item2 "Andika kwa tarakimu: <number in words>" (ans = numeral); item3 "Andika thamani ya namba iliyopigiwa mstari <number with one digit shown in square brackets, e.g. 8[9]82>" (ans = place value); item4 "Andika namba kwa kifupi 8000+800+90+5" style (ans = numeral); item5 word sum like "Tafuta jumla ya machungwa mia tisa na nazi 200" (ans = number).
+q2: item1 "Panga namba zifuatazo kwa mpangilio wa kupanda: <5 numbers>"; item2 "Panga namba zifuatazo kwa mpangilio wa kushuka: <5 numbers>"; item3 "Jaza namba zinazofuatana: <sequence with one blank ____>" ; item4 "Andika <fraction like 3/4> kwa maneno" (ans = words); item5 a subtraction of two fractions with the same denominator (e.g. 7/14 - 2/14), ans = fraction.
+q3: item1 and item2 are column calculations: give numbers in "a" and "b" (integers) instead of "q": item1 {"a":85519,"b":2719,"op":"+"} ; item2 {"a":..,"b":..,"op":"-"} (a larger than b, up to 7 digits for item2 is allowed). Do NOT give "ans" for items 1 and 2 (the app computes it). item3 a unit conversion question like "Kilogramu moja ni sawa na gramu ngapi?" or similar with "ans"; item4 a money addition in Sh and senti with two amounts and "ans" (sum, with senti carried correctly: 100 senti = Sh 1); item5 "Umbo hili linaitwaje" with a short text description of the shape in brackets (e.g. [umbo lenye pande tano]) and "ans" (e.g. pentagoni).
+q4: item1 "Andika kwa numerali sehemu ya umbo iliyotiwa kivuli" with a short description of the figure in brackets (e.g. [umbo limegawanywa sehemu 4 sawa, sehemu 3 zimetiwa kivuli]) ans = fraction; item2 "Andika jumla ya fedha zilizopo hapa chini" listing 2-3 notes/coins in text (e.g. [noti ya sh.5000 na noti ya sh.1000]) ans = total; item3 "Noti ngapi za sh.1000 zipo kwenye elfu kumi?" style; item4 "Ondoa 400 kutoka 12000" style; item5 multiplication by 0 or 1 like "200 x 0 =".
+q5: "table": EXACTLY 5 items {"item":"Sahani","price":2000} (everyday goods, prices as integers, include two items with the SAME price and make exactly one item the most expensive-unique or tied as you like); "qs": EXACTLY 5 questions answerable from the table: which item has the highest price; which items have equal price; which one is cheaper between two named items; how much is one named item sold for (Shilingi ngapi); total cost of two named items. Each with "ans".
+
+FORMAT EXAMPLE (structure only - do NOT copy content):
+{"q1":[{"q":"Andika kwa maneno 4009","ans":"Elfu nne na tisa"}, ...5],
+ "q2":[{"q":"Panga namba zifuatazo kwa mpangilio wa kupanda: 42, 22, 13, 27, 6","ans":"6, 13, 22, 27, 42"}, ...5],
+ "q3":[{"a":85519,"b":2719,"op":"+"},{"a":9999999,"b":7765555,"op":"-"},{"q":"...","ans":"..."},{"q":"...","ans":"..."},{"q":"...","ans":"..."}],
+ "q4":[{"q":"...","ans":"..."}, ...5],
+ "q5":{"table":[{"item":"Sahani","price":2000}, ...5],"qs":[{"q":"Bidhaa ipi ina bei ndogo kuliko zote?","ans":"Sahani"}, ...5]}}`;
   if(problems && problems.length){
-    p += '\n\nJIBU LAKO LA AWALI LILIKATALIWA KWA SABABU: ' + problems.join('; ') + '.\nRudisha JSON KAMILI tena na kila kipengele kwa idadi kamili.';
+    p += `\n\nYOUR PREVIOUS ANSWER WAS REJECTED BECAUSE: ${problems.join('; ')}.\nReturn the COMPLETE JSON object again with every array at its exact count.`;
   }
   return p;
 }
 
-function sci4Check(o){
-  const S = SCI4_SPEC, problems = [];
-  const str = v => String(v == null ? '' : v).trim();
-  const arr = v => Array.isArray(v) ? v : [];
-  const obj = k => (o && o[k] && typeof o[k] === 'object' && !Array.isArray(o[k])) ? o[k] : {};
-  const uniq = (list, keyFn) => { const seen = new Set(); return list.filter(x => { const k = keyFn(x).toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; }); };
-  const blank = q => /_{3,}/.test(q) ? q : q + ' ______';
-
-  let mcq = [];
-  arr(o && o.mcq).forEach(x => {
-    if(!x || !str(x.q) || !str(x.a) || !str(x.b) || !str(x.c) || !str(x.d)) return;
-    const raw = str(x.ans); let L = '';
-    const m = raw.match(/^\(?([A-Da-d])(?:[\).:\s]|$)/);
-    if(m) L = m[1].toUpperCase();
-    else { const hit = ['a','b','c','d'].find(k => str(x[k]).toLowerCase() === raw.toLowerCase()); L = hit ? hit.toUpperCase() : ''; }
-    if(!L) return;
-    mcq.push({ q: str(x.q), a: str(x.a), b: str(x.b), c: str(x.c), d: str(x.d), ans: L });
+function math3Check(d){
+  const problems = [];
+  const okItem = x => x && typeof x.q === 'string' && x.q.trim() && x.ans != null && String(x.ans).trim();
+  d = d || {};
+  ['q1','q2','q4'].forEach(k=>{
+    const arr = Array.isArray(d[k]) ? d[k].filter(okItem) : [];
+    if(arr.length !== 5) problems.push(k + ' needs exactly 5 complete items {q, ans} (got ' + arr.length + ')');
+    d[k] = arr.slice(0,5);
   });
-  mcq = uniq(mcq, x => x.q).slice(0, S.mcq);
-
-  let pairs = arr(obj('match').pairs).filter(x => x && str(x.a) && str(x.b)).map(x => ({ a: str(x.a), b: str(x.b) }));
-  pairs = uniq(uniq(pairs, x => x.a), x => x.b).slice(0, S.match);
-  const used = new Set(pairs.map(p => p.b.toLowerCase()));
-  const extra = uniq(arr(obj('match').extra).map(str).filter(s => s && !used.has(s.toLowerCase())).map(s => ({ b: s })), x => x.b).map(x => x.b).slice(0, S.extra);
-
-  const f = obj('fill');
-  let words = uniq(arr(f.words).map(str).filter(Boolean).map(w => ({ b: w })), x => x.b).map(x => x.b);
-  let items = uniq(arr(f.items).filter(x => x && str(x.q) && str(x.ans)).map(x => ({ q: blank(str(x.q)), ans: str(x.ans) })), x => x.q);
-  items = items.filter(x => words.some(w => w.toLowerCase() === x.ans.toLowerCase()));
-  items = uniq(items, x => x.ans).slice(0, S.fill);
-  words = items.map(x => words.find(w => w.toLowerCase() === x.ans.toLowerCase()));
-
-  let tf = uniq(arr(o && o.tf).filter(x => x && str(x.q)).map(x => {
-    const a = str(x.ans).toUpperCase().replace(/\s+/g, '');
-    return { q: blank(str(x.q)), ans: /^SIKWELI|^SI\s?KWELI|^UONGO|^FALSE/.test(a) ? 'SIKWELI' : /^KWELI|^TRUE|^SAHIHI/.test(a) ? 'KWELI' : '' };
-  }).filter(x => x.ans), x => x.q).slice(0, S.tf);
-
-  let diag = arr(o && o.diag).map(str).filter(k => SCI4_DIAGS[k]);
-  let lev = diag.find(k => SCI4_DIAGS[k].kind === 'lever') || 'lever_B';
-  let sym = diag.find(k => SCI4_DIAGS[k].kind === 'symbol') || 'sw_open';
-  diag = [lev, sym];
-
-  const short = uniq(arr(o && o.short).filter(x => x && str(x.q) && str(x.ans)).map(x => ({ q: blank(str(x.q)), ans: str(x.ans) })), x => x.q).slice(0, S.short);
-
-  const need = (name, got, want) => { if(got < want) problems.push('"' + name + '" has ' + got + ' valid items but needs exactly ' + want); };
-  need('mcq', mcq.length, S.mcq);
-  need('match.pairs', pairs.length, S.match);
-  need('match.extra', extra.length, S.extra);
-  need('fill.items (answer must be one of fill.words, each used once)', items.length, S.fill);
-  need('tf', tf.length, S.tf);
-  need('short', short.length, S.short);
-  if(tf.length >= S.tf && (tf.filter(x => x.ans === 'KWELI').length < 2 || tf.filter(x => x.ans === 'SIKWELI').length < 2)) problems.push('"tf" needs at least two KWELI and at least two SIKWELI');
-
-  const all = [].concat(mcq.map(x => [x.q, x.a, x.b, x.c, x.d].join(' ')), pairs.map(x => x.a + ' ' + x.b), extra,
-                        items.map(x => x.q + ' ' + x.ans), tf.map(x => x.q), short.map(x => x.q + ' ' + x.ans));
-  let enPenalty = false;
-  if(sw7LooksEnglish(all)){ enPenalty = true; problems.push('the content is written in English - this is a Kiswahili exam, so rewrite EVERYTHING in Kiswahili sanifu'); }
-  let score = Math.min(mcq.length, S.mcq) + Math.min(pairs.length, S.match) + Math.min(extra.length, S.extra) + items.length + tf.length + short.length;
-  if(enPenalty) score = 0;
-  return { problems, score, data: { mcq, pairs, extra, words, items, tf, diag, short } };
+  const q3 = Array.isArray(d.q3) ? d.q3 : [];
+  const num = v => Number.isFinite(Number(v));
+  const calcOk = (x, op) => x && num(x.a) && num(x.b) && String(x.a).trim()!=='' && String(x.b).trim()!=='';
+  let q3ok = q3.length >= 5 && calcOk(q3[0]) && calcOk(q3[1]) && [2,3,4].every(i => okItem(q3[i]));
+  if(!q3ok) problems.push('q3 needs 5 items: two column calculations with numeric "a" and "b" (no ans), then three items {q, ans}');
+  d.q3 = q3.slice(0,5);
+  const q5 = d.q5 || {};
+  const table = Array.isArray(q5.table) ? q5.table.filter(x => x && x.item && num(x.price)) : [];
+  const qs = Array.isArray(q5.qs) ? q5.qs.filter(okItem) : [];
+  if(table.length !== 5) problems.push('q5.table needs exactly 5 items {item, price} (got ' + table.length + ')');
+  if(qs.length !== 5) problems.push('q5.qs needs exactly 5 complete questions {q, ans} (got ' + qs.length + ')');
+  d.q5 = { table: table.slice(0,5), qs: qs.slice(0,5) };
+  const score = 20 - problems.length * 3 + (q3ok ? 2 : 0);
+  return { problems, score, data: d };
 }
 
-function sci4BuildExam(d){
-  const S = SCI4_SPEC, M = SCI4_MARKS;
+function math3Fmt(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+function math3BuildExam(d){
   const R = i => romanFromIndex(i);
-  const BR = '   [      ]';
-  const letters = 'ABCDEFG';
-
-  // Fungu B: majibu sahihi + vivuruga, vimechanganywa
-  const listB = eng7ShuffleDifferent(d.pairs.map(p => p.b).concat(d.extra));
-  const matchAns = d.pairs.map(p => letters[listB.indexOf(p.b)]);
-  const wordBox = eng7ShuffleDifferent(d.words);
-
-  const figs = {};
-  const mkFig = key => {
-    const id = 'sci4_' + key + '_' + Math.random().toString(36).slice(2, 8);
-    figs[id] = { id, svg: sci4Svg(SCI4_DIAGS[key]), model: null, title: SCI4_DIAGS[key].desc };
-    return id;
-  };
-
+  const BOX = '   [      ]';
+  const M = MATH3_MARKS;
   const sections = [];
-  sections.push({
-    number: 'A.1', heading: '1. SEHEMU A: Chagua herufi ya jibu sahihi katika swali la (i-v) kisha uiandike kwenye mabano.', note: '',
-    questions: d.mcq.map((x, i) => ({ roman: R(i), text: x.q + BR + '\nA. ' + x.a + '\nB. ' + x.b + '\nC. ' + x.c + '\nD. ' + x.d, marks: M.mcq }))
-  });
-  const q2 = d.pairs.map((p, i) => ({ roman: R(i), text: p.a + BR, marks: M.match }));
-  q2.push({ roman: '', text: 'SEHEMU B\n' + listB.map((b, i) => letters[i] + '  –  ' + b).join('\n'), marks: 0 });
-  sections.push({
-    number: 'B.2', heading: '2. SEHEMU B: Jibu kipengele (i-v) kwa kuoanisha Sehemu A na ile ya Sehemu B kwa kuandika herufi ya jibu sahihi kwenye mabano.', note: '',
-    questions: q2
-  });
-  const q3 = [{ roman: '', text: 'KISANDUKU:  ' + wordBox.join(',   '), marks: 0 }];
-  d.items.forEach((x, i) => q3.push({ roman: R(i), text: x.q, marks: M.fill }));
-  sections.push({
-    number: 'C.3', heading: '3. SEHEMU C: Jaza nafasi zilizoachwa wazi kwa kuchagua maneno yaliyo katika kisanduku kwa swali la (i-v).', note: '',
-    questions: q3
-  });
-  sections.push({
-    number: 'D.4', heading: '4. SEHEMU D: Katika swali la 4 (i-v) andika KWELI au SIKWELI.', note: '',
-    questions: d.tf.map((x, i) => ({ roman: R(i), text: x.q, marks: M.tf }))
-  });
-  const q5 = [];
-  d.diag.forEach((key, i) => {
-    const id = mkFig(key);
-    q5.push({ roman: R(i), text: SCI4_DIAGS[key].ask + ' ______', marks: M.diag, figs: [id], figOpt: { [id]: { pos: 'after', size: 'm' } } });
-  });
-  d.short.forEach((x, i) => q5.push({ roman: R(i + 2), text: x.q, marks: M.diag }));
-  sections.push({
-    number: 'E.5', heading: '5. SEHEMU E: Jaza nafasi zilizoachwa wazi katika swali la 5 kipengele (i-v) kwa kuchunguza michoro ifuatayo.', note: '',
-    questions: q5
-  });
+  const mk = (number, heading, qs) => ({ number: String(number), heading, note: 'Alama ' + (qs.filter(x=>x.marks>0).length * M), questions: qs });
 
-  let key = 'MWONGOZO WA KUSAHIHISHA - SAYANSI NA TEKNOLOJIA, DARASA LA IV\n\n';
-  key += 'SEHEMU A  (Swali 1 - alama ' + M.mcq + ' kila moja)\n';
-  d.mcq.forEach((x, i) => { key += R(i) + '. ' + x.ans + '  (' + x[x.ans.toLowerCase()] + ')\n'; });
-  key += '\nSEHEMU B  (Swali 2 - alama ' + M.match + ' kila moja)\n';
-  d.pairs.forEach((p, i) => { key += R(i) + '. ' + matchAns[i] + '  (' + p.a + ' = ' + p.b + ')\n'; });
-  key += '\nSEHEMU C  (Swali 3 - alama ' + M.fill + ' kila moja)\n';
-  d.items.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
-  key += '\nSEHEMU D  (Swali 4 - alama ' + M.tf + ' kila moja)\n';
-  d.tf.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
-  key += '\nSEHEMU E  (Swali 5 - alama ' + M.diag + ' kila moja)\n';
-  d.diag.forEach((k, i) => { key += R(i) + '. ' + SCI4_DIAGS[k].ans + '\n'; });
-  d.short.forEach((x, i) => { key += R(i + 2) + '. ' + x.ans + '\n'; });
+  sections.push(mk(1, '1. Jibu maswali yafuatayo kuhusu namba.', d.q1.map((x,i)=>({ roman:R(i), text:x.q, marks:M }))));
+  sections.push(mk(2, '2. Jibu maswali yafuatayo (mpangilio, mfuatano na sehemu).', d.q2.map((x,i)=>({ roman:R(i), text:x.q, marks:M }))));
+
+  const q3 = [];
+  const col = (x, i) => {
+    const a = Math.round(Number(x.a)), b = Math.round(Number(x.b));
+    const sub = (x.op === '-' || x.op === '−');
+    return { roman:R(i), text: (sub ? math3Fmt(a) + ' - ' + math3Fmt(b) + ' =' : math3Fmt(a) + '\n+ ' + math3Fmt(b) + BOX), marks:M, _ans: sub ? (a - b) : (a + b) };
+  };
+  const c1 = col(Object.assign({op:'+'}, d.q3[0]), 0), c2 = col(Object.assign({op:'-'}, d.q3[1]), 1);
+  q3.push(c1, c2);
+  [2,3,4].forEach(i => q3.push({ roman:R(i), text:d.q3[i].q, marks:M }));
+  sections.push(mk(3, '3. Kokotoa na ujibu.', q3.map(x => ({ roman:x.roman, text:x.text, marks:x.marks }))));
+
+  sections.push(mk(4, '4. Jibu maswali yafuatayo.', d.q4.map((x,i)=>({ roman:R(i), text:x.q, marks:M }))));
+
+  const tbl = d.q5.table.map(t => t.item + '  —  ' + math3Fmt(t.price)).join('\n');
+  const q5 = [{ roman:'', text:'Chunguza bei ya bidhaa zifuatazo kisha jibu maswali yanayofuata.\n\nBidhaa  —  Gharama (Sh)\n' + tbl + '\n\nMaswali', marks:0 }];
+  d.q5.qs.forEach((x,i)=> q5.push({ roman:R(i), text:x.q, marks:M }));
+  sections.push(mk(5, '5. Chunguza bei ya bidhaa na ujibu maswali.', q5));
+
+  let key = 'MWONGOZO WA KUSAHIHISHA - HISABATI, DARASA LA III\n(Alama ' + M + ' kwa kila kipengele i-v)\n';
+  const addKey = (n, arr) => { key += '\nSWALI ' + n + '\n'; arr.forEach((a,i)=>{ key += R(i) + '. ' + a + '\n'; }); };
+  addKey(1, d.q1.map(x=>x.ans));
+  addKey(2, d.q2.map(x=>x.ans));
+  addKey(3, [math3Fmt(c1._ans), math3Fmt(c2._ans), d.q3[2].ans, d.q3[3].ans, d.q3[4].ans]);
+  addKey(4, d.q4.map(x=>x.ans));
+  addKey(5, d.q5.qs.map(x=>x.ans));
 
   const header = {
     lines: [
-      'JAMHURI YA MUUNGANO WA TANZANIA',
-      'WIZARA YA ELIMU, SAYANSI, TEKNOLOJIA NA MAFUNZO YA UFUNDI',
+      'OFISI YA RAIS TAWALA ZA MIKOA NA SERIKALI ZA MITAA',
       'HALMASHAURI YA WILAYA YA ______________________',
-      SCI4_TERM_TEXT + ' - DARASA LA IV',
-      'SOMO: SAYANSI NA TEKNOLOJIA',
-      'JINA LA MWANAFUNZI: ______________________________    NAMBA YA MTAHINIWA: ______________',
-      'JINA LA SHULE: ______________________________    WILAYA: ______________________'
+      MATH3_TERM_TEXT,
+      'SOMO LA HISABATI DARASA LA III',
+      'MUDA: 1:30',
+      'JINA LA MWANAFUNZI: ______________________________    SHULE: ______________________'
     ],
     instructions: [], language: 'sw', assessorTable: false
   };
-  return { header, examTitle: 'SAYANSI NA TEKNOLOJIA — DARASA LA IV', sections, answerKey: key.trim(), figs };
+  return { header, examTitle: 'HISABATI — DARASA LA III', sections, answerKey: key.trim(), workTable: true, endMark: 'MWISHO' };
 }
 
-// Tengeneza mtihani wa Sayansi na Teknolojia Darasa la 4: jaribu hadi mara 3 hadi kila kipengele kikamilike
-async function generateSci4Exam(topics){
+async function generateMath3Exam(topics){
   const model = document.getElementById('groqModel').value;
   const extra = /gpt-oss/i.test(model) ? { reasoning_effort: 'low' } : {};
   let best = null, problems = [], lastErr = null;
   for(let attempt = 1; attempt <= 3; attempt++){
     let raw;
     try{
-      raw = await callClaude(sci4BuildPrompt(topics, attempt > 1 ? problems : null), 5000, extra);
+      raw = await callClaude(math3BuildPrompt(topics, attempt > 1 ? problems : null), 5000, extra);
     }catch(e){
       if(!best) throw e;
       lastErr = e; break;
@@ -3295,7 +3198,7 @@ async function generateSci4Exam(topics){
     const cut = callClaude.lastFinish === 'length';
     let chk;
     try{
-      chk = sci4Check(mtParseJSON(raw).obj);
+      chk = math3Check(mtParseJSON(raw).obj);
     }catch(e){
       problems = ['the reply was not valid JSON' + (cut ? ' (it was cut off - keep every item short)' : '')];
       lastErr = e; continue;
@@ -3305,12 +3208,9 @@ async function generateSci4Exam(topics){
     problems = chk.problems.concat(cut ? ['the output was cut off - keep every item short'] : []);
   }
   if(!best) throw new Error((lastErr && lastErr.message) || 'AI haikurudisha mtihani unaoeleweka.');
-  if(best.score === 0) throw new Error('AI iliandika mtihani kwa Kiingereza badala ya Kiswahili. Bonyeza "Tengeneza Mtihani" tena (au jaribu modeli nyingine).');
-  const warning = best.problems.length
-    ? '⚠️ Vipengele vifuatavyo havikukamilika baada ya majaribio 3: ' + best.problems.join('; ') +
-      '. Bonyeza "Tengeneza Mtihani" tena, au ongeza maswali kwa "+ Ongeza Swali la Mkono".'
-    : '';
-  return { exam: sci4BuildExam(best.data), warning };
+  if(best.problems.length) throw new Error('Mtihani haukukamilika baada ya majaribio 3 (' + best.problems.join('; ') + '). Bonyeza "Tengeneza Mtihani" tena.');
+  const warning = '✔️ Hakikisha majibu ya hesabu kwenye mwongozo kabla ya kuchapisha (majibu ya Swali 3 i na ii yamekokotolewa na programu).';
+  return { exam: math3BuildExam(best.data), warning };
 }
 
 /* ===================== ENGLISH DARASA LA 5, 6 NA 7 — MUUNDO WA KARATASI HALISI (KIONGEZEO) =====================
@@ -3967,7 +3867,7 @@ async function generateMitihani(){
   const specialFormatPending = isUpperPrimary && (subject === 'Hisabati' || subject === 'Uraia na Maadili');
   const useEng4 = /^darasa/i.test(grade) && (gradeNum === 3 || gradeNum === 4) && subject === 'English'; // karatasi halisi (English, Darasa 3-4)
   const useSw4 = /^darasa/i.test(grade) && (gradeNum === 3 || gradeNum === 4) && subject === 'Kiswahili'; // karatasi halisi (Kiswahili, Darasa 3-4)
-  const useSci4 = /^darasa/i.test(grade) && gradeNum === 4 && subject === 'Sayansi na Teknolojia'; // karatasi halisi (Sayansi na Teknolojia, Darasa 4)
+  const useMath3 = /^darasa/i.test(grade) && gradeNum === 3 && subject === 'Hisabati'; // karatasi halisi (Hisabati, Darasa 3)
   const useEng7 = /^darasa/i.test(grade) && gradeNum >= 5 && gradeNum <= 7 && (subject === 'English' || subject === 'Kiingereza'); // karatasi halisi (English, Darasa 5-7)
   const useSw7 = /^darasa/i.test(grade) && gradeNum >= 5 && gradeNum <= 7 && subject === 'Kiswahili'; // karatasi halisi (Kiswahili, Darasa 5-7)
 
@@ -4043,8 +3943,8 @@ MUHIMU SANA: (1) Kila swali LAZIMA lihusiane moja kwa moja na mada "${topics}" n
     } else if(useSw4){
       const r = await generateSw4Exam(topics, gradeNum);
       examData = r.exam; mtWarning = r.warning || '';
-    } else if(useSci4){
-      const r = await generateSci4Exam(topics);
+    } else if(useMath3){
+      const r = await generateMath3Exam(topics);
       examData = r.exam; mtWarning = r.warning || '';
     } else if(useEng7){
       const r = await generateEng7Exam(topics, gradeNum);
@@ -4112,6 +4012,7 @@ function renderExamEditor(){
     html += `<div class="sec-block" data-sec="${si}">
       <div class="sec-header"><h3>${escapeHtml(secHeading(sec))}</h3><span class="sec-note">${escapeHtml(sec.note||"")}</span></div>
       <div class="q-list" id="qlist-${si}">`;
+    if(examData.workTable) html += '<div class="q-item q-colhead"><div class="q-num">NA</div><div class="q-text">SWALI</div><div class="q-work">KAZI</div><div class="q-work q-ans">JIBU</div></div>';
     (sec.questions||[]).forEach((q, qi) => {
       html += renderQuestionRow(si, qi, q);
     });
@@ -4120,6 +4021,7 @@ function renderExamEditor(){
     </div>`;
   });
 
+  if(examData.endMark) html += `<div class="exam-end">${escapeHtml(examData.endMark)}</div>`;
   html += `<div class="answerkey-block"><h3>MWONGOZO WA MAJIBU</h3>
     <div class="answerkey-text" contenteditable="true" id="answerkey-text" onblur="updateAnswerKey()">${escapeHtml(examData.answerKey||"")}</div>
   </div>`;
@@ -4131,6 +4033,7 @@ function renderQuestionRow(si, qi, q){
   return `<div class="q-item" data-sec="${si}" data-q="${qi}">
     <div class="q-num">${q.roman==='' ? '' : escapeHtml(q.roman||romanFromIndex(qi)) + '.'}</div>
     <div class="q-text" contenteditable="true" onblur="updateQuestionText(${si},${qi},this)">${escapeHtml(q.text||"")}</div>
+    ${(examData && examData.workTable && q.roman !== '') ? '<div class="q-work"></div><div class="q-work q-ans"></div>' : ''}
     <input type="number" class="q-marks" value="${q.marks!=null?q.marks:1}" min="0" onchange="updateQuestionMarks(${si},${qi},this.value)" title="Alama">
     <button class="q-del" onclick="deleteQuestion(${si},${qi})" title="Futa swali">🗑</button>
   </div>`;
@@ -4192,6 +4095,7 @@ function examToText(){
     });
     out += "\n";
   });
+  if(examData.endMark) out += examData.endMark + "\n\n";
   out += "MWONGOZO WA MAJIBU\n" + (examData.answerKey||"");
   return out;
 }
@@ -8015,7 +7919,7 @@ function autoAIPrompt(txt, W, H){
 async function autoAICall(prompt){
   let url='https://api.groq.com/openai/v1/chat/completions', auth, viaProxy=false;
   const sel=$('groqModel'); const models=[]; if(sel && sel.value) models.push(sel.value);
-  const key = (($('groqApiKey')&&$('groqApiKey').value)||'').replace(/[^\x20-\x7E]/g,'').trim();
+  const key = ''; // Groq key haitumiki tena — AI inapita seva ya Cloudflare
   if(key){ auth=key; if(models.indexOf('llama-3.3-70b-versatile')<0) models.push('llama-3.3-70b-versatile'); }
   else if(typeof PH_PROXY_URL!=='undefined' && PH_PROXY_URL){
     viaProxy=true; url=PH_PROXY_URL;
@@ -9469,3 +9373,4 @@ function phBar(){
 </script>
 </body>
 </html>
+
