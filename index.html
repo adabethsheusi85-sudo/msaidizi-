@@ -121,6 +121,15 @@
   @keyframes pulse{0%,80%,100%{opacity:0.2;}40%{opacity:1;}}
   .error-box{margin:18px 22px;padding:13px 15px;background:#F6DEDE;border:1px solid #D98F8F;color:#7A2B2B;border-radius:6px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12.5px;}
 
+
+  /* ===== Hisabati Darasa la 3: safu za KAZI na JIBU (kiongezeo) ===== */
+  .q-work{flex:0 0 120px;min-height:44px;border:1px solid var(--paper-line);border-radius:3px;}
+  .q-work.q-ans{flex:0 0 90px;}
+  .q-colhead{font-family:'Helvetica Neue',Arial,sans-serif;font-weight:700;font-size:12px;color:var(--muted);padding-bottom:0;}
+  .q-colhead .q-text{padding:2px 9px;}
+  .q-colhead .q-work{min-height:0;text-align:center;border:none;}
+  .exam-end{text-align:center;font-style:italic;font-weight:700;margin:20px 0 10px;letter-spacing:2px;}
+  @media print{.q-work{border:1px solid #000;} .q-colhead .q-work{border:none;}}
   /* Question management (editable exam) */
   .exam-title{font-size:19px;margin:0 0 14px;}
   /* ===== Kichwa cha habari cha mtihani (maelekezo + jedwali la assessor) — kiongezeo kipya, hiari ===== */
@@ -203,7 +212,7 @@
 
   @media print{
     body{background:white;color:black;}
-    .topbar,.panel:not(.output-panel),.hub-tabs,.output-head button,.apikey-bar{display:none !important;}
+    .topbar,.panel:not(.output-panel),.hub-tabs,.output-head button{display:none !important;}
     .output-panel{box-shadow:none;}
     .layout{grid-template-columns:1fr;}
   }
@@ -274,18 +283,6 @@
     .lp-fill,.lp-fill-block{border-bottom:1px dotted #444 !important;background:none !important;}
     @page{size:A4;margin:10mm;}
   }
-
-  /* Groq API key bar */
-  .apikey-bar{background:var(--board-dark);border:1px solid rgba(217,147,47,0.4);border-radius:8px;padding:12px 16px;margin-bottom:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-family:'Helvetica Neue',Arial,sans-serif;}
-  .apikey-bar label{font-size:12.5px;color:var(--sage);white-space:nowrap;}
-  .apikey-bar input[type="password"],.apikey-bar input[type="text"]{flex:1;min-width:180px;padding:9px 12px;border-radius:6px;border:1px solid rgba(244,239,225,0.3);background:rgba(244,239,225,0.06);color:var(--chalk);font-size:13.5px;}
-  .apikey-bar select{padding:9px 10px;border-radius:6px;border:1px solid rgba(244,239,225,0.3);background:rgba(244,239,225,0.06);color:var(--chalk);font-size:13px;}
-  .apikey-bar button{background:none;border:1px solid rgba(244,239,225,0.35);color:var(--chalk);padding:9px 12px;border-radius:6px;cursor:pointer;font-size:12.5px;}
-  .apikey-bar button:hover{border-color:var(--amber);color:var(--amber);}
-  .apikey-note{font-size:11px;color:rgba(244,239,225,0.5);width:100%;line-height:1.5;margin-top:2px;}
-  .apikey-status{font-size:11.5px;font-weight:700;}
-  .apikey-status.ok{color:var(--sage);}
-  .apikey-status.missing{color:var(--red);}
 
   /* ===== Ingizo la Haraka: jina la shule, vitendo vya jedwali, chapisha ===== */
   .sm-head{margin-bottom:12px;}
@@ -489,20 +486,6 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
       <h1 id="pageTitle">Dashibodi</h1>
     </div>
     <button class="backBtn" id="backBtn" onclick="goHome()">&larr; Rudi Dashibodi</button>
-  </div>
-
-  <!-- ============ GROQ API KEY BAR ============ -->
-  <div class="apikey-bar">
-    <label for="groqApiKey">Groq API Key:</label>
-    <input type="password" id="groqApiKey" placeholder="weka Groq API key hapa (gsk_...)" autocomplete="off">
-    <button type="button" id="toggleKeyBtn" onclick="toggleKeyVisibility()">Onyesha</button>
-    <label for="groqModel">Model:</label>
-    <select id="groqModel">
-      <option value="openai/gpt-oss-120b">GPT OSS 120B (haraka zaidi)</option>
-      <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
-    </select>
-    <span class="apikey-status missing" id="apikeyStatus">Bado hujaweka ufunguo</span>
-    <p class="apikey-note">Pata ufunguo wako BURE kwenye console.groq.com &rarr; API Keys. Ufunguo unabaki kwenye kivinjari chako tu wakati wa kikao hiki (haujahifadhiwa mahali popote) — utahitaji kuuweka tena ukifungua ukurasa upya.</p>
   </div>
 
   <!-- ============ DASHBOARD ============ -->
@@ -2447,71 +2430,49 @@ function simpleMarkdownToHtml(text){
 
 const lastTextByOutput = {};
 
-function toggleKeyVisibility(){
-  const inp = document.getElementById('groqApiKey');
-  const btn = document.getElementById('toggleKeyBtn');
-  if(inp.type === 'password'){ inp.type = 'text'; btn.textContent = 'Ficha'; }
-  else { inp.type = 'password'; btn.textContent = 'Onyesha'; }
-}
-
-function updateApikeyStatus(){
-  const key = document.getElementById('groqApiKey').value.trim();
-  const status = document.getElementById('apikeyStatus');
-  if(key){ status.textContent = 'Ufunguo umewekwa ✓'; status.className = 'apikey-status ok'; }
-  else { status.textContent = 'Bado hujaweka ufunguo'; status.className = 'apikey-status missing'; }
-}
-document.addEventListener('DOMContentLoaded', ()=>{
-  document.getElementById('groqApiKey').addEventListener('input', updateApikeyStatus);
-});
+// Modeli ya AI chaguo-msingi (kisanduku cha Model/Groq API Key kimeondolewa; AI inapita seva ya Cloudflare).
+const AI_MODEL = 'openai/gpt-oss-120b';
 
 async function callClaude(prompt, maxTokens, extra){
-  let apiKey = document.getElementById('groqApiKey').value.trim();
-  const model = document.getElementById('groqModel').value;
-  if(!apiKey){
-    throw new Error("Tafadhali weka Groq API key yako kwenye kisanduku juu ya ukurasa kabla ya kutengeneza.");
+  // AI sasa inapita kwenye seva ya Cloudflare (msaidizi-seva) — hakuna Groq API key kwenye kivinjari.
+  // Inatumia tokeni ya Firebase ya mwalimu aliyeingia, kama kipengele cha Soma Matokeo kwa Picha.
+  if(typeof PH_PROXY_URL === 'undefined' || !PH_PROXY_URL){
+    throw new Error("Anwani ya seva ya Cloudflare haijawekwa kwenye faili (PH_PROXY_URL).");
   }
-  // Safisha ufunguo: ondoa herufi zozote zisizo za kawaida (mfano alama za kunakili kutoka Word/PDF)
-  // zinazoweza kusababisha hitilafu ya kivinjari wakati wa kutuma ombi (ISO-8859-1 header error).
-  const cleanedKey = apiKey.replace(/[^\x20-\x7E]/g, '');
-  if(cleanedKey !== apiKey){
-    apiKey = cleanedKey;
-    const status = document.getElementById('apikeyStatus');
-    if(status){ status.textContent = 'Ufunguo ulikuwa na herufi zisizo za kawaida — umesafishwa moja kwa moja ✓'; status.className = 'apikey-status ok'; }
-  }
-  if(!apiKey){
-    throw new Error("Ufunguo wa API una herufi zisizokubalika pekee. Futa kisanduku kisha andika (usibandike) ufunguo wako wa Groq upya.");
-  }
-  let response;
-  try{
-    response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "Authorization":"Bearer " + apiKey
-      },
-      body: JSON.stringify({
-        model: model,
-        max_tokens: maxTokens || 2000,
-        messages: [{ role:"user", content: prompt }],
-        ...(extra || {})
-      })
-    });
-  }catch(fetchErr){
-    if(String(fetchErr.message||'').includes('ISO-8859-1') || String(fetchErr.message||'').includes('headers')){
-      throw new Error("Ufunguo wa API una herufi zisizokubalika (labda ulizibandika kutoka Word/PDF). Futa kisanduku cha Groq API Key, kisha andika upya ufunguo wako moja kwa moja (au bandika kwenye Notepad kwanza kuusafisha), kisha jaribu tena.");
+  let token;
+  try{ token = await firebase.auth().currentUser.getIdToken(); }
+  catch(e){ throw new Error("Hujaingia. Toka (log out) kisha ingia tena."); }
+  const models = [AI_MODEL];
+  if(typeof PH_MODELS !== 'undefined') PH_MODELS.forEach(m=>{ if(models.indexOf(m) < 0) models.push(m); }); // akiba ikiwa seva haikubali modeli iliyochaguliwa
+  let response = null, detail = "";
+  for(const m of models){
+    const body = { model: m, max_tokens: maxTokens || 2000, messages: [{ role:"user", content: prompt }] };
+    if(extra){ Object.assign(body, extra); if(!/gpt-oss/i.test(m)) delete body.reasoning_effort; } // reasoning_effort ni ya gpt-oss tu
+    try{
+      response = await fetch(PH_PROXY_URL, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + token },
+        body: JSON.stringify(body)
+      });
+    }catch(fetchErr){
+      throw new Error("Imeshindwa kuunganisha na seva. Angalia mtandao wako kisha jaribu tena. (" + fetchErr.message + ")");
     }
-    throw new Error("Imeshindwa kuunganisha na seva. Angalia mtandao wako kisha jaribu tena. (" + fetchErr.message + ")");
+    if(response.ok) break;
+    detail = "";
+    try{ const t = await response.clone().text(); try{ const j = JSON.parse(t); detail = (j && j.error && (j.error.message || j.error)) || j.message || t; }catch(e){ detail = t; } }catch(e){}
+    detail = String(detail||"").replace(/\s+/g," ").slice(0,220);
+    if(response.status === 401 || response.status === 429) break;
+    if(response.status !== 400 && response.status !== 403 && response.status !== 404 && response.status !== 410) break; // jaribu modeli inayofuata kwa makosa haya tu
   }
   if(!response.ok){
-    let detail = "";
-    try{ const errData = await response.json(); detail = errData?.error?.message || ""; }catch(e){}
-    if(response.status === 401) throw new Error("Ufunguo wa API si sahihi. Angalia Groq API key yako.");
+    if(response.status === 401) throw new Error("Hujaingia au kikao kimeisha. Toka (log out) kisha ingia tena.");
     if(response.status === 429) throw new Error("Umefikia kikomo cha maombi kwa sasa. Subiri kidogo kisha jaribu tena.");
-    throw new Error("Server error: " + response.status + (detail ? (" — " + detail) : ""));
+    throw new Error("Server error: " + response.status + (detail ? (" — " + detail) : "") + " (kupitia seva ya Cloudflare)");
   }
   const data = await response.json();
   callClaude.lastFinish = data?.choices?.[0]?.finish_reason || "";
-  const txt = data?.choices?.[0]?.message?.content || "";
+  let txt = data?.choices?.[0]?.message?.content || "";
+  txt = txt.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   if(!txt) throw new Error("Hakuna majibu yaliyorudi.");
   return txt;
 }
@@ -2825,7 +2786,7 @@ function eng4BuildExam(d, lang, gradeNum){
 
 // Tengeneza mtihani (English/Kiswahili, Darasa la 3-4): jaribu hadi mara 3 hadi kila kipengele kikamilike
 async function generateEng4Exam(topics, lang, gradeNum){
-  const model = document.getElementById('groqModel').value;
+  const model = AI_MODEL;
   const extra = /gpt-oss/i.test(model) ? { reasoning_effort: 'low' } : {}; // reasoning ndefu hula tokens za jibu
   let best = null, problems = [], lastErr = null;
   for(let attempt = 1; attempt <= 3; attempt++){
@@ -3030,7 +2991,7 @@ function sw4BuildExam(d, gradeNum){
 
 // Tengeneza mtihani wa Kiswahili Darasa la 3-4: jaribu hadi mara 3 hadi kila kipengele kikamilike
 async function generateSw4Exam(topics, gradeNum){
-  const model = document.getElementById('groqModel').value;
+  const model = AI_MODEL;
   const extra = /gpt-oss/i.test(model) ? { reasoning_effort: 'low' } : {};
   const n = sw4ItemCount(topics);
   let best = null, problems = [], lastErr = null;
@@ -3061,6 +3022,152 @@ async function generateSw4Exam(topics, gradeNum){
       '. Bonyeza "Tengeneza Mtihani" tena, au ongeza maswali kwa "+ Ongeza Swali la Mkono".'
     : '';
   return { exam: sw4BuildExam(best.data, gradeNum), warning };
+}
+
+
+/* ===================== HISABATI DARASA LA 3 — MUUNDO WA KARATASI HALISI (KIONGEZEO) =====================
+   Muundo (kama karatasi ya Halmashauri): jedwali lenye safu NA | SWALI | KAZI | JIBU, MUDA 1:30.
+   Maswali 5 makuu, kila moja ina vipengele i-v:
+   1 Namba (kusoma/kuandika, thamani ya tarakimu, namba kwa kifupi, jumla kwa maneno)
+   2 Mpangilio wa namba, mfuatano, sehemu (visehemu)
+   3 Kujumlisha/kutoa kwa safu, vipimo (kg-g), fedha (Sh na senti), majina ya maumbo
+   4 Sehemu iliyotiwa kivuli, fedha, noti, kutoa, kuzidisha kwa 0
+   5 Jedwali la bei za bidhaa + maswali matano.
+   AI inaombwa YALIYOMO tu; hesabu za safu (Swali 3 i na ii) zinakokotolewa na programu yenyewe. */
+const MATH3_TERM_TEXT = 'MTIHANI WA MUHULA WA ______ ' + new Date().getFullYear();
+const MATH3_MARKS = 1; // alama kwa kila kipengele (i-v)
+
+function math3BuildPrompt(topics, problems){
+  let p = `You are a Tanzanian primary-school MATHEMATICS (Hisabati) examiner (TAMISEMI / Halmashauri style) for STANDARD III (pupils aged 8-9).
+Write the content of a Standard III terminal mathematics test on these topics: "${topics}". Every item must fit the topics where possible and Standard III level (numbers up to 9999 for most items, Tanzanian shillings, kilograms and grams, simple fractions with denominators 2,3,4,5,6,8,10, 12, 14 for same-denominator subtraction).
+Write ALL text in simple standard Kiswahili (numerals stay numerals). Use Tanzanian names, items and money (Sh, senti).
+
+Return ONLY ONE valid JSON object - no markdown, no comments, no text before or after. Use straight double quotes only.
+The paper has 5 questions. Each of q1,q2,q3,q4 is an array of EXACTLY 5 items {"q":"...","ans":"..."}; q5 has a price table and 5 questions. Never skip, merge or shorten items. Double-check every answer arithmetically.
+
+q1 (numbers): item1 "Andika kwa maneno 4009" style (give a numeral, ans = words); item2 "Andika kwa tarakimu: <number in words>" (ans = numeral); item3 "Andika thamani ya namba iliyopigiwa mstari <number with one digit shown in square brackets, e.g. 8[9]82>" (ans = place value); item4 "Andika namba kwa kifupi 8000+800+90+5" style (ans = numeral); item5 word sum like "Tafuta jumla ya machungwa mia tisa na nazi 200" (ans = number).
+q2: item1 "Panga namba zifuatazo kwa mpangilio wa kupanda: <5 numbers>"; item2 "Panga namba zifuatazo kwa mpangilio wa kushuka: <5 numbers>"; item3 "Jaza namba zinazofuatana: <sequence with one blank ____>" ; item4 "Andika <fraction like 3/4> kwa maneno" (ans = words); item5 a subtraction of two fractions with the same denominator (e.g. 7/14 - 2/14), ans = fraction.
+q3: item1 and item2 are column calculations: give numbers in "a" and "b" (integers) instead of "q": item1 {"a":85519,"b":2719,"op":"+"} ; item2 {"a":..,"b":..,"op":"-"} (a larger than b, up to 7 digits for item2 is allowed). Do NOT give "ans" for items 1 and 2 (the app computes it). item3 a unit conversion question like "Kilogramu moja ni sawa na gramu ngapi?" or similar with "ans"; item4 a money addition in Sh and senti with two amounts and "ans" (sum, with senti carried correctly: 100 senti = Sh 1); item5 "Umbo hili linaitwaje" with a short text description of the shape in brackets (e.g. [umbo lenye pande tano]) and "ans" (e.g. pentagoni).
+q4: item1 "Andika kwa numerali sehemu ya umbo iliyotiwa kivuli" with a short description of the figure in brackets (e.g. [umbo limegawanywa sehemu 4 sawa, sehemu 3 zimetiwa kivuli]) ans = fraction; item2 "Andika jumla ya fedha zilizopo hapa chini" listing 2-3 notes/coins in text (e.g. [noti ya sh.5000 na noti ya sh.1000]) ans = total; item3 "Noti ngapi za sh.1000 zipo kwenye elfu kumi?" style; item4 "Ondoa 400 kutoka 12000" style; item5 multiplication by 0 or 1 like "200 x 0 =".
+q5: "table": EXACTLY 5 items {"item":"Sahani","price":2000} (everyday goods, prices as integers, include two items with the SAME price and make exactly one item the most expensive-unique or tied as you like); "qs": EXACTLY 5 questions answerable from the table: which item has the highest price; which items have equal price; which one is cheaper between two named items; how much is one named item sold for (Shilingi ngapi); total cost of two named items. Each with "ans".
+
+FORMAT EXAMPLE (structure only - do NOT copy content):
+{"q1":[{"q":"Andika kwa maneno 4009","ans":"Elfu nne na tisa"}, ...5],
+ "q2":[{"q":"Panga namba zifuatazo kwa mpangilio wa kupanda: 42, 22, 13, 27, 6","ans":"6, 13, 22, 27, 42"}, ...5],
+ "q3":[{"a":85519,"b":2719,"op":"+"},{"a":9999999,"b":7765555,"op":"-"},{"q":"...","ans":"..."},{"q":"...","ans":"..."},{"q":"...","ans":"..."}],
+ "q4":[{"q":"...","ans":"..."}, ...5],
+ "q5":{"table":[{"item":"Sahani","price":2000}, ...5],"qs":[{"q":"Bidhaa ipi ina bei ndogo kuliko zote?","ans":"Sahani"}, ...5]}}`;
+  if(problems && problems.length){
+    p += `\n\nYOUR PREVIOUS ANSWER WAS REJECTED BECAUSE: ${problems.join('; ')}.\nReturn the COMPLETE JSON object again with every array at its exact count.`;
+  }
+  return p;
+}
+
+function math3Check(d){
+  const problems = [];
+  const okItem = x => x && typeof x.q === 'string' && x.q.trim() && x.ans != null && String(x.ans).trim();
+  d = d || {};
+  ['q1','q2','q4'].forEach(k=>{
+    const arr = Array.isArray(d[k]) ? d[k].filter(okItem) : [];
+    if(arr.length !== 5) problems.push(k + ' needs exactly 5 complete items {q, ans} (got ' + arr.length + ')');
+    d[k] = arr.slice(0,5);
+  });
+  const q3 = Array.isArray(d.q3) ? d.q3 : [];
+  const num = v => Number.isFinite(Number(v));
+  const calcOk = (x, op) => x && num(x.a) && num(x.b) && String(x.a).trim()!=='' && String(x.b).trim()!=='';
+  let q3ok = q3.length >= 5 && calcOk(q3[0]) && calcOk(q3[1]) && [2,3,4].every(i => okItem(q3[i]));
+  if(!q3ok) problems.push('q3 needs 5 items: two column calculations with numeric "a" and "b" (no ans), then three items {q, ans}');
+  d.q3 = q3.slice(0,5);
+  const q5 = d.q5 || {};
+  const table = Array.isArray(q5.table) ? q5.table.filter(x => x && x.item && num(x.price)) : [];
+  const qs = Array.isArray(q5.qs) ? q5.qs.filter(okItem) : [];
+  if(table.length !== 5) problems.push('q5.table needs exactly 5 items {item, price} (got ' + table.length + ')');
+  if(qs.length !== 5) problems.push('q5.qs needs exactly 5 complete questions {q, ans} (got ' + qs.length + ')');
+  d.q5 = { table: table.slice(0,5), qs: qs.slice(0,5) };
+  const score = 20 - problems.length * 3 + (q3ok ? 2 : 0);
+  return { problems, score, data: d };
+}
+
+function math3Fmt(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+function math3BuildExam(d){
+  const R = i => romanFromIndex(i);
+  const BOX = '   [      ]';
+  const M = MATH3_MARKS;
+  const sections = [];
+  const mk = (number, heading, qs) => ({ number: String(number), heading, note: 'Alama ' + (qs.filter(x=>x.marks>0).length * M), questions: qs });
+
+  sections.push(mk(1, '1. Jibu maswali yafuatayo kuhusu namba.', d.q1.map((x,i)=>({ roman:R(i), text:x.q, marks:M }))));
+  sections.push(mk(2, '2. Jibu maswali yafuatayo (mpangilio, mfuatano na sehemu).', d.q2.map((x,i)=>({ roman:R(i), text:x.q, marks:M }))));
+
+  const q3 = [];
+  const col = (x, i) => {
+    const a = Math.round(Number(x.a)), b = Math.round(Number(x.b));
+    const sub = (x.op === '-' || x.op === '−');
+    return { roman:R(i), text: (sub ? math3Fmt(a) + ' - ' + math3Fmt(b) + ' =' : math3Fmt(a) + '\n+ ' + math3Fmt(b) + BOX), marks:M, _ans: sub ? (a - b) : (a + b) };
+  };
+  const c1 = col(Object.assign({op:'+'}, d.q3[0]), 0), c2 = col(Object.assign({op:'-'}, d.q3[1]), 1);
+  q3.push(c1, c2);
+  [2,3,4].forEach(i => q3.push({ roman:R(i), text:d.q3[i].q, marks:M }));
+  sections.push(mk(3, '3. Kokotoa na ujibu.', q3.map(x => ({ roman:x.roman, text:x.text, marks:x.marks }))));
+
+  sections.push(mk(4, '4. Jibu maswali yafuatayo.', d.q4.map((x,i)=>({ roman:R(i), text:x.q, marks:M }))));
+
+  const tbl = d.q5.table.map(t => t.item + '  —  ' + math3Fmt(t.price)).join('\n');
+  const q5 = [{ roman:'', text:'Chunguza bei ya bidhaa zifuatazo kisha jibu maswali yanayofuata.\n\nBidhaa  —  Gharama (Sh)\n' + tbl + '\n\nMaswali', marks:0 }];
+  d.q5.qs.forEach((x,i)=> q5.push({ roman:R(i), text:x.q, marks:M }));
+  sections.push(mk(5, '5. Chunguza bei ya bidhaa na ujibu maswali.', q5));
+
+  let key = 'MWONGOZO WA KUSAHIHISHA - HISABATI, DARASA LA III\n(Alama ' + M + ' kwa kila kipengele i-v)\n';
+  const addKey = (n, arr) => { key += '\nSWALI ' + n + '\n'; arr.forEach((a,i)=>{ key += R(i) + '. ' + a + '\n'; }); };
+  addKey(1, d.q1.map(x=>x.ans));
+  addKey(2, d.q2.map(x=>x.ans));
+  addKey(3, [math3Fmt(c1._ans), math3Fmt(c2._ans), d.q3[2].ans, d.q3[3].ans, d.q3[4].ans]);
+  addKey(4, d.q4.map(x=>x.ans));
+  addKey(5, d.q5.qs.map(x=>x.ans));
+
+  const header = {
+    lines: [
+      'OFISI YA RAIS TAWALA ZA MIKOA NA SERIKALI ZA MITAA',
+      'HALMASHAURI YA WILAYA YA ______________________',
+      MATH3_TERM_TEXT,
+      'SOMO LA HISABATI DARASA LA III',
+      'MUDA: 1:30',
+      'JINA LA MWANAFUNZI: ______________________________    SHULE: ______________________'
+    ],
+    instructions: [], language: 'sw', assessorTable: false
+  };
+  return { header, examTitle: 'HISABATI — DARASA LA III', sections, answerKey: key.trim(), workTable: true, endMark: 'MWISHO' };
+}
+
+async function generateMath3Exam(topics){
+  const model = AI_MODEL;
+  const extra = /gpt-oss/i.test(model) ? { reasoning_effort: 'low' } : {};
+  let best = null, problems = [], lastErr = null;
+  for(let attempt = 1; attempt <= 3; attempt++){
+    let raw;
+    try{
+      raw = await callClaude(math3BuildPrompt(topics, attempt > 1 ? problems : null), 5000, extra);
+    }catch(e){
+      if(!best) throw e;
+      lastErr = e; break;
+    }
+    const cut = callClaude.lastFinish === 'length';
+    let chk;
+    try{
+      chk = math3Check(mtParseJSON(raw).obj);
+    }catch(e){
+      problems = ['the reply was not valid JSON' + (cut ? ' (it was cut off - keep every item short)' : '')];
+      lastErr = e; continue;
+    }
+    if(!best || chk.score > best.score) best = chk;
+    if(!chk.problems.length){ best = chk; break; }
+    problems = chk.problems.concat(cut ? ['the output was cut off - keep every item short'] : []);
+  }
+  if(!best) throw new Error((lastErr && lastErr.message) || 'AI haikurudisha mtihani unaoeleweka.');
+  if(best.problems.length) throw new Error('Mtihani haukukamilika baada ya majaribio 3 (' + best.problems.join('; ') + '). Bonyeza "Tengeneza Mtihani" tena.');
+  const warning = '✔️ Hakikisha majibu ya hesabu kwenye mwongozo kabla ya kuchapisha (majibu ya Swali 3 i na ii yamekokotolewa na programu).';
+  return { exam: math3BuildExam(best.data), warning };
 }
 
 /* ===================== ENGLISH DARASA LA 5, 6 NA 7 — MUUNDO WA KARATASI HALISI (KIONGEZEO) =====================
@@ -3318,7 +3425,7 @@ function eng7BuildExam(d, gradeNum){
 
 // Tengeneza mtihani wa English Darasa la 5-7: jaribu hadi mara 3 hadi kila kipengele kikamilike
 async function generateEng7Exam(topics, gradeNum){
-  const model = document.getElementById('groqModel').value;
+  const model = AI_MODEL;
   const extra = /gpt-oss/i.test(model) ? { reasoning_effort: 'low' } : {};
   let best = null, problems = [], lastErr = null;
   for(let attempt = 1; attempt <= 3; attempt++){
@@ -3652,7 +3759,7 @@ function sw7BuildExam(d, gradeNum){
 }
 
 async function generateSw7Exam(topics, gradeNum){
-  const model = document.getElementById('groqModel').value;
+  const model = AI_MODEL;
   const extra = /gpt-oss/i.test(model) ? { reasoning_effort: 'low' } : {};
   const suggested = sw7SuggestType(topics);
   let best = null, problems = [], lastErr = null;
@@ -3717,6 +3824,7 @@ async function generateMitihani(){
   const specialFormatPending = isUpperPrimary && (subject === 'Hisabati' || subject === 'Uraia na Maadili');
   const useEng4 = /^darasa/i.test(grade) && (gradeNum === 3 || gradeNum === 4) && subject === 'English'; // karatasi halisi (English, Darasa 3-4)
   const useSw4 = /^darasa/i.test(grade) && (gradeNum === 3 || gradeNum === 4) && subject === 'Kiswahili'; // karatasi halisi (Kiswahili, Darasa 3-4)
+  const useMath3 = /^darasa/i.test(grade) && gradeNum === 3 && subject === 'Hisabati'; // karatasi halisi (Hisabati, Darasa 3)
   const useEng7 = /^darasa/i.test(grade) && gradeNum >= 5 && gradeNum <= 7 && (subject === 'English' || subject === 'Kiingereza'); // karatasi halisi (English, Darasa 5-7)
   const useSw7 = /^darasa/i.test(grade) && gradeNum >= 5 && gradeNum <= 7 && subject === 'Kiswahili'; // karatasi halisi (Kiswahili, Darasa 5-7)
 
@@ -3792,6 +3900,9 @@ MUHIMU SANA: (1) Kila swali LAZIMA lihusiane moja kwa moja na mada "${topics}" n
     } else if(useSw4){
       const r = await generateSw4Exam(topics, gradeNum);
       examData = r.exam; mtWarning = r.warning || '';
+    } else if(useMath3){
+      const r = await generateMath3Exam(topics);
+      examData = r.exam; mtWarning = r.warning || '';
     } else if(useEng7){
       const r = await generateEng7Exam(topics, gradeNum);
       examData = r.exam; mtWarning = r.warning || '';
@@ -3858,6 +3969,7 @@ function renderExamEditor(){
     html += `<div class="sec-block" data-sec="${si}">
       <div class="sec-header"><h3>${escapeHtml(secHeading(sec))}</h3><span class="sec-note">${escapeHtml(sec.note||"")}</span></div>
       <div class="q-list" id="qlist-${si}">`;
+    if(examData.workTable) html += '<div class="q-item q-colhead"><div class="q-num">NA</div><div class="q-text">SWALI</div><div class="q-work">KAZI</div><div class="q-work q-ans">JIBU</div></div>';
     (sec.questions||[]).forEach((q, qi) => {
       html += renderQuestionRow(si, qi, q);
     });
@@ -3866,6 +3978,7 @@ function renderExamEditor(){
     </div>`;
   });
 
+  if(examData.endMark) html += `<div class="exam-end">${escapeHtml(examData.endMark)}</div>`;
   html += `<div class="answerkey-block"><h3>MWONGOZO WA MAJIBU</h3>
     <div class="answerkey-text" contenteditable="true" id="answerkey-text" onblur="updateAnswerKey()">${escapeHtml(examData.answerKey||"")}</div>
   </div>`;
@@ -3877,6 +3990,7 @@ function renderQuestionRow(si, qi, q){
   return `<div class="q-item" data-sec="${si}" data-q="${qi}">
     <div class="q-num">${q.roman==='' ? '' : escapeHtml(q.roman||romanFromIndex(qi)) + '.'}</div>
     <div class="q-text" contenteditable="true" onblur="updateQuestionText(${si},${qi},this)">${escapeHtml(q.text||"")}</div>
+    ${(examData && examData.workTable && q.roman !== '') ? '<div class="q-work"></div><div class="q-work q-ans"></div>' : ''}
     <input type="number" class="q-marks" value="${q.marks!=null?q.marks:1}" min="0" onchange="updateQuestionMarks(${si},${qi},this.value)" title="Alama">
     <button class="q-del" onclick="deleteQuestion(${si},${qi})" title="Futa swali">🗑</button>
   </div>`;
@@ -3938,6 +4052,7 @@ function examToText(){
     });
     out += "\n";
   });
+  if(examData.endMark) out += examData.endMark + "\n\n";
   out += "MWONGOZO WA MAJIBU\n" + (examData.answerKey||"");
   return out;
 }
@@ -7759,15 +7874,11 @@ function autoAIPrompt(txt, W, H){
   'Instruction: '+txt;
 }
 async function autoAICall(prompt){
-  let url='https://api.groq.com/openai/v1/chat/completions', auth, viaProxy=false;
-  const sel=$('groqModel'); const models=[]; if(sel && sel.value) models.push(sel.value);
-  const key = (($('groqApiKey')&&$('groqApiKey').value)||'').replace(/[^\x20-\x7E]/g,'').trim();
-  if(key){ auth=key; if(models.indexOf('llama-3.3-70b-versatile')<0) models.push('llama-3.3-70b-versatile'); }
-  else if(typeof PH_PROXY_URL!=='undefined' && PH_PROXY_URL){
-    viaProxy=true; url=PH_PROXY_URL;
-    try{ auth=await firebase.auth().currentUser.getIdToken(); }catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); }
-    if(typeof PH_MODELS!=='undefined') PH_MODELS.forEach(m=>{ if(models.indexOf(m)<0) models.push(m); }); // modeli ambazo seva yako tayari inazikubali (picha)
-  } else throw new Error('Weka Groq API key juu ya ukurasa kwanza.');
+  if(typeof PH_PROXY_URL==='undefined' || !PH_PROXY_URL) throw new Error('Anwani ya seva ya AI (PH_PROXY_URL) haijawekwa kwenye faili.');
+  let url=PH_PROXY_URL, auth, viaProxy=true;
+  const models=[AI_MODEL];
+  try{ auth=await firebase.auth().currentUser.getIdToken(); }catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); }
+  if(typeof PH_MODELS!=='undefined') PH_MODELS.forEach(m=>{ if(models.indexOf(m)<0) models.push(m); }); // modeli ambazo seva yako tayari inazikubali (picha)
   let res=null, detail='';
   for(const m of models){
     for(let t=0;t<2;t++){
@@ -7784,7 +7895,7 @@ async function autoAICall(prompt){
     if(res.ok || (res.status!==400 && res.status!==404 && res.status!==410)) break;
   }
   if(!res.ok){
-    if(res.status===401||res.status===403) throw new Error('AI imekataa ombi (ruhusa/ufunguo). Ingia tena au angalia Groq API key.');
+    if(res.status===401||res.status===403) throw new Error('AI imekataa ombi. Toka (log out), ingia tena kisha jaribu.');
     if(res.status===429) throw new Error('Umefikia kikomo cha maombi kwa sasa. Subiri kidogo kisha jaribu tena.');
     throw new Error('Hitilafu ya seva ya AI: '+res.status+(detail?(' — '+detail.replace(/\s+/g,' ')):'')+(viaProxy?' (kupitia seva ya Cloudflare)':''));
   }
@@ -8725,14 +8836,14 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
 
 <script>
 /* ===== 📷 SOMA MATOKEO KWA PICHA — kipengele kipya (haibadilishi msimbo wa Ingizo la Haraka) =====
-   Inasoma picha kwa Groq vision (inahitaji intaneti + Groq API key ile ile). Matokeo ni DRAFT: mwalimu hukagua,
+   Inasoma picha kwa Groq vision (inahitaji intaneti; inapita seva ya Cloudflare). Matokeo ni DRAFT: mwalimu hukagua,
    kisha mistari "Jina _Somo Alama" huongezwa kwenye kisanduku cha Ingizo la Haraka; Chambua/Hifadhi hufanya kazi kama kawaida. */
 const PH_MODELS = ['qwen/qwen3.8-27b','qwen/qwen3.6-27b']; // inajaribu kwa mpangilio; ikikosekana (404) inaenda inayofuata // badilisha hapa tu Groq wakiibadilisha
 const PH_PROMPT = 'This is a photo of a handwritten Tanzanian school exam results sheet (one student per line: serial no, name, mark). '+
  'Transcribe ONLY what is written. NEVER invent or complete names or marks. If a name or number is unclear give your best reading and set "hakika":"chini"; if unreadable use "". '+
  'Keep every student in order, do not skip or add students. Header text goes into somo (subject), mtihani (exam name/date), darasa. '+
  'Reply ONLY with JSON: {"somo":"","mtihani":"","darasa":"","rows":[{"no":1,"jina":"","alama":"","hakika":"juu|kati|chini"}]}. "alama" = digits exactly as written.';
-const PH_PROXY_URL = 'https://msaidizi-seva.adabethsheusi85.workers.dev'; // anwani ya seva ya Cloudflare (ukiiweka, walimu hawahitaji ufunguo wa Groq)
+const PH_PROXY_URL = 'https://msaidizi-seva.adabethsheusi85.workers.dev'; // anwani ya seva ya Cloudflare (ufunguo wa Groq uko kwenye Worker secrets tu)
 let ph = {rot:0, bmp:null, rows:[], roster:[], max:100, batches:[], done:false};
 
 function phParse(txt){
@@ -8961,9 +9072,9 @@ function phDraw(){
 }
 function phRot(d){ ph.rot=(ph.rot+d+360)%360; phDraw(); }
 async function phVision(dataUrl,extra){
-  let url='https://api.groq.com/openai/v1/chat/completions', auth;
-  if(PH_PROXY_URL){ url=PH_PROXY_URL; try{ auth=await firebase.auth().currentUser.getIdToken(); }catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); } }
-  else { auth=(document.getElementById('groqApiKey').value||'').replace(/[^\x20-\x7E]/g,'').trim(); if(!auth) throw new Error('Weka Groq API key juu ya ukurasa kwanza.'); }
+  if(!PH_PROXY_URL) throw new Error('Anwani ya seva ya AI (PH_PROXY_URL) haijawekwa kwenye faili.');
+  const url=PH_PROXY_URL; let auth;
+  try{ auth=await firebase.auth().currentUser.getIdToken(); }catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); }
   const body={model:PH_MODELS[0],temperature:0,max_tokens:4000,response_format:{type:'json_object'},
     messages:[{role:'user',content:[{type:'text',text:PH_PROMPT+(extra||'')},{type:'image_url',image_url:{url:dataUrl}}]}]};
   let res;
@@ -8978,7 +9089,7 @@ async function phVision(dataUrl,extra){
   }
   if(res.status===404||res.status===410){ let d=''; try{ d=(await res.clone().json()).error.message; }catch(e){}
     throw new Error('Modeli za picha ('+PH_MODELS.join(', ')+') hazipatikani kwenye akaunti yako ya Groq (imeondolewa au huna ruhusa). Angalia console.groq.com → Models, kisha badilisha PH_MODELS kwenye faili. '+d); }
-  if(res.status===401) throw new Error(PH_PROXY_URL?'Hujaingia. Toka (log out) kisha ingia tena.':'Groq API key si sahihi.');
+  if(res.status===401) throw new Error('Hujaingia. Toka (log out) kisha ingia tena.');
   if(res.status===429) throw new Error('Kikomo cha maombi kimefikiwa. Subiri kidogo.');
   if(!res.ok){ let d=''; try{ d=(await res.json()).error.message; }catch(e){} throw new Error('Hitilafu ya seva '+res.status+(d?': '+d:'')); }
   return (await res.json()).choices[0].message.content;
@@ -9215,3 +9326,4 @@ function phBar(){
 </script>
 </body>
 </html>
+
