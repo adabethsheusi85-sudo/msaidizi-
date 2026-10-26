@@ -4553,78 +4553,7 @@ function mdTable(headers, rows){
   rows.forEach(r=>{ t += '| ' + r.map(c=>String(c).replace(/\|/g,'/')).join(' | ') + ' |\n'; });
   return t;
 }
-function azimioSequence(grade, subject, target){
-  const key = { "History ya Tanzania na Maadili":"Historia ya Tanzania na Maadili", "Sayansi na Teknolojia":"Sayansi" }[subject] || subject;
-  const rec = MTAALA_TIE[grade] && MTAALA_TIE[grade][key];
-  if(!rec) return null;
-  const weekly = rec.w || 5;
-  const units = [];
-  rec.k.forEach(mk=> mk.m.forEach(mn=>{
-    const L = (mn.c||[]).length; if(!L) return;
-    units.push({ mk, mn, L, N: mn.v ? Math.max(1, Math.round(mn.v / weekly)) : 1 });
-  }));
-  // Kama mtaala unaisha mapema kuliko kalenda, "vuta" mada ziende polepole ili zifike mwisho wa muhula wa pili
-  const base = units.reduce((t,u)=> t+u.N, 0);
-  if(target && base > 0 && target > base){
-    let cum = 0, prev = 0;
-    units.forEach(u=>{ cum += u.N; const nc = Math.round(cum*target/base); u.N2 = Math.max(1, nc - prev); prev = nc; });
-  } else units.forEach(u=>{ u.N2 = u.N; });
-  const seq = [];
-  units.forEach(u=>{
-    let prevLast = -1;
-    for(let k=0; k<u.N2; k++){
-      const st = Math.floor(k*u.L/u.N2), en = Math.floor((k+1)*u.L/u.N2);
-      const idxs = []; 
-      if(en > st){ for(let q=st; q<en; q++) idxs.push(q); } else idxs.push(Math.min(st, u.L-1));
-      const repeat = idxs[0] === prevLast;
-      prevLast = idxs[idxs.length-1];
-      seq.push({ mkKey:u.mk.n, mkuu:`${u.mk.n} ${u.mk.j}`, mnKey:u.mn.n, mahususi:`${u.mn.n} ${u.mn.j}`, items: idxs.map(q=>u.mn.c[q]), repeat });
-    }
-  });
-  return { weekly, seq };
-}
 function azLang(subject){ return /^english/i.test(subject) ? 'en' : (/kifaransa|french/i.test(subject) ? 'fr' : 'sw'); }
-/* ---- Mbinu / Zana / Upimaji: mapendekezo ya kiotomatiki (mwalimu anaweza kubadilisha kwenye Word) ---- */
-function azSuggest(subject, items){
-  const first = (items[0]||'').trim().toLowerCase();
-  const eng = /^english/i.test(subject), fr = /kifaransa|french/i.test(subject);
-  const has = (...w)=> w.some(x=> first.startsWith(x));
-  const maths = /hisabati/i.test(subject), sci = /sayansi/i.test(subject);
-  const hist = /historia|jiografia/i.test(subject), art = /sanaa/i.test(subject);
-  let method, tools, assess;
-  if(eng){
-    if(has('read')){ method='Reading aloud and discussion'; assess='Reading aloud, check list and exercises'; }
-    else if(has('write','compose','prepare','create','develop a plan','take')){ method='Guided writing and pair work'; assess='Written exercises and home works'; }
-    else if(has('listen','follow','respond','participate','engage','debate')){ method='Listening, role play and group discussion'; assess='Check list, question and answer'; }
-    else if(has('use','express','talk','compare')){ method='Demonstration, matching and pair work'; assess='Exercises, question and answer'; }
-    else { method='Demonstrate, discussion and question and answer'; assess='Exercises, question and answer'; }
-    tools='Texts, charts, flash cards and audio/video visual materials';
-  } else if(fr){
-    method='Démonstration, dialogue et travail en groupe'; tools='Textes, images, cartes et matériel audio/visuel'; assess='Exercices, questions et réponses';
-  } else {
-    if(has('kusoma')){ method='Kusoma kwa sauti na majadiliano'; assess='Kusoma kwa sauti, orodha hakiki na mazoezi'; }
-    else if(has('kuandika','kutunga')){ method='Kuandika kwa mwongozo na mazoezi'; assess='Mazoezi ya kuandika na kazi za nyumbani'; }
-    else if(has('kusikiliza')){ method='Kusikiliza na kujibu maswali'; assess='Maswali na majibu, orodha hakiki'; }
-    else if(has('kuchora','kufinyanga','kusuka','kutengeneza')){ method='Kuchora/kutengeneza kwa vitendo'; assess='Kazi za vitendo na orodha hakiki'; }
-    else if(has('kuimba','kucheza','kuigiza','kufanya mazoezi','kushiriki')){ method='Kuigiza, kuimba na kushiriki kwa vitendo'; assess='Orodha hakiki na uchunguzi'; }
-    else if(has('kufanya majaribio','kuchunguza','kuaridhia')){ method='Majaribio na uchunguzi wa vitendo'; assess='Orodha hakiki na ripoti fupi'; }
-    else if(has('kukokotoa','kujumlisha','kutoa','kuzidisha','kugawanya','kutafuta','kupima','kulinganisha','kubadili','kutatua')){ method='Kutatua mazoezi kwa vitendo na kazi za vikundi'; assess='Mazoezi, maswali na majibu na kazi za nyumbani'; }
-    else { method='Maelezo, majadiliano na maswali na majibu'; assess='Maswali na majibu, mazoezi na kazi za nyumbani'; }
-    tools = maths ? 'Vitu halisi, chati na kitabu cha kiada'
-          : sci ? 'Vifaa vya majaribio, chati na kitabu cha kiada'
-          : hist ? 'Ramani, picha, chati na kitabu cha kiada'
-          : art ? 'Vifaa vya sanaa, ala za muziki na picha'
-          : 'Kitabu cha kiada, chati na kadi za maneno';
-  }
-  return { method, tools, assess };
-}
-function azActs(subject, items, repeat){
-  const lc = items.map(c=> c.charAt(0).toLowerCase()+c.slice(1)).join('; ');
-  const L = azLang(subject);
-  if(L==='en') return repeat ? ['Consolidate and give more practice on: ' + lc, 'Pupils to practise: ' + lc] : ['Guide pupils to ' + lc, 'Pupils to ' + lc];
-  if(L==='fr') return repeat ? ['Consolider et donner plus d\'exercices : ' + lc, 'Les élèves s\'exercent : ' + lc] : ['Guider les élèves : ' + lc, 'Les élèves : ' + lc];
-  return repeat ? ['Kuimarisha na kutoa mazoezi zaidi kuhusu: ' + lc, 'Wanafunzi kufanya mazoezi kuhusu: ' + lc] : ['Kuwaongoza wanafunzi ' + lc, 'Wanafunzi ' + lc];
-}
 const AZ_HEADERS = [
   'Umahiri Mkuu (Main Competence)','Umahiri Mahususi (Specific Competence)','Shughuli za Ufundishaji (Teaching Activities)','Shughuli za Ujifunzaji (Learning Activities)',
   'Mwezi (Month)','Wiki (Week)','Vipindi (Period)','Mbinu za Kufundisha na Kujifunza (Teaching & Learning Method)',
@@ -4642,7 +4571,7 @@ function azHtmlTable(headers, rows, cls){
   return h + '</tbody></table>';
 }
 
-function generateAzimio(){
+async function generateAzimio(){
   const grade = document.getElementById('az_grade').value;
   const subject = document.getElementById('az_subject').value;
   const term = document.getElementById('az_term').value;
@@ -4671,38 +4600,35 @@ function generateAzimio(){
     const plan2 = azTermPlan('t2');
     const usable1 = Math.max(0, (plan1 ? plan1.total : weeksInput) - 1);
     const usable2 = Math.max(0, (plan2 ? plan2.total : weeksInput) - 1);
-    const data = azimioSequence(grade, subject, usable1 + usable2);
     const LG = azLang(subject);
-    const offset = termNo === 2 ? usable1 : 0;
-    const period = data ? String(data.weekly) : '';
+    const recKey = ({ "History ya Tanzania na Maadili":"Historia ya Tanzania na Maadili", "Sayansi na Teknolojia":"Sayansi" })[subject] || subject;
+    const rec = (MTAALA_TIE[grade] && MTAALA_TIE[grade][recKey]) || null;
+
+    // Azimio sasa linatengenezwa kwenye seva (Worker) ili kikomo cha trial kidhibitiwe huko.
+    if(typeof PH_PROXY_URL === 'undefined' || !PH_PROXY_URL) throw new Error('Anwani ya seva (PH_PROXY_URL) haijawekwa kwenye faili.');
+    let token;
+    try{ token = await firebase.auth().currentUser.getIdToken(); }
+    catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); }
+    let resp;
+    try{
+      resp = await fetch(PH_PROXY_URL + '/azimio', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + token },
+        body: JSON.stringify({ grade, subject, termNo, usable1, usable2, rec, slots: slots.map(x=>({ month: x.month || '', wom: x.wom || '' })) })
+      });
+    }catch(fe){ throw new Error('Imeshindwa kuunganisha na seva. Angalia mtandao wako kisha jaribu tena.'); }
+    if(!resp.ok){
+      let em = '';
+      try{ const ej = await resp.json(); em = (ej && ej.error && ej.error.message) || ''; }catch(e){}
+      if(!em && resp.status === 401) em = 'Hujaingia au kikao kimeisha. Toka (log out) kisha ingia tena.';
+      throw new Error(em || ('Hitilafu ya seva ' + resp.status));
+    }
+    const az = await resp.json();
+    const data = az.hasData ? { weekly: az.weekly, seq: { length: az.seqLen } } : null;
 
     const rows = [];
-    let prevMk = null, prevMn = null, used = 0;
     slots.forEach((sl, i)=>{
-      const last = (i === slots.length - 1);
-      const item = (data && !last) ? data.seq[offset + i] : null;
-      if(item){
-        used++;
-        const acts = azActs(subject, item.items, item.repeat);
-        const sg = azSuggest(subject, item.items);
-        const firstMk = item.mkKey !== prevMk;
-        const firstMn = item.mnKey !== prevMn;
-        rows.push([
-          firstMk ? item.mkuu : '',
-          firstMn ? item.mahususi : '',
-          acts[0], acts[1], sl.month, sl.wom ? String(sl.wom) : '', period, sg.method, sg.tools, sg.assess, '', ({en:'☐ Taught',fr:'☐ Enseigné',sw:'☐ Imefundishwa'})[LG]
-        ]);
-        prevMk = item.mkKey; prevMn = item.mnKey;
-      } else if(data){
-        const RV = {
-          en:{ spec: last ? 'Revision and End of Term Examination' : 'Revision of the topics taught', t:'Guide pupils to do revision and exercises', l:'Pupils to do revision and exercises', m:'Discussion, question and answer and exercises', tl:'Exercise papers and exercise books', a: last ? 'End of term examination' : 'Exercises, question and answer', r:'☐ Done' },
-          fr:{ spec: last ? 'Révision et examen de fin de trimestre' : 'Révision des thèmes enseignés', t:'Guider les élèves à faire des révisions et des exercices', l:'Les élèves font des révisions et des exercices', m:'Discussion, questions-réponses et exercices', tl:'Feuilles d\'exercices et cahiers', a: last ? 'Examen de fin de trimestre' : 'Exercices, questions et réponses', r:'☐ Fait' },
-          sw:{ spec: last ? 'Marudio na Mtihani wa Mwisho wa Muhula' : 'Marudio ya mada zilizofundishwa', t:'Kuwaongoza wanafunzi kufanya marudio na mazoezi', l:'Wanafunzi kufanya marudio na mazoezi', m:'Majadiliano, maswali na majibu na mazoezi', tl:'Karatasi za mazoezi na daftari', a: last ? 'Mtihani wa mwisho wa muhula' : 'Mazoezi na maswali na majibu', r:'☐ Imefanyika' }
-        }[LG];
-        rows.push(['', RV.spec, RV.t, RV.l, sl.month, sl.wom ? String(sl.wom) : '', period, RV.m, RV.tl, RV.a, '', RV.r]);
-      } else {
-        rows.push(['','','','', sl.month, sl.wom ? String(sl.wom) : '', '', '', '', '', '', '']);
-      }
+      rows.push(az.rows[i]);
       if(plan && breakAfter === i + 1){
         rows.push({ brk:true, split:6, left: LG==='sw' ? 'MID TERM TEST (Mtihani wa Kati ya Muhula) — Likizo Fupi' : 'MID TERM TEST — SHORT HOLIDAY', right:`${azFmt(plan.mclose)} — ${azFmt(plan.mopen)}` });
       }
