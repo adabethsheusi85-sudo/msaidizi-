@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sw" translate="no"
+<html lang="sw" translate="no">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8689,7 +8689,7 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
     if(!user||!db)return Promise.resolve();
     if(!force&&Date.now()-lastFetch<30000)return Promise.resolve();
     lastFetch=Date.now();
-    return db.collection('users').doc(user.uid).get().then(function(s){if(s.exists)myDoc=s.data();render();});
+    return db.collection('users').doc(user.uid).get().then(function(s){if(s.exists)myDoc=s.data();if(checkBlocked())return;render();});
   }
   function backfillTrial(ref,d){
     /* Inaongeza trialStartDate/trialExpiryDate MARA MOJA kutoka createdAt ya seva. Firestore Rules zinakagua thamani kamili. */
@@ -8746,12 +8746,34 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
       box.innerHTML='<div class="msa-note">Walio live: '+((e&&e.code==='permission-denied')?'Security Rules za <b>presence</b> bado hazijawekwa.':'imeshindwa kupakia.')+'</div>';
     });
   }
+  function checkBlocked(){
+    if(!user||isAdmin||!myDoc||myDoc.blocked!==true)return false;
+    stopBeat();
+    try{window.alert('Akaunti yako imefungwa. Wasiliana na msimamizi.');}catch(_e){}
+    firebase.auth().signOut();
+    return true;
+  }
+  function blockUser(uid,kind){
+    if(!isAdmin||!db)return;
+    if(uid===user.uid){amsg('Huwezi kujizuia mwenyewe.','err');return;}
+    var u=null;users.forEach(function(x){if(x.id===uid)u=x});if(!u)return;
+    var on=kind==='block';
+    if(!window.confirm((on?'Una uhakika unataka KUZUIA akaunti hii?':'Una uhakika unataka KUFUNGUA akaunti hii?')+'\n\n'+(u.data.email||uid)))return;
+    var SV=firebase.firestore.FieldValue.serverTimestamp();
+    var upd=on?{blocked:true,blockedAt:SV,blockedBy:user.email||'',updatedAt:SV}:{blocked:false,unblockedAt:SV,updatedAt:SV};
+    amsg(on?'Inazuia...':'Inafungua...');
+    db.collection('users').doc(uid).update(upd).then(function(){
+      return loadUsers().then(function(){amsg(on?'Akaunti imezuiwa: '+(u.data.email||''):'Akaunti imefunguliwa: '+(u.data.email||''),'ok');});
+    }).catch(function(e){
+      amsg((e&&e.code==='permission-denied')?'Imekataliwa na Firestore: huna ruhusa ya Admin.':'Imeshindwa: '+(e.message||e),'err');
+    });
+  }
   function onUser(u){
     user=u;isAdmin=false;myDoc=null;lastFetch=Date.now();
     ensureUI();
     if(!u){stopBeat();$('msBadge').style.display='none';$('msAdmBtn').style.display='none';$('msPay').style.display='none';$('msAdm')&&($('msAdm').style.display='none');return;}
     ensureUserDoc(u).catch(function(e){console.warn('Usajili: imeshindwa kusoma/kuunda hati ya mtumiaji',e);})
-      .then(function(){return checkAdmin(u)}).then(function(a){isAdmin=a;render();startBeat();});
+      .then(function(){return checkAdmin(u)}).then(function(a){isAdmin=a;if(checkBlocked())return;render();startBeat();});
   }
 
   /* ---------- Admin Panel ---------- */
@@ -8773,7 +8795,7 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
         var t=e.target;if(!t||!t.getAttribute)return;
         var uid=t.getAttribute('data-uid'),k=t.getAttribute('data-act');
         if(!uid||!k)return;
-        if(k==='hist')showHistory(uid);else act(uid,k,t);
+        if(k==='hist')showHistory(uid);else if(k==='block'||k==='unblock')blockUser(uid,k);else act(uid,k,t);
       });
     }
     p.style.display='block';
@@ -8800,7 +8822,9 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
       shown++;
       var act=(c.status==='ACTIVE')?'<button type="button" class="msbtn alt" data-uid="'+esc(u.id)+'" data-act="extend">EXTEND 30 DAYS</button>':'<button type="button" class="msbtn alt" data-uid="'+esc(u.id)+'" data-act="activate">ACTIVATE 30 DAYS</button>';
       act+='<button type="button" class="msbtn" data-uid="'+esc(u.id)+'" data-act="hist">Historia</button>';
-      var det='<small class="msd">UID: '+esc(u.id)+'</small>'
+      var isBl=u.data.blocked===true;
+      act+=isBl?'<button type="button" class="msbtn alt" data-uid="'+esc(u.id)+'" data-act="unblock">FUNGUA</button>':'<button type="button" class="msbtn red" data-uid="'+esc(u.id)+'" data-act="block">ZUIA</button>';
+      var det=(u.data.blocked===true?'<small class="msd" style="color:#b3261e"><b>\uD83D\uDEAB IMEZUIWA</b></small>':'')+'<small class="msd">UID: '+esc(u.id)+'</small>'
         +'<small class="msd">Trial: '+fmt(c.trialStart)+' \u2192 '+fmt(c.trialEnd)+'</small>'
         +'<small class="msd">Usajili: '+(c.subEnd?fmt(c.subStart)+' \u2192 '+fmt(c.subEnd):'\u2014')+'</small>';
       var sm='';
