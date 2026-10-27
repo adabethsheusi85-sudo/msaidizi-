@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -8643,10 +8644,11 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
     return Promise.all([p1,p2]).then(function(a){return a[0]||a[1]});
   }
   /* ---------- Walio live (presence) ---------- */
-  var beatTimer=null,beatBound=false;
+  var beatTimer=null,beatBound=false,presMap={};
+  function lastSeenTxt(id){var p=presMap[id],t=p&&toDate(p.lastSeen);if(!t)return '\u2014 (hajaonekana bado)';var z=new Date(t.getTime()+10800000),f=function(n){return ('0'+n).slice(-2)};return f(z.getUTCDate())+'/'+f(z.getUTCMonth()+1)+' '+f(z.getUTCHours())+':'+f(z.getUTCMinutes());}
   function beat(){
     if(!user||!db||document.hidden)return;
-    db.collection('presence').doc(user.uid).set({email:user.email||'',lastSeen:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+    db.collection('presence').doc(user.uid).set({email:user.email||'',lastSeen:firebase.firestore.FieldValue.serverTimestamp()}).then(function(){window.__beatErr=null;}).catch(function(e){window.__beatErr=(e&&e.code)||'error';try{console.warn('Presence: imeshindwa kuandika',e);}catch(_e){}});
   }
   function stopBeat(){if(beatTimer){clearInterval(beatTimer);beatTimer=null;}}
   function startBeat(){
@@ -8655,19 +8657,24 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
   }
   function loadLive(){
     var box=$('msaLive');if(!box||!db)return Promise.resolve();
-    var d0=new Date();d0.setHours(0,0,0,0);
+    var EAT=3*3600000,nowMs=Date.now();
+    var d0=new Date(Math.floor((nowMs+EAT)/86400000)*86400000-EAT); /* usiku wa manane wa Tanzania (EAT), si saa ya simu */
     var since=firebase.firestore.Timestamp.fromDate(d0);
     return db.collection('presence').where('lastSeen','>=',since).get().then(function(q){
-      var a=[],live=0,now=Date.now();
-      q.forEach(function(d){var x=d.data()||{},t=toDate(x.lastSeen);a.push({em:x.email||d.id,t:t,on:!!t&&(now-t.getTime())<180000})});
+      var a=[],live=0,seen={};
+      q.forEach(function(d){var x=d.data()||{},t=toDate(x.lastSeen);seen[d.id]=1;presMap[d.id]=x;a.push({em:x.email||d.id,t:t,on:!!t&&(nowMs-t.getTime())<300000})});
       a.forEach(function(x){if(x.on)live++});
       a.sort(function(m,n){return (n.t?n.t.getTime():0)-(m.t?m.t.getTime():0)});
-      var h='<div class="msa-note"><b>\uD83D\uDFE2 Live sasa: '+live+' &nbsp;|&nbsp; \uD83D\uDCC5 Wameingia leo: '+a.length+'</b>';
-      a.slice(0,100).forEach(function(x){
-        var hh=x.t?(('0'+x.t.getHours()).slice(-2)+':'+('0'+x.t.getMinutes()).slice(-2)):'--:--';
+      var tot=users.length,never=0,actT=0,actS=0;
+      users.forEach(function(u){if(!presMap[u.id])never++;if(calc(u.data,null).status==='ACTIVE'){actT++;if(seen[u.id])actS++;}});
+      var h='<div class="msa-note"><b>\uD83D\uDFE2 Live sasa (dk 5): '+live+' &nbsp;|&nbsp; \uD83D\uDCC5 Wameingia leo: '+a.length+'</b>'
+        +'<br><small>Walimu wote: '+tot+' \u00B7 ACTIVE: '+actT+' (leo wameonekana: '+actS+') \u00B7 Hawajawahi kuonekana: '+never+'</small>';
+      if(window.__beatErr)h+='<br><small style="color:#b3261e"><b>Onyo:</b> ishara ya presence ya simu hii imekataliwa ('+esc(String(window.__beatErr))+') \u2014 angalia Firestore Rules za presence.</small>';
+      a.slice(0,300).forEach(function(x){
+        var hh='--:--';if(x.t){var z=new Date(x.t.getTime()+EAT);hh=('0'+z.getUTCHours()).slice(-2)+':'+('0'+z.getUTCMinutes()).slice(-2);}
         h+='<br><small>'+(x.on?'\uD83D\uDFE2':'\u26AA')+' '+esc(x.em)+' \u2014 mwisho '+hh+'</small>';
       });
-      box.innerHTML=h+'</div>';
+      box.innerHTML=h+'<br><small>\u26AA = hakuna ishara kwa dakika 5 (amefunga app, yuko background, au ametoka).</small></div>';
     }).catch(function(e){
       box.innerHTML='<div class="msa-note">Walio live: '+((e&&e.code==='permission-denied')?'Security Rules za <b>presence</b> bado hazijawekwa.':'imeshindwa kupakia.')+'</div>';
     });
@@ -8734,7 +8741,7 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
     return db.collection('users').limit(1000).get().then(function(q){
       users=[];q.forEach(function(d){users.push({id:d.id,data:d.data()||{}})});
       users.sort(function(a,b){var pa=a.data.paymentStatus==='PENDING'?1:0,pb=b.data.paymentStatus==='PENDING'?1:0;if(pa!==pb)return pb-pa;var x=toDate(a.data.createdAt),y=toDate(b.data.createdAt);return (y?y.getTime():0)-(x?x.getTime():0)});
-      amsg('');drawRows();loadLive();
+      return db.collection('presence').limit(3000).get().then(function(pq){pq.forEach(function(d){presMap[d.id]=d.data()||{};});}).catch(function(e){try{console.warn('presence: imeshindwa kusoma',e);}catch(_e){}}).then(function(){amsg('');drawRows();loadLive();});
     }).catch(function(e){
       amsg((e&&e.code==='permission-denied')?'Huna ruhusa ya Admin kwenye Firestore (angalia Security Rules na hati ya admins/UID yako).':'Imeshindwa kupakia: '+(e.message||e),'err');
     });
@@ -8750,7 +8757,7 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
       act+='<button type="button" class="msbtn" data-uid="'+esc(u.id)+'" data-act="hist">Historia</button>';
       var isBl=u.data.blocked===true;
       act+=isBl?'<button type="button" class="msbtn alt" data-uid="'+esc(u.id)+'" data-act="unblock">FUNGUA</button>':'<button type="button" class="msbtn red" data-uid="'+esc(u.id)+'" data-act="block">ZUIA</button>';
-      var det=(u.data.blocked===true?'<small class="msd" style="color:#b3261e"><b>\uD83D\uDEAB IMEZUIWA</b></small>':'')+'<small class="msd">UID: '+esc(u.id)+'</small>'
+      var det=(u.data.blocked===true?'<small class="msd" style="color:#b3261e"><b>\uD83D\uDEAB IMEZUIWA</b></small>':'')+'<small class="msd">UID: '+esc(u.id)+'</small>'+'<small class="msd">Mara ya mwisho kuonekana: '+lastSeenTxt(u.id)+'</small>'
         +'<small class="msd">Trial: '+fmt(c.trialStart)+' \u2192 '+fmt(c.trialEnd)+'</small>'
         +'<small class="msd">Usajili: '+(c.subEnd?fmt(c.subStart)+' \u2192 '+fmt(c.subEnd):'\u2014')+'</small>';
       var sm='';
@@ -9307,4 +9314,3 @@ function phBar(){
 </script>
 </body>
 </html>
-
