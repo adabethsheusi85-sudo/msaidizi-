@@ -427,9 +427,13 @@ body.mc-lock{overflow:hidden}
   .az-cal-tbl input{width:100%;min-width:118px;padding:7px 8px;border-radius:6px;border:1px solid rgba(244,239,225,0.25);background:rgba(244,239,225,0.06);color:var(--chalk);font-family:'Helvetica Neue',Arial,sans-serif;font-size:12.5px;}
   .az-cal-tbl input[type=number]{min-width:70px;text-align:center;}
   .az-table{font-size:11.5px;min-width:1150px;border-collapse:collapse;}
-  .az-table th,.az-table td,.az-cal-out th,.az-cal-out td{border:1px solid rgba(244,239,225,0.65) !important;}
+  .az-table th,.az-table td,.az-cal-out th,.az-cal-out td{border:1px solid #6b6446 !important;color:var(--ink);}
+  .az-table th,.az-cal-out th{background:#efe6cc;}
+  .layout>*{min-width:0;}
+  .output-panel{min-width:0;max-width:100%;}
+  .output-body{overflow-x:auto;}
   .az-table th{text-align:center;}
-  .az-break td{background:rgba(217,147,47,0.18);font-weight:700;text-align:center;color:var(--amber);}
+  .az-break td{background:#f3dfb5;font-weight:700;text-align:center;color:var(--ink);}
   .az-info p{margin:2px 0;font-size:13px;}
   @media print{
     .az-cal-card{display:none !important;}
@@ -684,7 +688,7 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
   <div id="view-azimio" class="hidden">
     <div class="az-cal-card">
       <div class="az-cal-title">📅 Kalenda ya Mihula ya Masomo</div>
-      <p class="hint" style="margin-top:0">Jaza tarehe kulingana na kalenda ya mwaka husika (Kufungua, Likizo fupi/Mid-term, Kufunga na idadi ya siku za masomo). Azimio litapangwa wiki kwa wiki kufuata kalenda hii, na jedwali hili litaonekana juu ya Azimio. Thamani za mwanzo ni mfano wa kalenda ya 2026 — zibadilishe kila mwaka.</p>
+      <p class="hint" style="margin-top:0">Jaza tarehe kulingana na kalenda ya mwaka husika (Kufungua, Likizo fupi/Mid-term, Kufunga na idadi ya siku za masomo). Azimio litapangwa wiki kwa wiki kufuata kalenda hii, na jedwali hili litaonekana juu ya Azimio. Thamani za mwanzo ni kalenda ya 2027 ya mwalimu — zibadilishe kila mwaka.</p>
       <div class="az-cal-wrap">
         <table class="md-table az-cal-tbl">
           <thead>
@@ -721,7 +725,7 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
         </div>
         <div class="row2">
           <div class="field"><label>Somo</label><select id="az_subject"></select></div>
-          <div class="field"><label>Mwaka</label><input id="az_year" type="text" placeholder="mfano: 2026"></div>
+          <div class="field"><label>Mwaka</label><input id="az_year" type="text" placeholder="mfano: 2027"></div>
         </div>
         <div class="field"><label>Idadi ya wiki za muhula (hujazwa kutoka kalenda; hutumika pekee kalenda ikikosa tarehe)</label><input id="az_weeks" type="number" value="13" min="1" max="25"></div>
         <div class="field"><label>Mada kuu zitakazofundishwa (moja kwa mstari, hiari)</label><textarea id="az_topics" placeholder="mfano: Ukoloni&#10;Harakati za Uhuru&#10;Uongozi baada ya Uhuru"></textarea></div>
@@ -4492,10 +4496,17 @@ async function downloadAndalioDocx(){
 /* ---- Kalenda ya mihula ---- */
 const AZ_CAL_KEY = 'msaidizi_az_calendar_v1';
 const AZ_CAL_FIELDS = ['open','mclose','mopen','close','days'];
-const AZ_CAL_DEFAULT = {
+const AZ_CAL_DEFAULT = {   // kalenda ya mwalimu (karatasi): jumla ya siku 194
+  t1:{ open:'2027-01-11', mclose:'2027-03-25', mopen:'2027-04-05', close:'2027-06-08', days:'95' },
+  t2:{ open:'2027-07-12', mclose:'2027-09-10', mopen:'2027-09-20', close:'2027-12-03', days:'99' }
+};
+const AZ_CAL_OLD_DEFAULT = {   // thamani za mwanzo za zamani (2026) — zikikutwa zimehifadhiwa bila kubadilishwa, zinapandishwa kuwa mpya
   t1:{ open:'2026-01-13', mclose:'2026-03-27', mopen:'2026-04-08', close:'2026-06-05', days:'96' },
   t2:{ open:'2026-07-06', mclose:'2026-09-04', mopen:'2026-09-14', close:'2026-12-04', days:'98' }
 };
+function azCalSame(a,b){
+  try{ return ['t1','t2'].every(t=> AZ_CAL_FIELDS.every(f=> String((a[t]||{})[f]||'') === String((b[t]||{})[f]||''))); }catch(e){ return false; }
+}
 const AZ_MONTHS = ['Januari','Februari','Machi','Aprili','Mei','Juni','Julai','Agosti','Septemba','Oktoba','Novemba','Desemba'];
 
 function azCalGet(){
@@ -4522,35 +4533,78 @@ function azWeeksBetween(from, to){
   }
   return list;
 }
-function azTermPlan(t){
-  const c = azCalGet()[t];
+function azIso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function azTermPlan(t, capStr){
+  const c = Object.assign({}, azCalGet()[t]);
+  const capD = azParse(capStr), cl = azParse(c.close);
+  if(capD && cl && capD < cl) c.close = capStr;   // kikomo (mfano mwisho wa Juni)
   const O = azParse(c.open), C = azParse(c.close), Bc = azParse(c.mclose), Bo = azParse(c.mopen);
   if(!O || !C || C < O) return null;
   const hasBreak = !!(Bc && Bo && Bc >= O && Bo > Bc && Bo <= C);
   const before = azWeeksBetween(O, hasBreak ? Bc : C);
   const after = hasBreak ? azWeeksBetween(Bo, C) : [];
-  return { before, after, hasBreak, mclose:c.mclose, mopen:c.mopen, total: before.length + after.length };
+  return { before, after, hasBreak, mclose:c.mclose, mopen:c.mopen, close:c.close, total: before.length + after.length };
+}
+/* Darasa la 6 na la 7: azimio la maandalizi ya mitihani linaishia Juni. Madarasa mengine: azimio moja linaloendelea (Muhula 1 + Muhula 2). */
+function azIsJuneGrade(grade){ return /^\s*darasa\s+la\s+(6|7|vi|vii)\s*$/i.test(grade || ''); }
+function azLayout(grade, weeksInput){
+  const cal = azCalGet();
+  const junior = azIsJuneGrade(grade);
+  const fb = ()=> Array.from({length: weeksInput || 13}, ()=>({month:'', wom:''}));
+  const year1 = (azParse(cal.t1.open) || new Date()).getFullYear();
+  const slots = [], breaks = [];
+  const addTerm = (termNo, plan, junior)=>{
+    let list = plan ? plan.before.concat(plan.after) : fb();
+    let brkAt = (plan && plan.hasBreak) ? plan.before.length : -1;
+    if(junior){   // ondoa wiki zilizo nje ya Januari–Juni
+      const keep = list.map(x=> !x.month || AZ_MONTHS.indexOf(x.month) <= 5);
+      const cut = keep.filter(k=>!k).length;
+      list = list.filter((x,i)=> keep[i]);
+      if(brkAt > list.length) brkAt = -1;
+    }
+    if(plan && brkAt > 0) breaks.push({ at: slots.length + brkAt, type:'mid', mclose:plan.mclose, mopen:plan.mopen });
+    slots.push.apply(slots, list);
+    return plan;
+  };
+  if(junior){
+    const p = azTermPlan('t1', year1 + '-06-30');
+    addTerm(1, p, true);
+    breaks.push({ at: slots.length, type:'june', close: p ? p.close : '' });
+  } else {
+    const p1 = azTermPlan('t1'), p2 = azTermPlan('t2');
+    addTerm(1, p1, false);
+    if(p1) breaks.push({ at: slots.length, type:'end1', close:p1.close, nextOpen:cal.t2.open });
+    addTerm(2, p2, false);
+    if(p2) breaks.push({ at: slots.length, type:'end2', close:p2.close });
+  }
+  return { junior, slots, breaks, usable: Math.max(0, slots.length - 1), calendarOk: junior ? !!azTermPlan('t1') : !!(azTermPlan('t1') && azTermPlan('t2')) };
 }
 function azCalRefresh(){
   const t1 = parseInt((document.getElementById('az_cal_t1_days')||{}).value,10) || 0;
   const t2 = parseInt((document.getElementById('az_cal_t2_days')||{}).value,10) || 0;
   const tot = document.getElementById('az_cal_total'); if(tot) tot.textContent = (t1 + t2) || '0';
-  const termEl = document.getElementById('az_term');
-  const plan = azTermPlan(/pili/i.test(termEl ? termEl.value : '') ? 't2' : 't1');
+  const gradeEl = document.getElementById('az_grade');
+  const lay = azLayout(gradeEl ? gradeEl.value : '', 13);
   const w = document.getElementById('az_weeks');
-  if(plan && w) w.value = plan.total;
+  if(lay.calendarOk && w) w.value = lay.slots.length;
 }
 function azCalInit(){
   let saved = null;
   try{ saved = JSON.parse(localStorage.getItem(AZ_CAL_KEY) || 'null'); }catch(e){}
-  const src = (saved && saved.t1 && saved.t2) ? saved : AZ_CAL_DEFAULT;
+  const src = (saved && saved.t1 && saved.t2 && !azCalSame(saved, AZ_CAL_OLD_DEFAULT)) ? saved : AZ_CAL_DEFAULT;
   ['t1','t2'].forEach(t=> AZ_CAL_FIELDS.forEach(f=>{
     const e = document.getElementById(`az_cal_${t}_${f}`); if(!e) return;
     e.value = (src[t] && src[t][f]) || '';
     e.addEventListener('input', ()=>{ azCalSave(); azCalRefresh(); });
     e.addEventListener('change', ()=>{ azCalSave(); azCalRefresh(); });
   }));
-  const term = document.getElementById('az_term'); if(term) term.addEventListener('change', azCalRefresh);
+  const term = document.getElementById('az_term');
+  if(term){   // azimio ni moja linaloendelea (au hadi Juni) — uchaguzi wa muhula hauhitajiki tena
+    term.disabled = true; term.title = 'Azimio linajumuisha mihula yote (Darasa la 6–7: hadi Juni)';
+    const lb = term.parentElement && term.parentElement.querySelector('label');
+    if(lb) lb.textContent = 'Kipindi cha azimio (huchaguliwa kulingana na darasa)';
+  }
+  const gsel = document.getElementById('az_grade'); if(gsel) gsel.addEventListener('change', azCalRefresh);
   azCalRefresh();
 }
 
@@ -4593,21 +4647,16 @@ async function generateAzimio(){
   if(btn) btn.disabled = true;
 
   try{
-    const termNo = /pili/i.test(term) ? 2 : 1;
     const cal = azCalGet();
-    const plan = azTermPlan('t'+termNo);
-    const plan1 = azTermPlan('t1');
     const year = document.getElementById('az_year').value.trim() || ((azParse(cal.t1.open)||new Date()).getFullYear() + '');
 
-    // Nafasi za wiki za muhula uliochaguliwa (kutoka kalenda; bila kalenda hutumia idadi ya wiki iliyoandikwa)
-    let slots, breakAfter = -1;
-    if(plan){ slots = plan.before.concat(plan.after); if(plan.hasBreak) breakAfter = plan.before.length; }
-    else { slots = Array.from({length:weeksInput}, ()=>({month:'', wom:''})); }
-
-    // Wiki ya mwisho ya kila muhula = Marudio na Mtihani wa mwisho wa muhula
-    const plan2 = azTermPlan('t2');
-    const usable1 = Math.max(0, (plan1 ? plan1.total : weeksInput) - 1);
-    const usable2 = Math.max(0, (plan2 ? plan2.total : weeksInput) - 1);
+    // Mpangilio wa wiki kulingana na aina ya azimio: Darasa la 6–7 hadi Juni; mengine Muhula 1 + 2 kwa mfululizo mmoja
+    const lay = azLayout(grade, weeksInput);
+    const slots = lay.slots;
+    const plan = lay.calendarOk;
+    const termNo = 1;                       // azimio moja: mada zote zinagawanywa kwenye wiki zote za kipindi
+    const usable1 = lay.usable, usable2 = 0; // wiki ya mwisho = Marudio na Mtihani
+    const scopeLabel = lay.junior ? 'Maandalizi ya mitihani (Januari – Juni)' : 'Muhula wa Kwanza na wa Pili (azimio moja)';
     const LG = azLang(subject);
     const recKey = ({ "History ya Tanzania na Maadili":"Historia ya Tanzania na Maadili", "Sayansi na Teknolojia":"Sayansi" })[subject] || subject;
     const rec = (MTAALA_TIE[grade] && MTAALA_TIE[grade][recKey]) || null;
@@ -4617,41 +4666,45 @@ async function generateAzimio(){
     let token;
     try{ token = await firebase.auth().currentUser.getIdToken(); }
     catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); }
+    const reqBody = JSON.stringify({ grade, subject, termNo, usable1, usable2, rec,
+      mode: lay.junior ? 'june' : 'merged', endMonth: lay.junior ? 'Juni' : '',
+      slots: slots.map(x=>({ month: x.month || '', wom: x.wom || '' })) });
+    const doPost = (tk)=> fetch(PH_PROXY_URL + '/azimio', {
+      method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + tk }, body: reqBody });
     let resp;
     try{
-      resp = await fetch(PH_PROXY_URL + '/azimio', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + token },
-        body: JSON.stringify({ grade, subject, termNo, usable1, usable2, rec, slots: slots.map(x=>({ month: x.month || '', wom: x.wom || '' })) })
-      });
+      resp = await doPost(token);
+      if(resp.status === 401){   // tokeni iliyokwisha muda: ifanye upya mara moja kisha jaribu tena
+        try{ token = await firebase.auth().currentUser.getIdToken(true); resp = await doPost(token); }catch(re){}
+      }
     }catch(fe){ throw new Error('Imeshindwa kuunganisha na seva. Angalia mtandao wako kisha jaribu tena.'); }
     if(!resp.ok){
-      let em = '';
-      try{ const ej = await resp.json(); em = (ej && ej.error && ej.error.message) || ''; }catch(e){}
+      let em = '', ej = null;
+      try{ ej = await resp.json(); em = (ej && ej.error && ej.error.message) || ''; }catch(e){}
+      try{ console.warn('azimio: jibu la seva', resp.status, ej); }catch(e){}
       if(!em && resp.status === 401) em = 'Hujaingia au kikao kimeisha. Toka (log out) kisha ingia tena.';
-      throw new Error(em || ('Hitilafu ya seva ' + resp.status));
+      throw new Error((em || 'Hitilafu ya seva') + ' [' + resp.status + (ej && ej.error && ej.error.code ? '/' + ej.error.code : '') + ']');
     }
     const az = await resp.json();
     const data = az.hasData ? { weekly: az.weekly, seq: { length: az.seqLen } } : null;
 
+    // Kinga: seva ikirudisha safu chache kuliko wiki, usipoteze jedwali zima — jaza safu tupu na toa onyo
+    const srvRows = Array.isArray(az.rows) ? az.rows : [];
+    const missingRows = Math.max(0, slots.length - srvRows.length);
+    const blankRow = (sl)=> AZ_HEADERS.map((h,ci)=> ci===4 ? (sl.month||'') : ci===5 ? (sl.wom||'') : '');
+    const brkAt = {}; lay.breaks.forEach(b=>{ (brkAt[b.at] = brkAt[b.at] || []).push(b); });
+    const brkRow = (b)=>{
+      if(b.type==='mid') return { brk:true, split:6, left: LG==='sw' ? 'MID TERM TEST (Mtihani wa Kati ya Muhula) — Likizo Fupi' : 'MID TERM TEST — SHORT HOLIDAY', right:`${azFmt(b.mclose)} — ${azFmt(b.mopen)}` };
+      if(b.type==='june') return { brk:true, split:6, left: LG==='sw' ? 'MWISHO WA AZIMIO — MAANDALIZI YA MITIHANI (JUNI)' : 'END OF SCHEME — EXAM PREPARATION (JUNE)', right: azFmt(b.close) || '—' };
+      const nextOpen = b.type==='end1' && b.nextOpen && azFmt(b.nextOpen) ? azFmt(b.nextOpen) : (LG==='sw' ? 'kufungua mwaka unaofuata' : 'opening of next year');
+      const lbl = b.type==='end1' ? (LG==='sw' ? 'LIKIZO YA MUHULA WA KWANZA' : 'END OF TERM ONE HOLIDAY') : (LG==='sw' ? 'LIKIZO YA MWISHO WA MWAKA (MUHULA WA PILI)' : 'END OF YEAR HOLIDAY (TERM TWO)');
+      return { brk:true, split:6, left:lbl, right:`${azFmt(b.close)} — ${nextOpen}` };
+    };
     const rows = [];
     slots.forEach((sl, i)=>{
-      rows.push(az.rows[i]);
-      if(plan && breakAfter === i + 1){
-        rows.push({ brk:true, split:6, left: LG==='sw' ? 'MID TERM TEST (Mtihani wa Kati ya Muhula) — Likizo Fupi' : 'MID TERM TEST — SHORT HOLIDAY', right:`${azFmt(plan.mclose)} — ${azFmt(plan.mopen)}` });
-      }
+      rows.push(srvRows[i] || blankRow(sl));
+      (brkAt[i + 1] || []).forEach(b=>{ if(b.type==='mid' || plan) rows.push(brkRow(b)); });
     });
-
-    // Likizo ndefu baada ya kufunga muhula (kulingana na kalenda)
-    const closeStr = cal['t'+termNo].close;
-    if(plan && azFmt(closeStr)){
-      const nextOpen = termNo === 1 ? cal.t2.open : '';
-      const toTxt = nextOpen && azFmt(nextOpen) ? azFmt(nextOpen) : (LG==='sw' ? 'kufungua mwaka unaofuata' : 'opening of next year');
-      const lbl = termNo === 1
-        ? (LG==='sw' ? 'LIKIZO YA MUHULA WA KWANZA' : 'END OF TERM ONE HOLIDAY')
-        : (LG==='sw' ? 'LIKIZO YA MWISHO WA MWAKA (MUHULA WA PILI)' : 'END OF YEAR HOLIDAY (TERM TWO)');
-      rows.push({ brk:true, split:6, left:lbl, right:`${azFmt(closeStr)} — ${toTxt}` });
-    }
 
     const headLabelEl = document.getElementById('az_headLabel');
     if(headLabelEl) headLabelEl.textContent = `AZIMIO LA KAZI — ${subject.toUpperCase()}`;
@@ -4668,21 +4721,24 @@ async function generateAzimio(){
     const calTitle = `Kalenda ya mihula ya masomo kwa shule ya awali, msingi na sekondari kwa mwaka ${year}`;
 
     let html = `<div class="az-info"><p><strong>Jina la Shule:</strong> ${escapeHtml(school)}</p><p><strong>Jina la Mwalimu:</strong> ${escapeHtml(teacher)}</p>` +
-      `<p><strong>Darasa:</strong> ${escapeHtml(grade)} &nbsp; <strong>Somo:</strong> ${escapeHtml(subject)} &nbsp; <strong>Muhula:</strong> ${escapeHtml(term)} &nbsp; <strong>Mwaka:</strong> ${escapeHtml(year)}</p></div>`;
-    html += `<h3>Azimio la Kazi (Scheme of Work) — ${escapeHtml(term)}</h3>` + azHtmlTable(AZ_HEADERS, rows, 'az-table');
+      `<p><strong>Darasa:</strong> ${escapeHtml(grade)} &nbsp; <strong>Somo:</strong> ${escapeHtml(subject)} &nbsp; <strong>Kipindi:</strong> ${escapeHtml(scopeLabel)} &nbsp; <strong>Mwaka:</strong> ${escapeHtml(year)}</p></div>`;
+    html += `<h3>${escapeHtml(calTitle)}</h3>` + azHtmlTable(calHeaders, calRows, 'az-cal-out');
+    html += `<h3>Azimio la Kazi (Scheme of Work) — ${escapeHtml(scopeLabel)}</h3>` + azHtmlTable(AZ_HEADERS, rows, 'az-table');
     let note = '';
+    if(missingRows) note += `Onyo: seva ilirudisha wiki ${srvRows.length} kati ya ${slots.length}; wiki ${missingRows} zimeachwa wazi — bonyeza "Tengeneza" tena. `;
     if(!plan) note += 'Kalenda ya muhula huu haijakamilika — jaza tarehe kwenye jedwali la kalenda juu ili Mwezi, Wiki na Mid-term vijipange zenyewe. ';
     if(!data) note += 'Hakuna data ya mtaala rasmi kwa somo/darasa hili bado — jaza jedwali mwenyewe. ';
     else {
-      note += `Vipindi (${data.weekly} kwa wiki) na mpangilio wa mada umetoka mtaala rasmi wa TIE; mada zimepangwa kwa mwendo unaofika mwisho wa mwaka (hadi Novemba), na wiki ya mwisho ya kila muhula imetengwa kwa marudio na mtihani. Mbinu, Zana, Zana za Upimaji na Maoni ni mapendekezo ya kiotomatiki (kulingana na somo na aina ya shughuli) — yabadilishe kulingana na mazingira ya shule yako; Rejea jaza mwenyewe.`;
-      const totalUsable = usable1 + Math.max(0, (azTermPlan('t2') ? azTermPlan('t2').total : weeksInput) - 1);
+      note += `Vipindi (${data.weekly || '—'} kwa wiki) na mpangilio wa mada umetoka mtaala rasmi wa TIE; mada zimepangwa kwa mwendo unaofika mwisho wa mwaka (hadi Novemba), na wiki ya mwisho ya kila muhula imetengwa kwa marudio na mtihani. Mbinu, Zana, Zana za Upimaji na Maoni ni mapendekezo ya kiotomatiki (kulingana na somo na aina ya shughuli) — yabadilishe kulingana na mazingira ya shule yako; Rejea jaza mwenyewe.`;
+      const totalUsable = usable1;
       if(data.seq.length > totalUsable + 0) note += ` Kumbuka: mtaala una wiki ${data.seq.length} lakini kalenda ina wiki ${totalUsable} za kufundisha — baadhi ya mada za mwisho hazikutoshea.`;
     }
     html += `<p>${escapeHtml(note)}</p>`;
 
     // ----- Toleo la maandishi (kwa kitufe cha Nakili) -----
     const flat = rows.map(r=> r.brk ? [r.left, r.right].concat(Array(AZ_HEADERS.length-2).fill('')) : r);
-    let out = `AZIMIO LA KAZI — ${subject.toUpperCase()}\n\nJina la Shule: ${school}\nJina la Mwalimu: ${teacher}\nDarasa: ${grade}    Somo: ${subject}    Muhula: ${term}    Mwaka: ${year}\n\n`;
+    let out = `AZIMIO LA KAZI — ${subject.toUpperCase()}\n\nJina la Shule: ${school}\nJina la Mwalimu: ${teacher}\nDarasa: ${grade}    Somo: ${subject}    Kipindi: ${scopeLabel}    Mwaka: ${year}\n\n`;
+    out += calTitle + '\n' + mdTable(calHeaders, calRows) + '\n';
     out += mdTable(AZ_HEADERS, flat) + '\n' + note;
 
     const outEl = document.getElementById('az_output');
@@ -4690,7 +4746,7 @@ async function generateAzimio(){
     lastTextByOutput['az_output'] = out;
     ['az_copyBtn','az_printBtn','az_docxBtn'].forEach(id=>{ const b=document.getElementById(id); if(b) b.classList.remove('hidden'); });
     if(status) status.textContent = plan
-      ? `Azimio limetengenezwa kufuata kalenda (wiki ${plan.total}${plan.hasBreak ? ', Mid-term imeingizwa' : ''}).`
+      ? `Azimio limetengenezwa kufuata kalenda (wiki ${slots.length}${lay.breaks.some(b=>b.type==='mid') ? ', Mid-term imeingizwa' : ''}${lay.junior ? ', hadi Juni' : ', mihula yote kwa pamoja'}).`
       : 'Azimio limetengenezwa (kalenda haijakamilika — wiki zimetumia idadi uliyoandika).';
   }catch(e){
     if(status) status.textContent = 'Hitilafu: ' + e.message;
@@ -9321,4 +9377,5 @@ function phBar(){
 </script>
 </body>
 </html>
+
 
