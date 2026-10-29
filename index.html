@@ -4700,6 +4700,53 @@ function azSavedRender(){
   }).join('');
 }
 
+/* ---- Darasa la 6 na la 7: mada ndogo 1 = wiki 1; mada zote ndani ya muhula wa kwanza (Januari–Juni) ----
+   Kila shughuli (c) ya mtaala inapata mstari wake mwenyewe, maneno yake halisi yakihifadhiwa bila kufupishwa wala kuunganishwa.
+   Wiki zinazobaki baada ya mada ndogo ya mwisho ni Marudio; wiki ya mwisho ni Marudio na Mtihani. */
+function azBuildJuniorRows(rec, slots, subject, LG){
+  const lcFirst = x=> x.charAt(0).toLowerCase() + x.slice(1);
+  const kind = lpKind(subject), L = (LG === 'en' || LG === 'fr') ? LG : 'sw';
+  const TXT = {
+    sw:{ lead:'Kumwongoza mwanafunzi: ', method:'Majadiliano ya vikundi, maelezo ya mwalimu na kazi za vitendo', assess:'Maswali ya mdomo na maandishi, zoezi fupi', rev:'Marudio ya mada zilizofundishwa', revExam:'Marudio na Mtihani' },
+    en:{ lead:'Guide pupils to: ', method:'Group discussion, teacher\'s explanation and practical tasks', assess:'Oral and written questions, short exercise', rev:'Revision of topics taught', revExam:'Revision and Examination' },
+    fr:{ lead:'Guider les élèves : ', method:'Discussion en groupes, explication de l\'enseignant et tâches pratiques', assess:'Questions orales et écrites, court exercice', rev:'Révision des thèmes étudiés', revExam:'Révision et examen' }
+  }[L];
+  const tools = LP_RES[L][kind];
+  const periods = rec && rec.w ? String(rec.w) : '';
+  const subs = [];                                        // mada ndogo zote kwa mpangilio wa mtaala
+  (rec ? rec.k : []).forEach(mk=> (mk.m || []).forEach(mn=> subs.push({ main: mk, sub: mn })));
+  const teachWeeks = Math.max(0, slots.length - 1);       // wiki ya mwisho = Marudio na Mtihani
+  const bySlot = slots.map(()=>[]);
+  const placed = [];
+  slots.forEach((sl, i)=>{
+    const mw = [sl.month || '', sl.wom || ''];
+    const blank = ()=> AZ_HEADERS.map(()=> '');
+    if(i < teachWeeks && i < subs.length){
+      const { main, sub } = subs[i];
+      const acts = (sub.c && sub.c.length) ? sub.c : [''];
+      acts.forEach((c, ai)=>{
+        const r = blank();
+        r[2] = c ? TXT.lead + (L==='sw' ? c : lcFirst(c)) : '';
+        r[3] = c;                                         // maneno halisi ya mtaala
+        if(ai === 0){
+          r[0] = (main.n ? main.n + ' ' : '') + main.j;
+          r[1] = (sub.n ? sub.n + ' ' : '') + sub.j;
+          r[4] = mw[0]; r[5] = mw[1]; r[6] = periods;
+          r[7] = TXT.method; r[8] = tools; r[9] = TXT.assess;
+        }
+        bySlot[i].push(r);
+      });
+      placed.push({ n: sub.n, week: i, acts: acts.length });
+    } else {
+      const r = blank();
+      r[0] = (i === slots.length - 1) ? TXT.revExam : TXT.rev;
+      r[4] = mw[0]; r[5] = mw[1]; r[6] = periods;
+      bySlot[i].push(r);
+    }
+  });
+  return { bySlot, placed, total: subs.length, overflow: Math.max(0, subs.length - teachWeeks) };
+}
+
 async function generateAzimio(){
   const grade = document.getElementById('az_grade').value;
   const subject = document.getElementById('az_subject').value;
@@ -4757,7 +4804,7 @@ async function generateAzimio(){
 
     // Kinga: seva ikirudisha safu chache kuliko wiki, usipoteze jedwali zima — jaza safu tupu na toa onyo
     const srvRows = Array.isArray(az.rows) ? az.rows : [];
-    const missingRows = Math.max(0, slots.length - srvRows.length);
+    const missingRows = (lay.junior && rec) ? 0 : Math.max(0, slots.length - srvRows.length);
     const blankRow = (sl)=> AZ_HEADERS.map((h,ci)=> ci===4 ? (sl.month||'') : ci===5 ? (sl.wom||'') : '');
     const brkAt = {}; lay.breaks.forEach(b=>{ (brkAt[b.at] = brkAt[b.at] || []).push(b); });
     const brkRow = (b)=>{
@@ -4767,9 +4814,11 @@ async function generateAzimio(){
       const lbl = b.type==='end1' ? (LG==='sw' ? 'LIKIZO YA MUHULA WA KWANZA' : 'END OF TERM ONE HOLIDAY') : (LG==='sw' ? 'LIKIZO YA MWISHO WA MWAKA (MUHULA WA PILI)' : 'END OF YEAR HOLIDAY (TERM TWO)');
       return { brk:true, split:6, left:lbl, right:`${azFmt(b.close)} — ${nextOpen}` };
     };
+    // Darasa la 6 na la 7: mpangilio wa wiki unafanywa hapa (mada ndogo 1 = wiki 1), si kwenye seva
+    const jr = (lay.junior && rec) ? azBuildJuniorRows(rec, slots, subject, LG) : null;
     const rows = [];
     slots.forEach((sl, i)=>{
-      rows.push(srvRows[i] || blankRow(sl));
+      if(jr) jr.bySlot[i].forEach(r=> rows.push(r)); else rows.push(srvRows[i] || blankRow(sl));
       (brkAt[i + 1] || []).forEach(b=>{ if(b.type==='mid' || plan) rows.push(brkRow(b)); });
     });
 
@@ -4784,7 +4833,11 @@ async function generateAzimio(){
     let note = '';
     if(missingRows) note += `Onyo: seva ilirudisha wiki ${srvRows.length} kati ya ${slots.length}; wiki ${missingRows} zimeachwa wazi — bonyeza "Tengeneza" tena. `;
     if(!plan) note += 'Kalenda ya muhula huu haijakamilika — jaza tarehe kwenye jedwali la kalenda juu ili Mwezi, Wiki na Mid-term vijipange zenyewe. ';
-    if(!data) note += 'Hakuna data ya mtaala rasmi kwa somo/darasa hili bado — jaza jedwali mwenyewe. ';
+    if(jr){
+      note += `Mtaala rasmi wa TIE: kila mada ndogo imepangiwa wiki moja na shughuli zake zote zimewekwa kwenye wiki hiyo, kila shughuli kwenye mstari wake kwa maneno ya mtaala. Mada zote zimekamilika ndani ya muhula wa kwanza (Januari – Juni); wiki zinazobaki ni Marudio na wiki ya mwisho ni Marudio na Mtihani. Mbinu, Zana na Zana za Upimaji ni mapendekezo ya jumla — yabadilishe kulingana na mazingira ya shule yako; Rejea na Maoni jaza mwenyewe.`;
+      if(jr.overflow) note += ` Onyo: mada ndogo ${jr.overflow} hazikupata wiki kwa sababu kalenda ina wiki chache (${slots.length - 1}) kuliko mada ndogo (${jr.total}).`;
+    }
+    else if(!data) note += 'Hakuna data ya mtaala rasmi kwa somo/darasa hili bado — jaza jedwali mwenyewe. ';
     else {
       note += `Vipindi (${data.weekly || '—'} kwa wiki) na mpangilio wa mada umetoka mtaala rasmi wa TIE; mada zimepangwa kwa mwendo unaofika mwisho wa mwaka (hadi Novemba), na wiki ya mwisho ya kila muhula imetengwa kwa marudio na mtihani. Mbinu, Zana, Zana za Upimaji na Maoni ni mapendekezo ya kiotomatiki (kulingana na somo na aina ya shughuli) — yabadilishe kulingana na mazingira ya shule yako; Rejea jaza mwenyewe.`;
       const totalUsable = usable1;
