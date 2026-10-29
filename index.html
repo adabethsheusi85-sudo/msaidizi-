@@ -4535,9 +4535,10 @@ function azMonday(d){ const x = new Date(d.getFullYear(), d.getMonth(), d.getDat
 function azWeeksBetween(from, to){
   const list = []; let m = azMonday(from);
   while(m <= to){
-    const fri = new Date(m.getFullYear(), m.getMonth(), m.getDate()+4);
-    // Mwezi = mwezi ambao Ijumaa ya wiki hiyo iko; Wiki = nafasi ya wiki hiyo ndani ya mwezi (kama kwenye fomu ya mwalimu)
-    list.push({ month: AZ_MONTHS[fri.getMonth()], wom: Math.ceil(fri.getDate()/7) });
+    // Tarehe ya kuanza wiki (Jumatatu, au siku ya kufungua shule ikiwa ni katikati ya wiki) ndiyo huamua Mwezi na Wiki.
+    // Wiki ya 1 = tarehe 1–7, ya 2 = 8–14, ya 3 = 15–21, ya 4 = 22–31 (mwezi una wiki 4)
+    const st = m < from ? new Date(from.getFullYear(), from.getMonth(), from.getDate()) : m;
+    list.push({ month: AZ_MONTHS[st.getMonth()], wom: Math.min(4, Math.ceil(st.getDate()/7)) });
     m = new Date(m.getFullYear(), m.getMonth(), m.getDate()+7);
   }
   return list;
@@ -9434,3 +9435,4 @@ function phBar(){
 </script>
 </body>
 </html>
+
