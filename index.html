@@ -4700,43 +4700,130 @@ function azSavedRender(){
   }).join('');
 }
 
-/* ---- Darasa la 6 na la 7: mada ndogo 1 = wiki 1; mada zote ndani ya muhula wa kwanza (Januari–Juni) ----
-   Kila shughuli (c) ya mtaala inapata mstari wake mwenyewe, maneno yake halisi yakihifadhiwa bila kufupishwa wala kuunganishwa.
-   Wiki zinazobaki baada ya mada ndogo ya mwisho ni Marudio; wiki ya mwisho ni Marudio na Mtihani. */
+/* ---- Darasa la 6 na la 7: mada zote ndani ya muhula wa kwanza (Januari–Juni) ----
+   Wiki ya mwisho = Marudio na Mtihani. Wiki zote zilizotangulia ni za kufundisha na kila moja ina maudhui halisi ya mtaala.
+   1) Kila mada ndogo inapewa idadi ya wiki kulingana na vipindi vyake vya mtaala (v); v ikikosekana, kulingana na idadi ya shughuli zake.
+      Jumla ya wiki za mada ndogo zote = wiki zote za kufundisha, kwa hiyo mada hazimaliziki mapema na hakuna wiki ya kujazia nafasi.
+   2) Mada ndogo zikiwa nyingi kuliko wiki, mada ndogo zinazofuatana zinakaa wiki moja (kwa mpangilio wa mtaala).
+   3) Kila shughuli ya mtaala inapata mstari wake mwenyewe, maneno yake halisi bila kufupishwa, kuunganishwa wala kufutwa.
+   4) Mada ndogo inayochukua wiki nyingi: shughuli zake zinagawiwa kwa mfuatano kwenye wiki hizo; shughuli ikiwa chache kuliko wiki,
+      shughuli hiyo inaendelea wiki inayofuata. Yote yanaonyeshwa kwenye safu ya Maoni (Sehemu x/y). */
+function azJuniorPlan(subs, W){
+  const S = subs.length;
+  const actCount = s=> Math.max(1, (s.sub.c || []).length);
+  const vOf = s=>{ const v = Number(s.sub.v); return (isFinite(v) && v > 0) ? v : 0; };
+  const range = (a, b)=> Array.from({ length: Math.max(0, b - a) }, (_, k)=> a + k);
+  if(!S || !W) return { weeks: [], n: [] };
+  // Uzito wa kila mada ndogo: vipindi vya mtaala; kama havipo, shughuli × wastani wa vipindi kwa shughuli (au 1)
+  const withV = subs.filter(s=> vOf(s) > 0);
+  const perAct = withV.length ? withV.reduce((a, s)=> a + vOf(s), 0) / withV.reduce((a, s)=> a + actCount(s), 0) : 1;
+  const wt = subs.map(s=> vOf(s) > 0 ? vOf(s) : actCount(s) * perAct);
+  const T = wt.reduce((a, b)=> a + b, 0);
+  const weeks = [];
+  let n = subs.map(()=> 1);
+  if(S <= W){
+    // Gawa wiki zote W kwa mada ndogo zote (kila moja angalau wiki 1) kulingana na uzito (largest remainder)
+    const ideal = wt.map(x=> x / T * W);
+    n = ideal.map(x=> Math.max(1, Math.floor(x)));
+    let sum = n.reduce((a, b)=> a + b, 0);
+    while(sum < W){
+      let bi = 0, bd = -Infinity;
+      n.forEach((x, i)=>{ const d = ideal[i] - x; if(d > bd){ bd = d; bi = i; } });
+      n[bi]++; sum++;
+    }
+    while(sum > W){
+      let bi = -1, bd = Infinity;
+      n.forEach((x, i)=>{ if(x > 1){ const d = ideal[i] - x; if(d < bd){ bd = d; bi = i; } } });
+      if(bi < 0) break;
+      n[bi]--; sum--;
+    }
+    subs.forEach((s, i)=>{
+      const A = actCount(s);
+      if(n[i] <= A){
+        // shughuli zinagawiwa kwa mfuatano kwenye wiki za mada ndogo hii (kila wiki angalau shughuli 1)
+        const base = Math.floor(A / n[i]), extra = A % n[i];
+        let at = 0;
+        for(let p = 0; p < n[i]; p++){
+          const sz = base + (p < extra ? 1 : 0);
+          weeks.push([{ i, acts: range(at, at + sz), part: p + 1, parts: n[i], cont: false }]);
+          at += sz;
+        }
+      } else {
+        // wiki ni nyingi kuliko shughuli: kila shughuli inaendelea kwa wiki kadhaa mfululizo
+        const base = Math.floor(n[i] / A), extra = n[i] % A;
+        let p = 0;
+        for(let a = 0; a < A; a++){
+          const span = base + (a < extra ? 1 : 0);
+          for(let k = 1; k <= span; k++){
+            p++;
+            weeks.push([{ i, acts: [a], part: p, parts: n[i], cont: span > 1 ? { k, of: span } : false }]);
+          }
+        }
+      }
+    });
+  } else {
+    // Mada ndogo nyingi kuliko wiki: kundi la mada ndogo zinazofuatana kwa kila wiki, kila wiki angalau mada ndogo 1
+    let idx = 0, remWt = T;
+    for(let j = 0; j < W; j++){
+      const left = W - j, target = remWt / left;
+      const group = [];
+      let gw = 0;
+      while(idx < S && (group.length === 0 || (S - idx > left - 1 && gw + wt[idx] / 2 <= target))){
+        group.push(idx); gw += wt[idx]; idx++;
+      }
+      remWt -= gw;
+      weeks.push(group.map(i=> ({ i, acts: range(0, actCount(subs[i])), part: 1, parts: 1, cont: false })));
+    }
+  }
+  return { weeks, n };
+}
 function azBuildJuniorRows(rec, slots, subject, LG){
   const lcFirst = x=> x.charAt(0).toLowerCase() + x.slice(1);
   const kind = lpKind(subject), L = (LG === 'en' || LG === 'fr') ? LG : 'sw';
   const TXT = {
-    sw:{ lead:'Kumwongoza mwanafunzi: ', method:'Majadiliano ya vikundi, maelezo ya mwalimu na kazi za vitendo', assess:'Maswali ya mdomo na maandishi, zoezi fupi', rev:'Marudio ya mada zilizofundishwa', revExam:'Marudio na Mtihani' },
-    en:{ lead:'Guide pupils to: ', method:'Group discussion, teacher\'s explanation and practical tasks', assess:'Oral and written questions, short exercise', rev:'Revision of topics taught', revExam:'Revision and Examination' },
-    fr:{ lead:'Guider les élèves : ', method:'Discussion en groupes, explication de l\'enseignant et tâches pratiques', assess:'Questions orales et écrites, court exercice', rev:'Révision des thèmes étudiés', revExam:'Révision et examen' }
+    sw:{ lead:'Kumwongoza mwanafunzi: ', method:'Majadiliano ya vikundi, maelezo ya mwalimu na kazi za vitendo', assess:'Maswali ya mdomo na maandishi, zoezi fupi', rev:'Marudio ya mada zilizofundishwa', revExam:'Marudio na Mtihani',
+         part:(p, n, code)=> `Sehemu ${p}/${n} ya mada ndogo ${code}`.trim(), cont:(k, of)=> `shughuli inaendelea (${k}/${of})` },
+    en:{ lead:'Guide pupils to: ', method:'Group discussion, teacher\'s explanation and practical tasks', assess:'Oral and written questions, short exercise', rev:'Revision of topics taught', revExam:'Revision and Examination',
+         part:(p, n, code)=> `Part ${p}/${n} of sub-topic ${code}`.trim(), cont:(k, of)=> `activity continues (${k}/${of})` },
+    fr:{ lead:'Guider les élèves : ', method:'Discussion en groupes, explication de l\'enseignant et tâches pratiques', assess:'Questions orales et écrites, court exercice', rev:'Révision des thèmes étudiés', revExam:'Révision et examen',
+         part:(p, n, code)=> `Partie ${p}/${n} du sous-thème ${code}`.trim(), cont:(k, of)=> `activité en cours (${k}/${of})` }
   }[L];
   const tools = LP_RES[L][kind];
   const periods = rec && rec.w ? String(rec.w) : '';
   const subs = [];                                        // mada ndogo zote kwa mpangilio wa mtaala
   (rec ? rec.k : []).forEach(mk=> (mk.m || []).forEach(mn=> subs.push({ main: mk, sub: mn })));
   const teachWeeks = Math.max(0, slots.length - 1);       // wiki ya mwisho = Marudio na Mtihani
+  const { weeks: plan, n: weeksPerSub } = azJuniorPlan(subs, teachWeeks);
   const bySlot = slots.map(()=>[]);
   const placed = [];
   slots.forEach((sl, i)=>{
     const mw = [sl.month || '', sl.wom || ''];
     const blank = ()=> AZ_HEADERS.map(()=> '');
-    if(i < teachWeeks && i < subs.length){
-      const { main, sub } = subs[i];
-      const acts = (sub.c && sub.c.length) ? sub.c : [''];
-      acts.forEach((c, ai)=>{
-        const r = blank();
-        r[2] = c ? TXT.lead + (L==='sw' ? c : lcFirst(c)) : '';
-        r[3] = c;                                         // maneno halisi ya mtaala
-        if(ai === 0){
-          r[0] = (main.n ? main.n + ' ' : '') + main.j;
-          r[1] = (sub.n ? sub.n + ' ' : '') + sub.j;
-          r[4] = mw[0]; r[5] = mw[1]; r[6] = periods;
-          r[7] = TXT.method; r[8] = tools; r[9] = TXT.assess;
-        }
-        bySlot[i].push(r);
+    const pieces = (i < teachWeeks && i < plan.length) ? plan[i] : null;
+    if(pieces){
+      let firstOfWeek = true;
+      pieces.forEach(pc=>{
+        const { main, sub } = subs[pc.i];
+        const allActs = (sub.c && sub.c.length) ? sub.c : [''];
+        pc.acts.forEach((ai, k)=>{
+          const c = allActs[ai];
+          const r = blank();
+          r[2] = c ? TXT.lead + (L==='sw' ? c : lcFirst(c)) : '';
+          r[3] = c;                                       // maneno halisi ya mtaala
+          if(k === 0){
+            r[0] = (main.n ? main.n + ' ' : '') + main.j;
+            r[1] = (sub.n ? sub.n + ' ' : '') + sub.j;
+            r[7] = TXT.method; r[8] = tools; r[9] = TXT.assess;
+            const rm = [];
+            if(pc.parts > 1) rm.push(TXT.part(pc.part, pc.parts, sub.n || ''));
+            if(pc.cont) rm.push(TXT.cont(pc.cont.k, pc.cont.of));
+            r[11] = rm.join('; ');
+          }
+          if(firstOfWeek){ r[4] = mw[0]; r[5] = mw[1]; r[6] = periods; firstOfWeek = false; }
+          bySlot[i].push(r);
+          placed.push({ n: sub.n, week: i, act: ai });
+        });
       });
-      placed.push({ n: sub.n, week: i, acts: acts.length });
     } else {
       const r = blank();
       r[0] = (i === slots.length - 1) ? TXT.revExam : TXT.rev;
@@ -4744,7 +4831,13 @@ function azBuildJuniorRows(rec, slots, subject, LG){
       bySlot[i].push(r);
     }
   });
-  return { bySlot, placed, total: subs.length, overflow: Math.max(0, subs.length - teachWeeks) };
+  // Ukaguzi wa vipindi: mtaala (v) dhidi ya vipindi vilivyopo kwenye kalenda (wiki za kufundisha × vipindi kwa wiki)
+  const wPer = Number(rec && rec.w), hasCap = isFinite(wPer) && wPer > 0;
+  let needed = 0, neededComplete = true;
+  subs.forEach(s=>{ const v = Number(s.sub.v); if(isFinite(v) && v > 0) needed += v; else neededComplete = false; });
+  const capacity = hasCap ? wPer * teachWeeks : 0;
+  return { bySlot, placed, total: subs.length, weeksPerSub, teachWeeks, hasCap, needed, neededComplete, capacity,
+           overloaded: hasCap && needed > capacity, overflow: teachWeeks ? 0 : subs.length };
 }
 
 async function generateAzimio(){
@@ -4834,8 +4927,10 @@ async function generateAzimio(){
     if(missingRows) note += `Onyo: seva ilirudisha wiki ${srvRows.length} kati ya ${slots.length}; wiki ${missingRows} zimeachwa wazi — bonyeza "Tengeneza" tena. `;
     if(!plan) note += 'Kalenda ya muhula huu haijakamilika — jaza tarehe kwenye jedwali la kalenda juu ili Mwezi, Wiki na Mid-term vijipange zenyewe. ';
     if(jr){
-      note += `Mtaala rasmi wa TIE: kila mada ndogo imepangiwa wiki moja na shughuli zake zote zimewekwa kwenye wiki hiyo, kila shughuli kwenye mstari wake kwa maneno ya mtaala. Mada zote zimekamilika ndani ya muhula wa kwanza (Januari – Juni); wiki zinazobaki ni Marudio na wiki ya mwisho ni Marudio na Mtihani. Mbinu, Zana na Zana za Upimaji ni mapendekezo ya jumla — yabadilishe kulingana na mazingira ya shule yako; Rejea na Maoni jaza mwenyewe.`;
-      if(jr.overflow) note += ` Onyo: mada ndogo ${jr.overflow} hazikupata wiki kwa sababu kalenda ina wiki chache (${slots.length - 1}) kuliko mada ndogo (${jr.total}).`;
+      note += `Mtaala rasmi wa TIE: mada zote na shughuli zote zimegawiwa kwenye wiki zote za kufundisha za muhula wa kwanza (Januari – Juni) kwa mpangilio wa mtaala. Kila mada ndogo imepewa wiki kulingana na vipindi vyake vya mtaala (au idadi ya shughuli kama vipindi havipo), na kila shughuli iko kwenye mstari wake kwa maneno ya mtaala. Mada ndogo inayochukua zaidi ya wiki moja imewekwa alama kwenye safu ya Maoni (Sehemu x/y); wiki ya mwisho ni Marudio na Mtihani. Mbinu, Zana na Zana za Upimaji ni mapendekezo ya jumla — yabadilishe kulingana na mazingira ya shule yako; Rejea jaza mwenyewe.`;
+      if(jr.overloaded) note += ` Onyo: mtaala unahitaji vipindi ${jr.needed} lakini kalenda ya muhula wa kwanza ina vipindi ${jr.capacity} tu (wiki ${jr.teachWeeks} × vipindi ${rec.w} kwa wiki). Mada zote zimewekwa ndani ya muhula wa kwanza kama ulivyoagiza, lakini wiki zina shughuli nyingi kuliko vipindi vilivyopo — punguza kina cha mada au ongeza vipindi.`;
+      else if(!jr.hasCap) note += ' Kumbuka: idadi ya vipindi kwa wiki haijawekwa kwenye data ya mtaala huu, kwa hiyo haikuweza kukaguliwa kama vipindi vinatosha.';
+      if(jr.overflow) note += ` Onyo: kalenda haina wiki za kufundisha (${jr.teachWeeks}); mada ndogo ${jr.overflow} hazikupata wiki.`;
     }
     else if(!data) note += 'Hakuna data ya mtaala rasmi kwa somo/darasa hili bado — jaza jedwali mwenyewe. ';
     else {
