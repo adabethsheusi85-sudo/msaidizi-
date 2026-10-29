@@ -430,13 +430,17 @@ body.mc-lock{overflow:hidden}
   .az-table th,.az-table td,.az-cal-out th,.az-cal-out td{border:1px solid #6b6446 !important;color:var(--ink);}
   .az-table th,.az-cal-out th{background:#efe6cc;}
   .layout>*{min-width:0;}
+  .az-scope-info{padding:10px 12px;border:1px solid rgba(244,239,225,0.25);border-radius:8px;background:rgba(244,239,225,0.06);color:var(--chalk);font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.4;}
+  .az-saved-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(244,239,225,0.12);font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;}
+  .az-saved-row small{color:rgba(244,239,225,0.55);}
+  .az-saved-row button{background:transparent;border:1px solid rgba(244,239,225,0.3);color:var(--sage);border-radius:6px;font-size:12px;padding:5px 10px;cursor:pointer;margin-left:6px;}
   .output-panel{min-width:0;max-width:100%;}
   .output-body{overflow-x:auto;}
   .az-table th{text-align:center;}
   .az-break td{background:#f3dfb5;font-weight:700;text-align:center;color:var(--ink);}
   .az-info p{margin:2px 0;font-size:13px;}
   @media print{
-    .az-cal-card{display:none !important;}
+    .az-cal-card,.az-saved-panel{display:none !important;}
     .az-table{font-size:9px;min-width:0;}
     .az-break td{background:#ddd;color:#000;}
   }
@@ -735,10 +739,15 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
       </div>
       <div class="output-panel">
         <div class="output-head"><span id="az_headLabel">AZIMIO LA KAZI</span>
-          <div><button id="az_copyBtn" class="hidden" onclick="copyText('az_output','az_copyBtn')">Nakili</button><button id="az_docxBtn" class="hidden" onclick="downloadAzimioDocx()">⬇️ Pakua Word</button><button id="az_printBtn" class="hidden" onclick="azimioPrint()">Chapisha</button></div>
+          <div><button id="az_saveBtn" class="hidden" onclick="azSaveCurrent()">💾 Hifadhi Azimio</button><button id="az_copyBtn" class="hidden" onclick="copyText('az_output','az_copyBtn')">Nakili</button><button id="az_docxBtn" class="hidden" onclick="downloadAzimioDocx()">⬇️ Pakua Word</button><button id="az_printBtn" class="hidden" onclick="azimioPrint()">Chapisha</button></div>
         </div>
         <div class="output-body" id="az_output"><p class="placeholder">Azimio la kazi litaonekana hapa.</p></div>
       </div>
+    </div>
+    <div class="panel az-saved-panel hidden" id="az_saved" style="margin-top:22px;">
+      <h3 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;margin:0 0 6px;">🗂️ Maazimio Yaliyohifadhiwa</h3>
+      <p class="hint" style="margin:0 0 10px;">Yanahifadhiwa kwenye kivinjari cha kifaa hiki tu. Ukifuta data ya kivinjari au ukibadili simu yatapotea — pakua Word kama nakala ya ziada.</p>
+      <div id="az_saved_list"></div>
     </div>
   </div>
 
@@ -4587,6 +4596,10 @@ function azCalRefresh(){
   const lay = azLayout(gradeEl ? gradeEl.value : '', 13);
   const w = document.getElementById('az_weeks');
   if(lay.calendarOk && w) w.value = lay.slots.length;
+  const info = document.getElementById('az_scope_info');
+  if(info) info.textContent = lay.junior
+    ? 'Januari – Juni (maandalizi ya mitihani) · wiki ' + lay.slots.length
+    : 'Muhula wa 1 + wa 2 kwa pamoja (azimio moja linaloendelea) · wiki ' + lay.slots.length;
 }
 function azCalInit(){
   let saved = null;
@@ -4599,13 +4612,16 @@ function azCalInit(){
     e.addEventListener('change', ()=>{ azCalSave(); azCalRefresh(); });
   }));
   const term = document.getElementById('az_term');
-  if(term){   // azimio ni moja linaloendelea (au hadi Juni) — uchaguzi wa muhula hauhitajiki tena
-    term.disabled = true; term.title = 'Azimio linajumuisha mihula yote (Darasa la 6–7: hadi Juni)';
+  if(term && !document.getElementById('az_scope_info')){   // azimio ni moja linaloendelea (au hadi Juni) — badala ya kisanduku kilichoganda, onyesha kipindi kwa maandishi wazi
+    term.style.display = 'none';
     const lb = term.parentElement && term.parentElement.querySelector('label');
-    if(lb) lb.textContent = 'Kipindi cha azimio (huchaguliwa kulingana na darasa)';
+    if(lb) lb.textContent = 'Kipindi cha azimio (huamuliwa na darasa)';
+    const info = document.createElement('div'); info.id = 'az_scope_info'; info.className = 'az-scope-info';
+    term.parentElement.appendChild(info);
   }
   const gsel = document.getElementById('az_grade'); if(gsel) gsel.addEventListener('change', azCalRefresh);
   azCalRefresh();
+  azSavedRender();
 }
 
 /* ---- Maudhui kutoka mtaala rasmi (TIE): wiki kwa wiki ---- */
@@ -4631,6 +4647,56 @@ function azHtmlTable(headers, rows, cls){
     }
   });
   return h + '</tbody></table>';
+}
+
+/* ---- Kuhifadhi maazimio (kwenye kivinjari) ---- */
+const AZ_SAVED_KEY = 'msaidizi_azimio_saved_v1';
+const AZ_SAVED_MAX = 30;
+let azLastMeta = null;
+function azSavedGet(){ try{ const a = JSON.parse(localStorage.getItem(AZ_SAVED_KEY) || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; } }
+function azSavedPut(a){ try{ localStorage.setItem(AZ_SAVED_KEY, JSON.stringify(a)); return true; }catch(e){ return false; } }
+function azSaveCurrent(){
+  const out = document.getElementById('az_output'), status = document.getElementById('az_status');
+  if(!azLastMeta || !out || out.querySelector('.placeholder') || !out.textContent.trim()){ alert('Tengeneza azimio kwanza kabla ya kuhifadhi.'); return; }
+  const list = azSavedGet();
+  const rec = Object.assign({}, azLastMeta, { savedAt: new Date().toISOString(), html: out.innerHTML, text: lastTextByOutput['az_output'] || '' });
+  const i = list.findIndex(x=> x.id === rec.id);
+  if(i >= 0) list[i] = rec; else list.unshift(rec);
+  if(list.length > AZ_SAVED_MAX) list.length = AZ_SAVED_MAX;
+  if(!azSavedPut(list)){
+    if(status) status.textContent = 'Imeshindwa kuhifadhi — nafasi ya kivinjari imejaa au imezuiwa. Futa azimio la zamani au tumia "Pakua Word".';
+    return;
+  }
+  const sb = document.getElementById('az_saveBtn'); if(sb) sb.textContent = '✓ Imehifadhiwa';
+  if(status) status.textContent = 'Azimio limehifadhiwa kwenye kivinjari hiki ✓ (linapatikana chini ya ukurasa kwenye "Maazimio Yaliyohifadhiwa").';
+  azSavedRender();
+}
+function azSavedOpen(id){
+  const rec = azSavedGet().find(x=> x.id === id); if(!rec) return;
+  document.getElementById('az_output').innerHTML = rec.html;
+  lastTextByOutput['az_output'] = rec.text || '';
+  const h = document.getElementById('az_headLabel'); if(h) h.textContent = `AZIMIO LA KAZI — ${String(rec.subject || '').toUpperCase()}`;
+  ['az_copyBtn','az_printBtn','az_docxBtn','az_saveBtn'].forEach(b=>{ const e = document.getElementById(b); if(e) e.classList.remove('hidden'); });
+  const sb = document.getElementById('az_saveBtn'); if(sb) sb.textContent = '✓ Imehifadhiwa';
+  azLastMeta = { id: rec.id, title: rec.title, grade: rec.grade, subject: rec.subject, school: rec.school, teacher: rec.teacher, year: rec.year, scope: rec.scope };
+  const st = document.getElementById('az_status'); if(st) st.textContent = 'Azimio lililohifadhiwa limefunguliwa.';
+  try{ document.getElementById('az_output').scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){}
+}
+function azSavedDelete(id){
+  if(!confirm('Futa azimio hili lililohifadhiwa?')) return;
+  azSavedPut(azSavedGet().filter(x=> x.id !== id));
+  azSavedRender();
+}
+function azSavedRender(){
+  const box = document.getElementById('az_saved'), list = document.getElementById('az_saved_list');
+  if(!box || !list) return;
+  const items = azSavedGet();
+  box.classList.toggle('hidden', !items.length);
+  list.innerHTML = items.map(x=>{
+    let d = ''; try{ d = new Date(x.savedAt).toLocaleDateString('sw-TZ'); }catch(e){}
+    return `<div class="az-saved-row"><div><b>${escapeHtml(String(x.title || 'Azimio'))}</b><br><small>${escapeHtml(String(x.school || ''))} ${x.year ? '· ' + escapeHtml(String(x.year)) : ''} · ${escapeHtml(d)}</small></div>` +
+      `<div><button onclick="azSavedOpen('${escapeHtml(String(x.id))}')">Fungua</button><button onclick="azSavedDelete('${escapeHtml(String(x.id))}')">Futa</button></div></div>`;
+  }).join('');
 }
 
 async function generateAzimio(){
@@ -4710,19 +4776,9 @@ async function generateAzimio(){
     if(headLabelEl) headLabelEl.textContent = `AZIMIO LA KAZI — ${subject.toUpperCase()}`;
 
     // ----- Jedwali la kalenda (linaonekana juu ya azimio) -----
-    const d = f=> azFmt(f) || '—';
-    const calHeaders = ['Mihula','Kufungua','Likizo Fupi: Kufunga','Likizo Fupi: Kufungua','Kufunga','Idadi ya siku za masomo'];
-    const d1 = parseInt(cal.t1.days,10) || 0, d2 = parseInt(cal.t2.days,10) || 0;
-    const calRows = [
-      ['Muhula 1', d(cal.t1.open), d(cal.t1.mclose), d(cal.t1.mopen), d(cal.t1.close), cal.t1.days || '—'],
-      ['Muhula 2', d(cal.t2.open), d(cal.t2.mclose), d(cal.t2.mopen), d(cal.t2.close), cal.t2.days || '—'],
-      ['Jumla','','','','', String(d1 + d2)]
-    ];
-    const calTitle = `Kalenda ya mihula ya masomo kwa shule ya awali, msingi na sekondari kwa mwaka ${year}`;
 
     let html = `<div class="az-info"><p><strong>Jina la Shule:</strong> ${escapeHtml(school)}</p><p><strong>Jina la Mwalimu:</strong> ${escapeHtml(teacher)}</p>` +
       `<p><strong>Darasa:</strong> ${escapeHtml(grade)} &nbsp; <strong>Somo:</strong> ${escapeHtml(subject)} &nbsp; <strong>Kipindi:</strong> ${escapeHtml(scopeLabel)} &nbsp; <strong>Mwaka:</strong> ${escapeHtml(year)}</p></div>`;
-    html += `<h3>${escapeHtml(calTitle)}</h3>` + azHtmlTable(calHeaders, calRows, 'az-cal-out');
     html += `<h3>Azimio la Kazi (Scheme of Work) — ${escapeHtml(scopeLabel)}</h3>` + azHtmlTable(AZ_HEADERS, rows, 'az-table');
     let note = '';
     if(missingRows) note += `Onyo: seva ilirudisha wiki ${srvRows.length} kati ya ${slots.length}; wiki ${missingRows} zimeachwa wazi — bonyeza "Tengeneza" tena. `;
@@ -4738,13 +4794,14 @@ async function generateAzimio(){
     // ----- Toleo la maandishi (kwa kitufe cha Nakili) -----
     const flat = rows.map(r=> r.brk ? [r.left, r.right].concat(Array(AZ_HEADERS.length-2).fill('')) : r);
     let out = `AZIMIO LA KAZI — ${subject.toUpperCase()}\n\nJina la Shule: ${school}\nJina la Mwalimu: ${teacher}\nDarasa: ${grade}    Somo: ${subject}    Kipindi: ${scopeLabel}    Mwaka: ${year}\n\n`;
-    out += calTitle + '\n' + mdTable(calHeaders, calRows) + '\n';
     out += mdTable(AZ_HEADERS, flat) + '\n' + note;
 
     const outEl = document.getElementById('az_output');
     outEl.innerHTML = html;
     lastTextByOutput['az_output'] = out;
-    ['az_copyBtn','az_printBtn','az_docxBtn'].forEach(id=>{ const b=document.getElementById(id); if(b) b.classList.remove('hidden'); });
+    azLastMeta = { id: String(Date.now()), title: `${subject} — ${grade}`, grade, subject, school, teacher, year, scope: scopeLabel };
+    ['az_copyBtn','az_printBtn','az_docxBtn','az_saveBtn'].forEach(id=>{ const b=document.getElementById(id); if(b) b.classList.remove('hidden'); });
+    const sb = document.getElementById('az_saveBtn'); if(sb){ sb.textContent = '💾 Hifadhi Azimio'; sb.disabled = false; }
     if(status) status.textContent = plan
       ? `Azimio limetengenezwa kufuata kalenda (wiki ${slots.length}${lay.breaks.some(b=>b.type==='mid') ? ', Mid-term imeingizwa' : ''}${lay.junior ? ', hadi Juni' : ', mihula yote kwa pamoja'}).`
       : 'Azimio limetengenezwa (kalenda haijakamilika — wiki zimetumia idadi uliyoandika).';
@@ -9377,5 +9434,3 @@ function phBar(){
 </script>
 </body>
 </html>
-
-
