@@ -413,6 +413,19 @@ body.mc-lock{overflow:hidden}
   .tm-sub{font-size:12px;line-height:1.4;color:rgba(244,239,225,0.6);padding:1px 0 1px 26px;}
   .tm-all,.tm-clear{background:transparent;border:1px solid rgba(244,239,225,0.3);color:var(--sage);border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;white-space:nowrap;}
   .tm-actions{margin-top:6px;text-align:right;}
+
+  /* ===== Kipengele mahususi cha kipindi (Andalio la Somo) + maandalio yaliyohifadhiwa ===== */
+  .kp-box{border:1.5px solid var(--amber);border-radius:8px;padding:12px;margin:0 0 15px;background:rgba(244,239,225,0.05);}
+  .kp-box label{color:var(--amber);font-weight:700;letter-spacing:0.3px;line-height:1.35;}
+  .kp-box input{width:100%;font-size:16px;}
+  .kp-help{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11.5px;line-height:1.5;color:rgba(244,239,225,0.6);margin:8px 0 0;}
+  .as-saved{margin-top:16px;font-family:'Helvetica Neue',Arial,sans-serif;}
+  .as-saved-h{font-size:12.5px;font-weight:700;color:var(--amber);margin-bottom:6px;}
+  .as-item{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;border:1px solid rgba(244,239,225,0.18);border-radius:8px;padding:8px 10px;margin-bottom:6px;}
+  .as-item .as-t{flex:1 1 150px;font-size:12.5px;line-height:1.4;color:var(--chalk);min-width:0;word-break:break-word;}
+  .as-item .as-t small{display:block;font-size:11px;color:rgba(244,239,225,0.55);}
+  .as-item button{background:transparent;border:1px solid rgba(244,239,225,0.3);color:var(--sage);border-radius:6px;font-size:12px;padding:6px 10px;cursor:pointer;}
+  .as-item button.as-del{border-color:#c0392b;color:#e07a6b;}
 </style>
 
 <style>
@@ -598,16 +611,19 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
           <div class="field"><label>Muda wa somo</label><select id="an_duration" onchange="syncAndalioHeader()"><option>Dakika 35</option><option>Dakika 40</option><option>Dakika 45</option><option>Dakika 80 (double)</option></select></div>
         </div>
         <div class="field"><label>Somo</label><select id="an_subject" onchange="syncAndalioHeader()"></select></div>
-        <div class="field"><label>Mada/Maudhui ya somo</label><input id="an_topic" type="text" list="an_topic_list" onfocus="lpRefreshTopicList()" placeholder="mfano: Sababu za Vita vya Kwanza vya Dunia"><datalist id="an_topic_list"></datalist></div>
+        <div class="field"><label>Mada ndogo</label><input id="an_topic" type="text" list="an_topic_list" onfocus="lpRefreshTopicList()" oninput="lpRefreshKipengeleList()" placeholder="mfano: Vyombo vya kutoa haki"><datalist id="an_topic_list"></datalist></div>
+        <div class="field kp-box"><label for="an_kipengele">KIPENGELE MAHUSUSI CHA KUFUNDISHA KATIKA KIPINDI HIKI</label><input id="an_kipengele" type="text" list="an_kipengele_list" autocomplete="off" onfocus="lpRefreshKipengeleList()" placeholder="mfano: Mahakama"><datalist id="an_kipengele_list"></datalist><p class="kp-help">Andika kipengele kimoja tu utakachofundisha katika kipindi hiki (mfano: Mahakama). Kipengele kingine (mfano: Polisi au Magereza) andika kipindi kingine, kisha utengeneze andalio lake tofauti.</p></div>
         <div class="field"><label>Maelezo ya ziada (hiari)</label><textarea id="an_extra" placeholder="mfano: wanafunzi tayari wanajua matukio ya ukoloni"></textarea></div>
         <button class="generate" id="an_btn" onclick="generateAndalio()">Tengeneza Andalio</button>
-        <p class="hint">Andalio linatengenezwa ndani ya programu hii bila AI wala mtandao: mada ukiichagua kutoka mapendekezo (au ukiandika maneno yaliyo kwenye mtaala wa TIE) umahiri unachukuliwa moja kwa moja kutoka mtaala; vinginevyo andalio linajengwa kwa mada uliyoandika. Muda wa hatua unagawanywa kulingana na muda wa somo. Hakiki na urekebishe kabla ya kutumia darasani.</p>
+        <p class="hint">Andalio linatengenezwa ndani ya programu hii bila AI wala mtandao: mada ndogo ukiichagua kutoka mtaala wa TIE, umahiri unachukuliwa moja kwa moja kutoka mtaala; andalio linaandaliwa kwa kipengele kimoja ulichoandika kwenye kisanduku cha kipengele mahususi pekee. Muda wa hatua unagawanywa kulingana na muda wa somo. Hakiki na urekebishe kabla ya kutumia darasani.</p>
+        <div id="an_saved_wrap" class="as-saved"></div>
       </div>
 
       <div class="output-panel" style="background:transparent;box-shadow:none;">
         <div class="lp-toolbar">
           <button class="primary" id="an_btn2" onclick="generateAndalio()">⚡ Tengeneza</button>
           <button id="an_editBtn" onclick="toggleAndalioEdit()">✏️ Hariri</button>
+          <button id="an_saveBtn" onclick="saveAndalioItem()">💾 Hifadhi</button>
           <button id="an_copyBtn2" onclick="copyAndalioText()">📋 Nakili</button>
           <button id="an_printBtn2" onclick="printAndalio()">🖨️ Chapisha</button>
           <button id="an_pdfBtn" onclick="downloadAndalioDocx()">⬇️ Pakua Word</button>
@@ -4175,6 +4191,7 @@ function initAndalioPaper(){
   paper.classList.add('lp-editing');
   editBtn.classList.add('editing');
   editBtn.textContent = "🔒 Funga Kuhariri";
+  lpRenderSaved();
 }
 
 /* ---- Andalio: linatengenezwa ndani ya programu (bila AI, bila mtandao) ---- */
@@ -4182,11 +4199,28 @@ function lpTieRec(grade, subject){
   const key = { "History ya Tanzania na Maadili":"Historia ya Tanzania na Maadili", "Sayansi na Teknolojia":"Sayansi" }[subject] || subject;
   return (typeof MTAALA_TIE !== 'undefined' && MTAALA_TIE[grade] && MTAALA_TIE[grade][key]) || null;
 }
+function lpNormTxt(x){ return (x||'').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim(); }
+// Mada ndogo (kutoka mtaala) zinazopendekezwa kwenye kisanduku cha "Mada ndogo"
 function lpRefreshTopicList(){
   const dl = document.getElementById('an_topic_list'); if(!dl) return;
   const rec = lpTieRec(document.getElementById('an_grade').value, document.getElementById('an_subject').value);
   const seen = new Set(); let h = '';
-  if(rec) rec.k.forEach(mk=> mk.m.forEach(mn=> (mn.c||[]).forEach(c=>{ if(!seen.has(c)){ seen.add(c); h += `<option value="${escapeHtml(c).replace(/"/g,'&quot;')}">`; } })));
+  if(rec) rec.k.forEach(mk=> mk.m.forEach(mn=>{ const c = mn.j; if(c && !seen.has(c)){ seen.add(c); h += `<option value="${escapeHtml(c).replace(/"/g,'&quot;')}">`; } }));
+  dl.innerHTML = h;
+}
+// Tafuta mada kuu + mada ndogo ya mtaala kutoka maandishi ya kisanduku cha "Mada ndogo" (jina kamili)
+function lpFindSub(grade, subject, text){
+  const rec = lpTieRec(grade, subject); const nt = lpNormTxt(text);
+  if(!rec || !nt) return null;
+  for(const mk of rec.k){ for(const mn of mk.m){ if(lpNormTxt(mn.j) === nt) return { mk, mn }; } }
+  return null;
+}
+// Mapendekezo tu (si lazima) ya vipengele vilivyo chini ya mada ndogo iliyochaguliwa; mwalimu bado anaandika mwenyewe
+function lpRefreshKipengeleList(){
+  const dl = document.getElementById('an_kipengele_list'); if(!dl) return;
+  const ctx = lpFindSub(document.getElementById('an_grade').value, document.getElementById('an_subject').value, document.getElementById('an_topic').value);
+  const seen = new Set(); let h = '';
+  if(ctx) (ctx.mn.c||[]).forEach(c=>{ if(c && !seen.has(c)){ seen.add(c); h += `<option value="${escapeHtml(c).replace(/"/g,'&quot;')}">`; } });
   dl.innerHTML = h;
 }
 function lpMatchTopic(grade, subject, topic){
@@ -4306,12 +4340,13 @@ function generateAndalio(){
   const grade = document.getElementById('an_grade').value;
   const subject = document.getElementById('an_subject').value;
   const duration = document.getElementById('an_duration').value;
-  const topic = document.getElementById('an_topic').value.trim();
+  const mada = document.getElementById('an_topic').value.trim();                  // mada ndogo (muktadha tu)
+  const topic = document.getElementById('an_kipengele').value.trim();            // kipengele mahususi cha kipindi hiki (ndicho kinachoandaliwa)
   const extra = document.getElementById('an_extra').value.trim();
   const status = document.getElementById('an_status');
   const btns = [document.getElementById('an_btn'), document.getElementById('an_btn2')];
 
-  if(!topic){ status.textContent = "Tafadhali jaza mada/maudhui ya somo kwanza."; return; }
+  if(!topic){ status.textContent = "Tafadhali andika kipengele mahususi cha kufundisha katika kipindi hiki kwanza."; return; }
 
   syncAndalioHeader();
   btns.forEach(b=>{ b.disabled = true; });
@@ -4319,12 +4354,14 @@ function generateAndalio(){
     const L = (typeof azLang === 'function') ? azLang(subject) : 'sw';
     const TX = LP_TXT[L], TP = LP_TPL[L];
     const kind = lpKind(subject);
-    const match = lpMatchTopic(grade, subject, topic);
+    // Mtaala unatumika kwa mada kuu/mada ndogo tu. Maudhui ya andalio yanatoka kwenye kipengele alichoandika mwalimu pekee.
+    const ctx = mada ? lpFindSub(grade, subject, mada) : null;
+    const match = ctx ? { mk:ctx.mk, mn:ctx.mn } : (mada ? null : lpMatchTopic(grade, subject, topic));
     const lcFirst = x=> x.charAt(0).toLowerCase() + x.slice(1);
     const T = topic;
     const resources = LP_RES[L][kind];
     const R0 = lcFirst(resources.split(',')[0].trim().replace(/\s*\(.*$/, ''));
-    const S = match ? lcFirst(match.c) : T;
+    const S = T;
     const v = { T, S, D: lpFill(LP_DOING[L][kind], {T}), R0 };
 
     // Muda wa somo (dakika)
@@ -4355,8 +4392,8 @@ function generateAndalio(){
     const set = (id, txt)=>{ document.getElementById(id).innerText = txt; };
     if(match){
       set('lp_mainCompetence', `${match.mk.n} ${match.mk.j}`);
-      set('lp_specificCompetence', `${match.mn.n} ${match.mn.j}. ${TX.specM(lcFirst(match.c))}`);
-      set('lp_specificActivity', TX.specActM(match.c));
+      set('lp_specificCompetence', `${match.mn.n} ${match.mn.j}. ${TX.specU(T)}`);
+      set('lp_specificActivity', TX.specActU(T));
     } else {
       set('lp_mainCompetence', TX.mainU(subject, T));
       set('lp_specificCompetence', TX.specU(T));
@@ -4376,6 +4413,78 @@ function generateAndalio(){
   }finally{
     btns.forEach(b=>{ b.disabled = false; });
   }
+}
+
+
+/* ---- Hifadhi kila andalio kama kazi tofauti (kwa kipindi/kipengele) — hifadhi ya kivinjari ---- */
+const AN_SAVED_KEY = 'msaidizi_andalio_saved_v1';
+const AN_HDR_IDS = ['lp_school','lp_teacher','lp_class','lp_date','lp_time','lp_subject','lp_reg_girls','lp_reg_boys','lp_pre_girls','lp_pre_boys'];
+const AN_BLOCK_IDS = ['lp_mainCompetence','lp_specificCompetence','lp_mainActivity','lp_specificActivity','lp_resources','lp_references','lp_remarks'];
+function anSavedGet(){ try{ const a = JSON.parse(localStorage.getItem(AN_SAVED_KEY) || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; } }
+function anSavedPut(a){ try{ localStorage.setItem(AN_SAVED_KEY, JSON.stringify(a)); return true; }catch(e){ return false; } }
+function anCollect(){
+  const val = id => { const e = document.getElementById(id); return e ? (e.value || '') : ''; };
+  const txt = id => { const e = document.getElementById(id); return e ? (e.innerText || '').trim() : ''; };
+  const stages = []; let cur = null;
+  document.querySelectorAll('#an_process_body tr').forEach(tr=>{
+    const c = Array.from(tr.children).map(td=> td.innerText.trim());
+    let row = null;
+    if(c.length >= 5){ cur = { name:c[0], rows:[] }; stages.push(cur); row = { muda:c[1], teaching:c[2], learning:c[3], criteria:c[4] }; }
+    else if(cur){ row = { muda:c[0]||'', teaching:c[1]||'', learning:c[2]||'', criteria:c[3]||'' }; }
+    if(row) cur.rows.push(row);
+  });
+  const hdr = {}; AN_HDR_IDS.forEach(id=> hdr[id] = val(id));
+  const blocks = {}; AN_BLOCK_IDS.forEach(id=> blocks[id] = txt(id));
+  return { grade:val('an_grade'), subject:val('an_subject'), duration:val('an_duration'), mada:val('an_topic').trim(),
+           kipengele:val('an_kipengele').trim(), extra:val('an_extra'), hdr, blocks, stages };
+}
+function saveAndalioItem(){
+  const status = document.getElementById('an_status');
+  const d = anCollect();
+  if(!d.kipengele){ status.textContent = 'Andika kipengele mahususi cha kipindi na utengeneze andalio kabla ya kuhifadhi.'; return; }
+  if(!d.stages.length){ status.textContent = 'Tengeneza andalio kwanza kisha ubonyeze Hifadhi.'; return; }
+  d.id = [d.grade, d.subject, d.mada, d.kipengele].map(x=> lpNormTxt(x)).join('|');
+  d.savedAt = Date.now();
+  const list = anSavedGet().filter(x=> x.id !== d.id);   // kipengele hicho hicho kikihifadhiwa tena, kinasasishwa; vipengele tofauti vinabaki tofauti
+  list.unshift(d);
+  if(!anSavedPut(list)){ status.textContent = 'Imeshindikana kuhifadhi (hifadhi ya kivinjari huenda imejaa). Tumia "Pakua Word" kuhifadhi nakala.'; return; }
+  status.textContent = 'Andalio la "' + d.kipengele + '" limehifadhiwa kama kazi yake peke yake. Linapatikana chini ya "Maandalio yaliyohifadhiwa".';
+  lpRenderSaved();
+}
+function openAndalioItem(id){
+  const d = anSavedGet().find(x=> x.id === id); if(!d) return;
+  const setSel = (sid, v)=>{ const e = document.getElementById(sid); if(!e) return; e.value = v; e.dispatchEvent(new Event('change',{bubbles:true})); };
+  setSel('an_grade', d.grade); setSel('an_subject', d.subject); setSel('an_duration', d.duration);
+  document.getElementById('an_topic').value = d.mada || '';
+  document.getElementById('an_kipengele').value = d.kipengele || '';
+  document.getElementById('an_extra').value = d.extra || '';
+  syncAndalioHeader();
+  AN_HDR_IDS.forEach(hid=>{ const e = document.getElementById(hid); if(e && d.hdr && d.hdr[hid] !== undefined) e.value = d.hdr[hid]; });
+  lpCalcTotals();
+  AN_BLOCK_IDS.forEach(bid=>{ const e = document.getElementById(bid); if(e) e.innerText = (d.blocks && d.blocks[bid]) || ''; });
+  buildAndalioProcessRows(d.stages || [], true);
+  document.getElementById('an_status').textContent = 'Andalio la "' + d.kipengele + '" limefunguliwa. Unaweza kulihariri, kulichapisha au kupakua Word.';
+  const paper = document.getElementById('an_paper'); if(paper && paper.scrollIntoView) paper.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function deleteAndalioItem(id){
+  if(!confirm('Una uhakika unataka kufuta andalio hili lililohifadhiwa?')) return;
+  anSavedPut(anSavedGet().filter(x=> x.id !== id));
+  lpRenderSaved();
+}
+function lpRenderSaved(){
+  const box = document.getElementById('an_saved_wrap'); if(!box) return;
+  const list = anSavedGet();
+  box.textContent = '';
+  if(!list.length) return;
+  const h = document.createElement('div'); h.className = 'as-saved-h'; h.textContent = '📁 Maandalio yaliyohifadhiwa (' + list.length + ')'; box.appendChild(h);
+  list.forEach(d=>{
+    const row = document.createElement('div'); row.className = 'as-item';
+    const t = document.createElement('div'); t.className = 'as-t'; t.textContent = d.kipengele;
+    const sm = document.createElement('small'); sm.textContent = [d.subject, d.grade, d.mada].filter(Boolean).join(' • '); t.appendChild(sm);
+    const o = document.createElement('button'); o.type = 'button'; o.textContent = 'Fungua'; o.addEventListener('click', ()=> openAndalioItem(d.id));
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'as-del'; x.textContent = 'Futa'; x.addEventListener('click', ()=> deleteAndalioItem(d.id));
+    row.appendChild(t); row.appendChild(o); row.appendChild(x); box.appendChild(row);
+  });
 }
 
 let andalioEditing = true;
@@ -4422,7 +4531,7 @@ function copyAndalioText(){
 }
 
 function printAndalio(){
-  const topic = document.getElementById('an_topic').value.trim();
+  const topic = document.getElementById('an_kipengele').value.trim();
   const oldTitle = document.title;
   document.title = topic ? ("Andalio la Somo - " + topic) : "Andalio la Somo";
   window.print();
@@ -4490,8 +4599,8 @@ async function downloadAndalioDocx(){
     const blob = await Packer.toBlob(doc);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const topic = document.getElementById('an_topic').value.trim();
-    a.href = url; a.download = (topic ? ("Andalio_" + topic.replace(/[^a-zA-Z0-9]+/g,'_')) : "Andalio_la_Somo") + ".docx";
+    const topic = document.getElementById('an_kipengele').value.trim();
+    a.href = url; a.download = (topic ? ("Andalio_" + (topic.replace(/[^\p{L}\p{N}]+/gu,'_').replace(/^_+|_+$/g,'') || 'la_Somo')) : "Andalio_la_Somo") + ".docx";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url), 1500);
   }catch(err){
@@ -6661,10 +6770,12 @@ const MTAALA_TIE = {"Darasa la 1":{"Kutunza Afya na Mazingira":{"w":2,"s":"Daras
   };
   // mode 'item'  = mwalimu anachagua vipengele vya maudhui (kimoja au zaidi)
   // mode 'group' = mwalimu anachagua mada ndogo nzima (mstari mmoja kwa kila mada ndogo)
+  // mode 'sub'   = mwalimu anachagua mada ndogo MOJA tu (Andalio la Somo); kipengele cha kufundisha kinaandikwa kwenye kisanduku chake
+
   const TOOLS = [
     { p:'mt', field:'mt_topics', mode:'item',  join:'; ' },
     { p:'mk', field:'mk_topic',  mode:'item',  join:'; ' },
-    { p:'an', field:'an_topic',  mode:'item',  join:'; ' },
+    { p:'an', field:'an_topic',  mode:'sub',   join:'' },
     { p:'az', field:'az_topics', mode:'group', join:'\n' },
     { p:'ta', field:'ta_topic',  mode:'item',  join:'; ' }
   ];
@@ -6687,7 +6798,7 @@ const MTAALA_TIE = {"Darasa la 1":{"Kutunza Afya na Mazingira":{"w":2,"s":"Daras
       return;
     }
     const det = el('details','tm-details');
-    det.appendChild(el('summary', null, '📚 Chagua mada kutoka mtaala rasmi (TIE 2023) — si lazima'));
+    det.appendChild(el('summary', null, t.mode==='sub' ? '📚 Chagua mada kuu na mada ndogo kutoka mtaala rasmi (TIE 2023) — si lazima' : '📚 Chagua mada kutoka mtaala rasmi (TIE 2023) — si lazima'));
     const body = el('div','tm-body'); det.appendChild(body);
     body.appendChild(el('div','tm-src','Chanzo: Muhtasari wa TIE 2023 — '+(APP2TIE[subject]||subject)+', '+(rec.s||'Darasa la III–VI')+' (vipindi '+(rec.w||'—')+' kwa wiki). Kuchagua hapa kunajaza kisanduku cha mada chini yake; unaweza kukihariri baadaye.'));
 
@@ -6705,13 +6816,14 @@ const MTAALA_TIE = {"Darasa la 1":{"Kutunza Afya na Mazingira":{"w":2,"s":"Daras
 
     function textFor(mkI, mnI, cI){
       const mk = rec.k[mkI], mn = mk.m[mnI];
+      if(t.mode==='sub') return mn.j;
       if(t.mode==='group') return mk.j+': '+mn.j;
       return mn.c[cI];
     }
     function compose(){
       const out = [];
       rec.k.forEach((mk,a)=> mk.m.forEach((mn,b)=>{
-        if(t.mode==='group'){ if(t.selected.has(a+'|'+b)) out.push(textFor(a,b)); }
+        if(t.mode==='group'||t.mode==='sub'){ if(t.selected.has(a+'|'+b)) out.push(textFor(a,b)); }
         else mn.c.forEach((_,c)=>{ if(t.selected.has(a+'|'+b+'|'+c)) out.push(textFor(a,b,c)); });
       }));
       return out.join(t.join);
@@ -6725,8 +6837,8 @@ const MTAALA_TIE = {"Darasa la 1":{"Kutunza Afya na Mazingira":{"w":2,"s":"Daras
     }
     function cb(key, text, isGroup){
       const lb = el('label', isGroup ? 'tm-cb tm-cb-group' : 'tm-cb');
-      const c = el('input'); c.type='checkbox'; c.checked = t.selected.has(key);
-      c.addEventListener('change', ()=>{ if(c.checked) t.selected.add(key); else t.selected.delete(key); apply(); });
+      const c = el('input'); c.type = (t.mode==='sub') ? 'radio' : 'checkbox'; if(t.mode==='sub') c.name = 'tm-sub-'+t.p; c.checked = t.selected.has(key);
+      c.addEventListener('change', ()=>{ if(c.checked){ if(t.mode==='sub') t.selected.clear(); t.selected.add(key); } else t.selected.delete(key); apply(); });
       lb.appendChild(c); lb.appendChild(el('span',null,text));
       return lb;
     }
@@ -6736,7 +6848,7 @@ const MTAALA_TIE = {"Darasa la 1":{"Kutunza Afya na Mazingira":{"w":2,"s":"Daras
       const a = parseInt(sel.value,10), mk = rec.k[a];
       mk.m.forEach((mn,b)=>{
         const grp = el('div','tm-grp');
-        if(t.mode==='group'){
+        if(t.mode==='group'||t.mode==='sub'){
           grp.appendChild(cb(a+'|'+b, mn.n+' '+mn.j+(mn.v?' ('+mn.v+' vipindi)':''), true));
           mn.c.forEach(txt=> grp.appendChild(el('div','tm-sub','• '+txt)));
         } else {
