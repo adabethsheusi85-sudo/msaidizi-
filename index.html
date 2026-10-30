@@ -4886,57 +4886,175 @@ function azJuniorPlan(subs, W){
   }
   return { weeks, n };
 }
-function azBuildJuniorRows(rec, slots, subject, LG){
+/* ====== Mbinu, Zana na Upimaji vinavyobadilika kulingana na mada na shughuli (Darasa la 6 na 7) ======
+   Kila shughuli ya mtaala inachagua "wasifu" wa ufundishaji kulingana na maneno yaliyomo kwenye shughuli yenyewe,
+   kisha kwenye mada ndogo/mada kuu; wasifu hautumiki mara mbili mfululizo (mbinu wala zana). */
+const AZ_PROFILES = {
+  sw:{
+    hist:[
+      { re:/dhana|\bmaana|\bsifa|\baina|umuhimu|upatikanaji|kufafanua/, m:'Maelezo ya mwalimu pamoja na maswali na majibu', t:'Chati ya dhana kuu, kadi za maneno, kamusi ya Kiswahili, ubao na chaki', a:'Maswali ya mdomo na zoezi fupi la kuandika maana', lead:'Kutoa maelezo ya dhana kwa mifano na kuuliza maswali ili wanafunzi waweze {c}' },
+      { re:/mafanikio|changamoto|athari|faida|hasara/, m:'Mtiririko wa mawazo na majadiliano ya vikundi', t:'Chati ya jedwali la mafanikio na changamoto, vipande vya magazeti, karatasi manila na kalamu za wino', a:'Uwasilishaji wa vikundi na orodha ya hoja zilizoandikwa', lead:'Kuwapanga wanafunzi katika vikundi na kuwapa kazi ya kujadili ili waweze {c}' },
+      { re:/mchango|ukombozi|mapambano|ukoloni|ukandamizaji|harakati|mapinduzi|viongozi/, m:'Igizo dhima na uchambuzi wa picha za viongozi', t:'Ramani ya Afrika, picha za viongozi wa ukombozi, vitabu vya rejea vya historia, ubao na chaki', a:'Tathmini ya igizo na maswali ya mdomo kuhusu mchango wa viongozi', lead:'Kuwagawia wanafunzi nafasi za igizo kuhusu matukio ya kihistoria na kuwaongoza ili waweze {c}' },
+      { re:/misingi|azimio la arusha|ujamaa|kujitegemea|\bsiasa/, m:'Mdahalo wa darasa na uchambuzi wa nakala', t:'Nakala ya Azimio la Arusha, chati ya misingi ya Ujamaa na Kujitegemea, picha za vijiji vya Ujamaa', a:'Hoja za mdahalo na zoezi la kuandika aya fupi', lead:'Kuwaongoza wanafunzi kusoma nakala na kuendesha mdahalo ili waweze {c}' },
+      { re:/katiba|mihimili|serikali|\bbunge|mahakama|\bsheria|\bhaki|wajibu/, m:'Uchambuzi wa nakala ya Katiba na uchoraji wa michoro', t:'Nakala ya Katiba ya Jamhuri ya Muungano wa Tanzania, chati ya mihimili ya dola, karatasi manila', a:'Mchoro wa mihimili ya dola na maswali ya mdomo', lead:'Kuwaelekeza wanafunzi kuchambua vifungu vya Katiba kwa jozi ili waweze {c}' },
+      { re:/rasilimali|ardhi|madini|maliasili|mazingira|uchumi/, m:'Ziara ya kielimu au uchunguzi wa mazingira ya shule', t:'Ramani ya rasilimali za Tanzania, sampuli za mazao na madini, picha za vivutio, daftari la kumbukumbu', a:'Ripoti fupi ya uchunguzi na orodha ya rasilimali', lead:'Kuwaongoza wanafunzi kufanya uchunguzi wa rasilimali za eneo lao ili waweze {c}' },
+      { re:/uliberali|maadili|uamuzi|mkinzano|mikakati|mbinu|kukabili|kutathmini/, m:'Uchambuzi wa visa vifani na utatuzi wa matatizo', t:'Kadi za visa vifani, makala za magazeti, chati ya maadili ya Kitanzania, ubao na chaki', a:'Uchambuzi ulioandikwa wa kisa kifani na maswali ya mdomo', lead:'Kuwapa wanafunzi visa vifani vya maisha halisi na kuwaongoza kuvijadili ili waweze {c}' },
+      { re:/uhuru|taifa|ujenzi|kipindi|historia|matukio|muungano|baada ya/, m:'Mstari wa wakati na usimulizi wa mwalimu', t:'Mstari wa wakati wa matukio ya Tanzania, picha za kihistoria, chati ya matukio, ubao na chaki', a:'Zoezi la kupanga matukio kwa mpangilio na maswali ya mdomo', lead:'Kusimulia matukio ya kihistoria kwa kutumia mstari wa wakati ili wanafunzi waweze {c}' }
+    ],
+    gen:[
+      { m:'Mahojiano na mgeni mwalikwa au mzee wa jamii', t:'Orodha ya maswali ya mahojiano, daftari la kumbukumbu, picha za zamani', a:'Muhtasari ulioandikwa wa mahojiano', lead:'Kuandaa mahojiano na mgeni mwalikwa na kuwaongoza wanafunzi ili waweze {c}' },
+      { m:'Kazi ya mradi mdogo wa vikundi', t:'Karatasi manila, kalamu za wino, gundi, vipande vya magazeti na picha', a:'Ubora wa mradi uliowasilishwa', lead:'Kuwagawia wanafunzi kazi ya mradi mdogo wa vikundi ili waweze {c}' },
+      { m:'Maswali na majibu pamoja na kazi binafsi', t:'Kadi za maswali, daftari la mwanafunzi, ubao na chaki', a:'Zoezi la kuandika na kukagua kazi binafsi', lead:'Kuuliza maswali ya hatua kwa hatua na kutoa kazi binafsi ili wanafunzi waweze {c}' },
+      { m:'Mchezo wa maswali ya mashindano kati ya vikundi', t:'Kadi za maswali na majibu, kengele au filimbi, ubao wa alama', a:'Alama za vikundi na usahihi wa majibu', lead:'Kuendesha mchezo wa maswali ya mashindano ili wanafunzi waweze {c}' },
+      { m:'Utafiti mdogo wa maktabani na uwasilishaji', t:'Vitabu vya rejea, ensaiklopedia, daftari la kumbukumbu, chati', a:'Muhtasari wa utafiti na uwasilishaji wa mdomo', lead:'Kuwaelekeza wanafunzi kusoma vitabu vya rejea ili waweze {c}' }
+    ],
+    revExam:{ m:'Maswali ya marudio, majadiliano ya darasa na kazi binafsi', t:'Karatasi za mazoezi na mtihani, maswali ya marudio, ubao na chaki', a:'Mtihani wa maandishi', lead:'Kuwapa wanafunzi maswali ya marudio, kusahihisha pamoja na kuendesha mtihani', learn:'Kujibu maswali ya marudio, kusahihisha makosa na kufanya mtihani', cap:'Marudio na Mtihani', spec:'Kupima kiwango cha umahiri katika mada zote zilizofundishwa' },
+    rev:{ m:'Maswali ya marudio na majadiliano ya darasa', t:'Karatasi za mazoezi, maswali ya marudio, ubao na chaki', a:'Zoezi fupi la marudio', lead:'Kuongoza marudio ya mada zilizofundishwa', learn:'Kushiriki marudio na kujibu maswali', cap:'Marudio ya mada zilizofundishwa', spec:'Kuimarisha maarifa ya mada zilizofundishwa' },
+    ref:(subject, grade, code)=> `Kitabu cha ${subject} ${grade}, Muhtasari wa mtaala (TIE)${code ? ', mada ndogo ' + code : ''}`
+  },
+  en:{
+    gen:[
+      { m:'Teacher\'s explanation with questions and answers', t:'Charts, flash cards, chalkboard and chalk', a:'Oral questions and a short written exercise', lead:'Explain with examples and ask questions so that pupils can {c}' },
+      { m:'Group discussion and brainstorming', t:'Manila paper, markers, pictures and newspaper cuttings', a:'Group presentations and written points', lead:'Organise pupils in groups to discuss so that they can {c}' },
+      { m:'Role play and demonstration', t:'Pictures, props, charts and real objects', a:'Observation checklist and oral questions', lead:'Assign roles and guide a role play so that pupils can {c}' },
+      { m:'Case study and problem solving', t:'Case cards, short texts, charts and exercise books', a:'Written analysis of the case', lead:'Give real-life cases and guide pupils to analyse them so that they can {c}' },
+      { m:'Library research and presentation', t:'Reference books, dictionaries, notebooks and charts', a:'Written summary and oral presentation', lead:'Guide pupils to read reference materials so that they can {c}' }
+    ],
+    revExam:{ m:'Revision questions, class discussion and individual work', t:'Practice and examination papers, chalkboard and chalk', a:'Written examination', lead:'Give revision questions, correct together and conduct the examination', learn:'Answer revision questions, correct mistakes and sit the examination', cap:'Revision and Examination', spec:'Assess the level of competence in all topics taught' },
+    rev:{ m:'Revision questions and class discussion', t:'Practice papers, chalkboard and chalk', a:'Short revision exercise', lead:'Lead revision of the topics taught', learn:'Take part in revision and answer questions', cap:'Revision of topics taught', spec:'Strengthen knowledge of the topics taught' },
+    ref:(subject, grade, code)=> `${subject} ${grade} pupil's book, Syllabus (TIE)${code ? ', sub-topic ' + code : ''}`
+  },
+  fr:{
+    gen:[
+      { m:'Explication de l\'enseignant avec questions-réponses', t:'Affiches, cartes-mots, tableau et craie', a:'Questions orales et court exercice écrit', lead:'Expliquer avec des exemples et poser des questions pour que les élèves puissent {c}' },
+      { m:'Discussion en groupes et remue-méninges', t:'Papier kraft, marqueurs, images et coupures de journaux', a:'Présentations de groupes et points écrits', lead:'Répartir les élèves en groupes pour discuter afin qu\'ils puissent {c}' },
+      { m:'Jeu de rôle et démonstration', t:'Images, accessoires, affiches et objets réels', a:'Grille d\'observation et questions orales', lead:'Attribuer des rôles et guider un jeu de rôle pour que les élèves puissent {c}' },
+      { m:'Étude de cas et résolution de problèmes', t:'Cartes de cas, textes courts, affiches et cahiers', a:'Analyse écrite du cas', lead:'Proposer des cas réels et guider leur analyse pour que les élèves puissent {c}' },
+      { m:'Recherche documentaire et présentation', t:'Livres de référence, dictionnaires, carnets et affiches', a:'Résumé écrit et présentation orale', lead:'Guider la lecture de documents pour que les élèves puissent {c}' }
+    ],
+    revExam:{ m:'Questions de révision, discussion de classe et travail individuel', t:'Feuilles d\'exercices et d\'examen, tableau et craie', a:'Examen écrit', lead:'Donner des questions de révision, corriger ensemble et organiser l\'examen', learn:'Répondre aux questions de révision, corriger les erreurs et passer l\'examen', cap:'Révision et examen', spec:'Évaluer le niveau de compétence dans tous les thèmes étudiés' },
+    rev:{ m:'Questions de révision et discussion de classe', t:'Feuilles d\'exercices, tableau et craie', a:'Court exercice de révision', lead:'Conduire la révision des thèmes étudiés', learn:'Participer à la révision et répondre aux questions', cap:'Révision des thèmes étudiés', spec:'Renforcer les connaissances des thèmes étudiés' },
+    ref:(subject, grade, code)=> `Livre de ${subject} ${grade}, Programme (TIE)${code ? ', sous-thème ' + code : ''}`
+  }
+};
+/* Sheria kali za ufuatiliaji: ukaguzi baada ya kujenga jedwali. Kila sharti likikiukwa, onyo linaonyeshwa chini ya jedwali. */
+function azStrictCheck(rows, expectedActs, placedActs){
+  const problems = [];
+  const data = rows.filter(r=> Array.isArray(r));
+  if(placedActs !== expectedActs) problems.push(`shughuli ${placedActs} zimewekwa kati ya ${expectedActs} za mtaala`);
+  let empty = 0, maoni = 0;
+  data.forEach(r=>{ AZ_HEADERS.forEach((h, ci)=>{ if(ci === 11){ if(String(r[ci] || '').trim()) maoni++; } else if(!String(r[ci] || '').trim()) empty++; }); });
+  if(empty) problems.push(`visanduku ${empty} vimebaki wazi`);
+  if(maoni) problems.push(`safu ya Maoni ina maandishi kwenye safu ${maoni}`);
+  let sameM = 0, sameT = 0;
+  for(let i = 1; i < data.length; i++){ if(data[i][7] === data[i-1][7]) sameM++; if(data[i][8] === data[i-1][8]) sameT++; }
+  if(sameM) problems.push(`mbinu inarudiwa mfululizo mara ${sameM}`);
+  if(sameT) problems.push(`zana zinarudiwa mfululizo mara ${sameT}`);
+  const distinctM = new Set(data.map(r=> r[7])).size;
+  if(data.length >= 6 && distinctM < 4) problems.push(`aina za mbinu ni ${distinctM} tu (kima cha chini ni 4)`);
+  return { ok: problems.length === 0, problems, distinctM, rowsChecked: data.length };
+}
+/* Darasa la 5 Historia pekee: mada ndogo iandikwe mara moja, wiki zake ziunganishwe (mfano Wiki 1–3).
+   Hakuna shughuli mpya zinazoongezwa; idadi halisi ya wiki inabaki; maudhui na mpangilio wa mtaala havibadilishwi. */
+function azIsG5Hist(grade, recKey){
+  return /^\s*darasa\s+la\s+(5|v)\s*$/i.test(grade || '') && recKey === 'Historia ya Tanzania na Maadili';
+}
+function azMergeWeeks(rows){
+  const out = [];
+  let grp = [];
+  const uniq = a=> a.filter((x, i)=> x && a.indexOf(x) === i);
+  const flush = ()=>{
+    if(!grp.length) return;
+    const first = grp[0], last = grp[grp.length - 1];
+    const ws = grp.map(r=> r._w), a = Math.min.apply(null, ws), b = Math.max.apply(null, ws);
+    const m = first.slice();
+    m[2] = uniq(grp.map(r=> r[2])).join(' ');
+    m[3] = uniq(grp.map(r=> r[3])).join('; ');
+    m[4] = (first[4] && last[4] && first[4] !== last[4]) ? first[4] + ' – ' + last[4] : first[4];
+    m[5] = a === b ? 'Wiki ' + a : 'Wiki ' + a + '–' + b;
+    m[7] = uniq(grp.map(r=> r[7])).join('; ');
+    m[8] = uniq(grp.map(r=> r[8])).join('; ');
+    m[9] = uniq(grp.map(r=> r[9])).join('; ');
+    m[10] = first[10];
+    m[11] = '';
+    out.push(m);
+    grp = [];
+  };
+  rows.forEach(r=>{
+    if(r.brk){ flush(); out.push(r); return; }
+    if(grp.length && grp[0][1] !== r[1]) flush();
+    grp.push(r);
+  });
+  flush();
+  return out;
+}
+function azBuildJuniorRows(rec, slots, subject, LG, grade){
   const lcFirst = x=> x.charAt(0).toLowerCase() + x.slice(1);
   const kind = lpKind(subject), L = (LG === 'en' || LG === 'fr') ? LG : 'sw';
-  const TXT = {
-    sw:{ lead:'Kumwongoza mwanafunzi: ', method:'Majadiliano ya vikundi, maelezo ya mwalimu na kazi za vitendo', assess:'Maswali ya mdomo na maandishi, zoezi fupi', rev:'Marudio ya mada zilizofundishwa', revExam:'Marudio na Mtihani',
-         part:(p, n, code)=> `Sehemu ${p}/${n} ya mada ndogo ${code}`.trim(), cont:(k, of)=> `shughuli inaendelea (${k}/${of})` },
-    en:{ lead:'Guide pupils to: ', method:'Group discussion, teacher\'s explanation and practical tasks', assess:'Oral and written questions, short exercise', rev:'Revision of topics taught', revExam:'Revision and Examination',
-         part:(p, n, code)=> `Part ${p}/${n} of sub-topic ${code}`.trim(), cont:(k, of)=> `activity continues (${k}/${of})` },
-    fr:{ lead:'Guider les élèves : ', method:'Discussion en groupes, explication de l\'enseignant et tâches pratiques', assess:'Questions orales et écrites, court exercice', rev:'Révision des thèmes étudiés', revExam:'Révision et examen',
-         part:(p, n, code)=> `Partie ${p}/${n} du sous-thème ${code}`.trim(), cont:(k, of)=> `activité en cours (${k}/${of})` }
-  }[L];
-  const tools = LP_RES[L][kind];
-  const periods = rec && rec.w ? String(rec.w) : '';
+  const P = AZ_PROFILES[L];
+  const kindRes = LP_RES[L][kind];
+  const useHist = (L === 'sw' && kind === 'hist');
+  const periods = rec && rec.w ? String(rec.w) : '—';   // '—' = data ya mtaala haina idadi ya vipindi kwa wiki
   const subs = [];                                        // mada ndogo zote kwa mpangilio wa mtaala
   (rec ? rec.k : []).forEach(mk=> (mk.m || []).forEach(mn=> subs.push({ main: mk, sub: mn })));
   const teachWeeks = Math.max(0, slots.length - 1);       // wiki ya mwisho = Marudio na Mtihani
   const { weeks: plan, n: weeksPerSub } = azJuniorPlan(subs, teachWeeks);
   const bySlot = slots.map(()=>[]);
   const placed = [];
+  const history = [];                                     // wasifu uliotumika (kuzuia kurudiwa mfululizo)
+  let genCursor = 0;
+  const lc = t=> String(t || '').replace(/\.\s*$/, '');
+  const pick = (c, sub, main)=>{
+    const own = String(c || '').toLowerCase();
+    const ctx = (String(sub.j || '') + ' ' + String(main.j || '')).toLowerCase();
+    const cand = [];
+    if(useHist){
+      const hits = (re, txt)=> (txt.match(new RegExp(re.source, 'g')) || []).length;
+      P.hist.map((p, idx)=>({ p, id:'h' + idx, n: hits(p.re, own), idx })).filter(x=> x.n > 0)
+        .sort((a, b)=> b.n - a.n || a.idx - b.idx).forEach(x=> cand.push({ p: x.p, id: x.id }));
+      P.hist.map((p, idx)=>({ p, id:'h' + idx, n: hits(p.re, ctx), idx })).filter(x=> x.n > 0 && !cand.some(y=> y.id === x.id))
+        .sort((a, b)=> b.n - a.n || a.idx - b.idx).forEach(x=> cand.push({ p: x.p, id: x.id }));
+    }
+    for(let g = 0; g < P.gen.length; g++){ const idx = (genCursor + g) % P.gen.length; cand.push({ p: P.gen[idx], id:'g' + idx }); }
+    const last = history[history.length - 1], last2 = history[history.length - 2];
+    const ok = x=> !last || (x.p.m !== last.p.m && x.p.t !== last.p.t);
+    let chosen = cand.find(x=> ok(x) && (!last2 || x.id !== last2.id)) || cand.find(ok) || cand[0];
+    if(chosen.id.charAt(0) === 'g') genCursor = (parseInt(chosen.id.slice(1), 10) + 1) % P.gen.length;
+    history.push(chosen);
+    return chosen.p;
+  };
   slots.forEach((sl, i)=>{
     const mw = [sl.month || '', sl.wom || ''];
-    const blank = ()=> AZ_HEADERS.map(()=> '');
     const pieces = (i < teachWeeks && i < plan.length) ? plan[i] : null;
     if(pieces){
-      let firstOfWeek = true;
       pieces.forEach(pc=>{
         const { main, sub } = subs[pc.i];
         const allActs = (sub.c && sub.c.length) ? sub.c : [''];
-        pc.acts.forEach((ai, k)=>{
+        pc.acts.forEach(ai=>{
           const c = allActs[ai];
-          const r = blank();
-          r[2] = c ? TXT.lead + (L==='sw' ? c : lcFirst(c)) : '';
-          r[3] = c;                                       // maneno halisi ya mtaala
-          if(k === 0){
-            r[0] = (main.n ? main.n + ' ' : '') + main.j;
-            r[1] = (sub.n ? sub.n + ' ' : '') + sub.j;
-            r[7] = TXT.method; r[8] = tools; r[9] = TXT.assess;
-            const rm = [];
-            if(pc.parts > 1) rm.push(TXT.part(pc.part, pc.parts, sub.n || ''));
-            if(pc.cont) rm.push(TXT.cont(pc.cont.k, pc.cont.of));
-            r[11] = rm.join('; ');
-          }
-          if(firstOfWeek){ r[4] = mw[0]; r[5] = mw[1]; r[6] = periods; firstOfWeek = false; }
+          const p = pick(c, sub, main);
+          const r = [];
+          r[0] = (main.n ? main.n + ' ' : '') + main.j;
+          r[1] = (sub.n ? sub.n + ' ' : '') + sub.j;
+          const act = c ? lc(c) : (sub.j || '');
+          r[2] = p.lead.replace('{c}', L === 'sw' ? lcFirst(act) : lcFirst(act)) + '.';
+          r[3] = c || (sub.j || '');                      // maneno halisi ya mtaala
+          r[4] = mw[0]; r[5] = mw[1]; r[6] = periods;
+          r[7] = p.m;
+          r[8] = useHist ? p.t : (placed.length % 2 === 0 ? p.t : kindRes);
+          r[9] = p.a;
+          r[10] = P.ref(subject, grade || '', sub.n || '');
+          r[11] = '';                                     // Maoni: hayaandikwi chochote
           bySlot[i].push(r);
           placed.push({ n: sub.n, week: i, act: ai });
         });
       });
     } else {
-      const r = blank();
-      r[0] = (i === slots.length - 1) ? TXT.revExam : TXT.rev;
+      const tpl = (i === slots.length - 1) ? P.revExam : P.rev;
+      const r = AZ_HEADERS.map(()=> '');
+      r[0] = tpl.cap; r[1] = tpl.spec; r[2] = tpl.lead + '.'; r[3] = tpl.learn + '.';
       r[4] = mw[0]; r[5] = mw[1]; r[6] = periods;
+      r[7] = tpl.m; r[8] = tpl.t; r[9] = tpl.a; r[10] = P.ref(subject, grade || '', ''); r[11] = '';
       bySlot[i].push(r);
     }
   });
@@ -4945,8 +5063,11 @@ function azBuildJuniorRows(rec, slots, subject, LG){
   let needed = 0, neededComplete = true;
   subs.forEach(s=>{ const v = Number(s.sub.v); if(isFinite(v) && v > 0) needed += v; else neededComplete = false; });
   const capacity = hasCap ? wPer * teachWeeks : 0;
+  const expectedActs = (() => { const seen = new Set(); placed.forEach(x=> seen.add(x.n + '|' + x.act)); return seen.size; })();
+  const totalActs = subs.reduce((a, s)=> a + Math.max(1, (s.sub.c || []).length), 0);
+  const check = azStrictCheck([].concat.apply([], bySlot), totalActs, expectedActs);
   return { bySlot, placed, total: subs.length, weeksPerSub, teachWeeks, hasCap, needed, neededComplete, capacity,
-           overloaded: hasCap && needed > capacity, overflow: teachWeeks ? 0 : subs.length };
+           overloaded: hasCap && needed > capacity, overflow: teachWeeks ? 0 : subs.length, check, totalActs };
 }
 
 async function generateAzimio(){
@@ -5006,7 +5127,7 @@ async function generateAzimio(){
 
     // Kinga: seva ikirudisha safu chache kuliko wiki, usipoteze jedwali zima — jaza safu tupu na toa onyo
     const srvRows = Array.isArray(az.rows) ? az.rows : [];
-    const missingRows = (lay.junior && rec) ? 0 : Math.max(0, slots.length - srvRows.length);
+    const missingRows = ((lay.junior || azIsG5Hist(grade, recKey)) && rec) ? 0 : Math.max(0, slots.length - srvRows.length);
     const blankRow = (sl)=> AZ_HEADERS.map((h,ci)=> ci===4 ? (sl.month||'') : ci===5 ? (sl.wom||'') : '');
     const brkAt = {}; lay.breaks.forEach(b=>{ (brkAt[b.at] = brkAt[b.at] || []).push(b); });
     const brkRow = (b)=>{
@@ -5017,12 +5138,15 @@ async function generateAzimio(){
       return { brk:true, split:6, left:lbl, right:`${azFmt(b.close)} — ${nextOpen}` };
     };
     // Darasa la 6 na la 7: mpangilio wa wiki unafanywa hapa (mada ndogo 1 = wiki 1), si kwenye seva
-    const jr = (lay.junior && rec) ? azBuildJuniorRows(rec, slots, subject, LG) : null;
-    const rows = [];
+    // Kanuni ya kuunganisha wiki: inatumika kwa Darasa la 5 Historia pekee (mada chache). Masomo mengine hayabadiliki.
+    const g5Hist = azIsG5Hist(grade, recKey);
+    const jr = ((lay.junior || g5Hist) && rec) ? azBuildJuniorRows(rec, slots, subject, LG, grade) : null;
+    let rows = [];
     slots.forEach((sl, i)=>{
-      if(jr) jr.bySlot[i].forEach(r=> rows.push(r)); else rows.push(srvRows[i] || blankRow(sl));
+      if(jr) jr.bySlot[i].forEach(r=>{ r._w = i + 1; rows.push(r); }); else { const sr = (srvRows[i] || blankRow(sl)).slice(); if(sr.length > 11) sr[11] = ''; rows.push(sr); }
       (brkAt[i + 1] || []).forEach(b=>{ if(b.type==='mid' || plan) rows.push(brkRow(b)); });
     });
+    if(jr && g5Hist) rows = azMergeWeeks(rows);
 
     const headLabelEl = document.getElementById('az_headLabel');
     if(headLabelEl) headLabelEl.textContent = `AZIMIO LA KAZI — ${subject.toUpperCase()}`;
@@ -5036,7 +5160,8 @@ async function generateAzimio(){
     if(missingRows) note += `Onyo: seva ilirudisha wiki ${srvRows.length} kati ya ${slots.length}; wiki ${missingRows} zimeachwa wazi — bonyeza "Tengeneza" tena. `;
     if(!plan) note += 'Kalenda ya muhula huu haijakamilika — jaza tarehe kwenye jedwali la kalenda juu ili Mwezi, Wiki na Mid-term vijipange zenyewe. ';
     if(jr){
-      note += `Mtaala rasmi wa TIE: mada zote na shughuli zote zimegawiwa kwenye wiki zote za kufundisha za muhula wa kwanza (Januari – Juni) kwa mpangilio wa mtaala. Kila mada ndogo imepewa wiki kulingana na vipindi vyake vya mtaala (au idadi ya shughuli kama vipindi havipo), na kila shughuli iko kwenye mstari wake kwa maneno ya mtaala. Mada ndogo inayochukua zaidi ya wiki moja imewekwa alama kwenye safu ya Maoni (Sehemu x/y); wiki ya mwisho ni Marudio na Mtihani. Mbinu, Zana na Zana za Upimaji ni mapendekezo ya jumla — yabadilishe kulingana na mazingira ya shule yako; Rejea jaza mwenyewe.`;
+      note += `Mtaala rasmi wa TIE: mada zote na shughuli zote zimegawiwa kwenye wiki zote za kufundisha za ${lay.junior ? 'muhula wa kwanza (Januari – Juni)' : 'mwaka'} kwa mpangilio wa mtaala.${g5Hist ? ' Kila mada ndogo imeandikwa mara moja tu na wiki zake zimeunganishwa katika kipindi kimoja (mfano Wiki 1–3).' : ''} Kila mada ndogo imepewa wiki kulingana na vipindi vyake vya mtaala (au idadi ya shughuli kama vipindi havipo), na kila shughuli iko kwenye mstari wake kwa maneno ya mtaala. Wiki ya mwisho ni Marudio na Mtihani. Mbinu, Zana na Zana za Upimaji zimechaguliwa kulingana na mada na shughuli husika (hazirudiwi mfululizo) — zibadilishe kulingana na mazingira ya shule yako; ongeza kurasa kwenye Rejea. Safu ya Maoni imeachwa wazi kwa makusudi.`;
+      note += jr.check.ok ? ` Ukaguzi wa sheria kali: umefaulu ✓ (shughuli ${jr.totalActs}/${jr.totalActs} zimewekwa, safu ${jr.check.rowsChecked} zimejazwa zote isipokuwa Maoni, aina ${jr.check.distinctM} za mbinu).` : ` Onyo la ukaguzi wa sheria kali: ${jr.check.problems.join('; ')}.`;
       if(jr.overloaded) note += ` Onyo: mtaala unahitaji vipindi ${jr.needed} lakini kalenda ya muhula wa kwanza ina vipindi ${jr.capacity} tu (wiki ${jr.teachWeeks} × vipindi ${rec.w} kwa wiki). Mada zote zimewekwa ndani ya muhula wa kwanza kama ulivyoagiza, lakini wiki zina shughuli nyingi kuliko vipindi vilivyopo — punguza kina cha mada au ongeza vipindi.`;
       else if(!jr.hasCap) note += ' Kumbuka: idadi ya vipindi kwa wiki haijawekwa kwenye data ya mtaala huu, kwa hiyo haikuweza kukaguliwa kama vipindi vinatosha.';
       if(jr.overflow) note += ` Onyo: kalenda haina wiki za kufundisha (${jr.teachWeeks}); mada ndogo ${jr.overflow} hazikupata wiki.`;
