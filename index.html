@@ -4960,35 +4960,70 @@ function azIsG5Hist(grade, recKey){
   return /^\s*darasa\s+la\s+(5|v)\s*$/i.test(grade || '') && recKey === 'Historia ya Tanzania na Maadili';
 }
 function azMergeWeeks(rows){
+  /* Kila shughuli ya mtaala = mstari mmoja. Wiki zinazofuatana za shughuli ileile zinaunganishwa (mfano Januari, Wiki 1–3).
+     Safu zote isipokuwa Mwezi/Wiki zinabaki kama za wiki ya kwanza ya shughuli hiyo (hakuna maudhui yanayounganishwa wala kuongezwa).
+     Shughuli ikikatizwa na likizo/mid-term, mstari unagawanyika pale penye mstari wa likizo. */
   const out = [];
   let grp = [];
-  const uniq = a=> a.filter((x, i)=> x && a.indexOf(x) === i);
   const flush = ()=>{
     if(!grp.length) return;
     const first = grp[0], last = grp[grp.length - 1];
-    const ws = grp.map(r=> r._w), a = Math.min.apply(null, ws), b = Math.max.apply(null, ws);
     const m = first.slice();
-    m[2] = uniq(grp.map(r=> r[2])).join(' ');
-    m[3] = uniq(grp.map(r=> r[3])).join('; ');
-    m[4] = (first[4] && last[4] && first[4] !== last[4]) ? first[4] + ' – ' + last[4] : first[4];
-    m[5] = a === b ? 'Wiki ' + a : 'Wiki ' + a + '–' + b;
-    m[7] = uniq(grp.map(r=> r[7])).join('; ');
-    m[8] = uniq(grp.map(r=> r[8])).join('; ');
-    m[9] = uniq(grp.map(r=> r[9])).join('; ');
-    m[10] = first[10];
+    if(first[4] === last[4]){
+      m[4] = first[4];
+      m[5] = (first[5] === last[5] || last[5] === '') ? (first[5] === '' ? '' : 'Wiki ' + first[5]) : 'Wiki ' + first[5] + '–' + last[5];
+    } else {
+      m[4] = first[4] + ' – ' + last[4];
+      m[5] = 'Wiki ' + first[5] + ' (' + first[4] + ') – Wiki ' + last[5] + ' (' + last[4] + ')';
+    }
     m[11] = '';
     out.push(m);
     grp = [];
   };
   rows.forEach(r=>{
     if(r.brk){ flush(); out.push(r); return; }
-    if(grp.length && grp[0][1] !== r[1]) flush();
+    if(grp.length && (grp[0][1] !== r[1] || grp[0][3] !== r[3])) flush();
     grp.push(r);
   });
   flush();
   return out;
 }
-function azBuildJuniorRows(rec, slots, subject, LG, grade){
+/* Ukaguzi wa ndani (kabla ya preview): unalinganisha jedwali lililojengwa na mtaala wenyewe.
+   Unarudisha orodha ya matatizo; orodha tupu = azimio sahihi. */
+function azAuditMerged(rows, rec, slots){
+  const problems = [];
+  const data = rows.filter(r=> Array.isArray(r));
+  const exp = [];
+  ((rec && rec.k) || []).forEach(mk=> (mk.m || []).forEach(mn=>{
+    const acts = (mn.c && mn.c.length) ? mn.c : [''];
+    acts.forEach(c=> exp.push({ r0: (mk.n ? mk.n + ' ' : '') + mk.j, r1: (mn.n ? mn.n + ' ' : '') + mn.j, r3: c || (mn.j || '') }));
+  }));
+  if(!exp.length) problems.push('mtaala hauna shughuli');
+  // 1) mpangilio na maneno ya mtaala: kila mstari ni shughuli inayofuata au inayoendelea; hakuna mstari wa ziada
+  let k = 0, bad = 0;
+  data.forEach(r=>{
+    const same = e=> e && r[0] === e.r0 && r[1] === e.r1 && r[3] === e.r3;
+    if(same(exp[k])){ k++; }
+    else if(k > 0 && same(exp[k - 1])){ /* inaendelea baada ya likizo */ }
+    else bad++;
+  });
+  if(bad) problems.push(`mistari ${bad} haiendani na mtaala (maudhui au mpangilio)`);
+  if(k !== exp.length) problems.push(`shughuli ${k} tu kati ya ${exp.length} za mtaala zimewekwa`);
+  // 2) Mwezi na Wiki vimejazwa; Maoni tupu
+  let noMw = 0, maoni = 0;
+  data.forEach(r=>{ if(!String(r[4] || '').trim() || !String(r[5] || '').trim()) noMw++; if(String(r[11] || '').trim()) maoni++; });
+  if(noMw) problems.push(`mistari ${noMw} haina Mwezi/Wiki`);
+  if(maoni) problems.push(`safu ya Maoni ina maandishi kwenye mistari ${maoni}`);
+  // 3) mada zinafika mwisho wa kalenda (Desemba kwa kalenda ya kawaida)
+  const lastSlot = slots && slots.length ? slots[slots.length - 1].month : '';
+  if(data.length && lastSlot){
+    const lm = String(data[data.length - 1][4] || '').split(' – ').pop();
+    if(lm !== lastSlot) problems.push(`mada zinaishia ${lm || '—'} wakati kalenda inaishia ${lastSlot}`);
+  }
+  return problems;
+}
+function azBuildJuniorRows(rec, slots, subject, LG, grade, opts){
+  opts = opts || {};
   const lcFirst = x=> x.charAt(0).toLowerCase() + x.slice(1);
   const kind = lpKind(subject), L = (LG === 'en' || LG === 'fr') ? LG : 'sw';
   const P = AZ_PROFILES[L];
@@ -4997,7 +5032,7 @@ function azBuildJuniorRows(rec, slots, subject, LG, grade){
   const periods = rec && rec.w ? String(rec.w) : '—';   // '—' = data ya mtaala haina idadi ya vipindi kwa wiki
   const subs = [];                                        // mada ndogo zote kwa mpangilio wa mtaala
   (rec ? rec.k : []).forEach(mk=> (mk.m || []).forEach(mn=> subs.push({ main: mk, sub: mn })));
-  const teachWeeks = Math.max(0, slots.length - 1);       // wiki ya mwisho = Marudio na Mtihani
+  const teachWeeks = Math.max(0, slots.length - (opts.noRev ? 0 : 1));       // wiki ya mwisho = Marudio na Mtihani (isipokuwa opts.noRev)
   const { weeks: plan, n: weeksPerSub } = azJuniorPlan(subs, teachWeeks);
   const bySlot = slots.map(()=>[]);
   const placed = [];
@@ -5050,6 +5085,7 @@ function azBuildJuniorRows(rec, slots, subject, LG, grade){
         });
       });
     } else {
+      if(opts.noRev) return;   // hakuna wiki ya ziada isiyo kwenye mtaala
       const tpl = (i === slots.length - 1) ? P.revExam : P.rev;
       const r = AZ_HEADERS.map(()=> '');
       r[0] = tpl.cap; r[1] = tpl.spec; r[2] = tpl.lead + '.'; r[3] = tpl.learn + '.';
@@ -5140,13 +5176,18 @@ async function generateAzimio(){
     // Darasa la 6 na la 7: mpangilio wa wiki unafanywa hapa (mada ndogo 1 = wiki 1), si kwenye seva
     // Kanuni ya kuunganisha wiki: inatumika kwa Darasa la 5 Historia pekee (mada chache). Masomo mengine hayabadiliki.
     const g5Hist = azIsG5Hist(grade, recKey);
-    const jr = ((lay.junior || g5Hist) && rec) ? azBuildJuniorRows(rec, slots, subject, LG, grade) : null;
+    const jr = ((lay.junior || g5Hist) && rec) ? azBuildJuniorRows(rec, slots, subject, LG, grade, { noRev: g5Hist }) : null;
     let rows = [];
     slots.forEach((sl, i)=>{
       if(jr) jr.bySlot[i].forEach(r=>{ r._w = i + 1; rows.push(r); }); else { const sr = (srvRows[i] || blankRow(sl)).slice(); if(sr.length > 11) sr[11] = ''; rows.push(sr); }
       (brkAt[i + 1] || []).forEach(b=>{ if(b.type==='mid' || plan) rows.push(brkRow(b)); });
     });
-    if(jr && g5Hist) rows = azMergeWeeks(rows);
+    let auditProblems = [];
+    if(jr && g5Hist){
+      rows = azMergeWeeks(rows);
+      auditProblems = azAuditMerged(rows, rec, slots);   // ukaguzi wa ndani kabla ya preview
+      if(auditProblems.length) throw new Error('Ukaguzi wa ndani umeshindwa, azimio halijaonyeshwa: ' + auditProblems.join('; ') + '.');
+    }
 
     const headLabelEl = document.getElementById('az_headLabel');
     if(headLabelEl) headLabelEl.textContent = `AZIMIO LA KAZI — ${subject.toUpperCase()}`;
@@ -5160,7 +5201,8 @@ async function generateAzimio(){
     if(missingRows) note += `Onyo: seva ilirudisha wiki ${srvRows.length} kati ya ${slots.length}; wiki ${missingRows} zimeachwa wazi — bonyeza "Tengeneza" tena. `;
     if(!plan) note += 'Kalenda ya muhula huu haijakamilika — jaza tarehe kwenye jedwali la kalenda juu ili Mwezi, Wiki na Mid-term vijipange zenyewe. ';
     if(jr){
-      note += `Mtaala rasmi wa TIE: mada zote na shughuli zote zimegawiwa kwenye wiki zote za kufundisha za ${lay.junior ? 'muhula wa kwanza (Januari – Juni)' : 'mwaka'} kwa mpangilio wa mtaala.${g5Hist ? ' Kila mada ndogo imeandikwa mara moja tu na wiki zake zimeunganishwa katika kipindi kimoja (mfano Wiki 1–3).' : ''} Kila mada ndogo imepewa wiki kulingana na vipindi vyake vya mtaala (au idadi ya shughuli kama vipindi havipo), na kila shughuli iko kwenye mstari wake kwa maneno ya mtaala. Wiki ya mwisho ni Marudio na Mtihani. Mbinu, Zana na Zana za Upimaji zimechaguliwa kulingana na mada na shughuli husika (hazirudiwi mfululizo) — zibadilishe kulingana na mazingira ya shule yako; ongeza kurasa kwenye Rejea. Safu ya Maoni imeachwa wazi kwa makusudi.`;
+      note += `Mtaala rasmi wa TIE: mada zote na shughuli zote zimegawiwa kwenye wiki zote za kufundisha za ${lay.junior ? 'muhula wa kwanza (Januari – Juni)' : 'mwaka'} kwa mpangilio wa mtaala.${g5Hist ? ' Kila shughuli ya mtaala imeandikwa mara moja tu kwa maneno ya mtaala, na wiki zake zimeunganishwa (mfano Januari, Wiki 1–3). Mada zimesogezwa hadi mwisho wa kalenda; hakuna maudhui yaliyoongezwa nje ya mtaala.' : ''} Kila mada ndogo imepewa wiki kulingana na vipindi vyake vya mtaala (au idadi ya shughuli kama vipindi havipo), na kila shughuli iko kwenye mstari wake kwa maneno ya mtaala.${g5Hist ? '' : ' Wiki ya mwisho ni Marudio na Mtihani.'} Mbinu, Zana na Zana za Upimaji zimechaguliwa kulingana na mada na shughuli husika (hazirudiwi mfululizo) — zibadilishe kulingana na mazingira ya shule yako; ongeza kurasa kwenye Rejea. Safu ya Maoni imeachwa wazi kwa makusudi.`;
+      if(g5Hist) note += ` Ukaguzi wa ndani kabla ya kuonyesha: umefaulu ✓ (shughuli ${jr.totalActs}/${jr.totalActs} za mtaala zipo kwa mpangilio wake, hakuna mstari wa ziada, mada zinafika ${slots.length ? slots[slots.length-1].month : '—'}).`;
       note += jr.check.ok ? ` Ukaguzi wa sheria kali: umefaulu ✓ (shughuli ${jr.totalActs}/${jr.totalActs} zimewekwa, safu ${jr.check.rowsChecked} zimejazwa zote isipokuwa Maoni, aina ${jr.check.distinctM} za mbinu).` : ` Onyo la ukaguzi wa sheria kali: ${jr.check.problems.join('; ')}.`;
       if(jr.overloaded) note += ` Onyo: mtaala unahitaji vipindi ${jr.needed} lakini kalenda ya muhula wa kwanza ina vipindi ${jr.capacity} tu (wiki ${jr.teachWeeks} × vipindi ${rec.w} kwa wiki). Mada zote zimewekwa ndani ya muhula wa kwanza kama ulivyoagiza, lakini wiki zina shughuli nyingi kuliko vipindi vilivyopo — punguza kina cha mada au ongeza vipindi.`;
       else if(!jr.hasCap) note += ' Kumbuka: idadi ya vipindi kwa wiki haijawekwa kwenye data ya mtaala huu, kwa hiyo haikuweza kukaguliwa kama vipindi vinatosha.';
