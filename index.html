@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -4959,6 +4960,20 @@ function azStrictCheck(rows, expectedActs, placedActs){
 function azIsG5Hist(grade, recKey){
   return /^\s*darasa\s+la\s+(5|v)\s*$/i.test(grade || '') && recKey === 'Historia ya Tanzania na Maadili';
 }
+/* Masomo yenye mada chache (Darasa la 3, 4 na 5) yanayofuata njia ileile ya Darasa la 5 Historia: orodha maalum, si sheria ya jumla.
+   Darasa la 6 na la 7 hayamo (yana muundo wao hadi Juni). Masomo yasiyo kwenye orodha hayabadiliki.
+   Darasa la 5 Historia linabaki kama lilivyo; masomo mapya yanatumia njia hii pale kalenda ya mihula imekamilika tu (vinginevyo yanaendelea kama zamani). */
+const AZ_FEW_TOPICS = {
+  '3': ['Historia ya Tanzania na Maadili', 'Jiografia na Mazingira', 'Sayansi', 'English'],
+  '4': ['Historia ya Tanzania na Maadili', 'Jiografia na Mazingira'],
+  '5': ['Hisabati', 'Jiografia na Mazingira', 'Sayansi']
+};
+function azIsFewTopics(grade, recKey, calendarOk){
+  if(azIsG5Hist(grade, recKey)) return true;
+  if(!calendarOk) return false;
+  const m = /^\s*darasa\s+la\s+(3|4|5)\s*$/i.exec(grade || '');
+  return !!(m && AZ_FEW_TOPICS[m[1]].indexOf(recKey) >= 0);
+}
 function azMergeWeeks(rows){
   /* Kila shughuli ya mtaala = mstari mmoja. Wiki zinazofuatana za shughuli ileile zinaunganishwa (mfano Januari, Wiki 1–3).
      Safu zote isipokuwa Mwezi/Wiki zinabaki kama za wiki ya kwanza ya shughuli hiyo (hakuna maudhui yanayounganishwa wala kuongezwa).
@@ -5163,7 +5178,7 @@ async function generateAzimio(){
 
     // Kinga: seva ikirudisha safu chache kuliko wiki, usipoteze jedwali zima — jaza safu tupu na toa onyo
     const srvRows = Array.isArray(az.rows) ? az.rows : [];
-    const missingRows = ((lay.junior || azIsG5Hist(grade, recKey)) && rec) ? 0 : Math.max(0, slots.length - srvRows.length);
+    const missingRows = ((lay.junior || azIsFewTopics(grade, recKey, plan)) && rec) ? 0 : Math.max(0, slots.length - srvRows.length);
     const blankRow = (sl)=> AZ_HEADERS.map((h,ci)=> ci===4 ? (sl.month||'') : ci===5 ? (sl.wom||'') : '');
     const brkAt = {}; lay.breaks.forEach(b=>{ (brkAt[b.at] = brkAt[b.at] || []).push(b); });
     const brkRow = (b)=>{
@@ -5175,7 +5190,7 @@ async function generateAzimio(){
     };
     // Darasa la 6 na la 7: mpangilio wa wiki unafanywa hapa (mada ndogo 1 = wiki 1), si kwenye seva
     // Kanuni ya kuunganisha wiki: inatumika kwa Darasa la 5 Historia pekee (mada chache). Masomo mengine hayabadiliki.
-    const g5Hist = azIsG5Hist(grade, recKey);
+    const g5Hist = azIsFewTopics(grade, recKey, plan);
     const jr = ((lay.junior || g5Hist) && rec) ? azBuildJuniorRows(rec, slots, subject, LG, grade, { noRev: g5Hist }) : null;
     let rows = [];
     slots.forEach((sl, i)=>{
@@ -9862,4 +9877,3 @@ function phBar(){
 </script>
 </body>
 </html>
-
