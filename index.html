@@ -4095,6 +4095,265 @@ async function generateSw7Exam(topics, gradeNum){
   return { exam: sw7BuildExam(d, gradeNum), warning };
 }
 
+/* ===================== SAYANSI NA TEKNOLOJIA DARASA LA 5, 6 NA 7 — MUUNDO WA KARATASI HALISI (KIONGEZEO) =====================
+   Muundo (kutoka karatasi halisi ya Mtihani wa Majaribio, Sayansi na Teknolojia Darasa la VI): maswali manane.
+   SEHEMU A (alama 20): Q1 chagua herufi A-D (i-x), Q2 oanisha Fungu A na B (i-v, A-H), Q3 jaza nafasi kwa maneno ya kisanduku (i-v).
+   SEHEMU B (alama 20): Q4 (i-iii), Q5 (i-iii), Q6 (i-iv) — majibu mafupi, alama 2 kila kipengele.
+   SEHEMU C (alama 10): Q7 mchoro (i-iii), Q8 hesabu/maelezo (i-ii), alama 2 kila kipengele.
+   AI inaombwa YALIYOMO tu (JSON); muundo, herufi, kuchanganya orodha, Q8 ya lever/kazi (inapofaa) na mwongozo wa majibu vinajengwa na programu. */
+const SCI7_SPEC  = { mcq:10, match:5, matchExtra:3, fill:5, fillExtra:5, q4:3, q5:3, q6:4, q7:3, q8:2 };
+const SCI7_MARKS = { mcq:1, match:1, fill:1, b:2, c:2 }; // A = 20, B = 20, C = 10
+
+function sci7WantsLever(topics){
+  return /kazi|nguvu|lever|mashine|joule|kani|kilemeo|moment|msukumo|mvutano/i.test(String(topics || ''));
+}
+
+function sci7BuildPrompt(topics, problems, gradeNum, needQ8){
+  const S = SCI7_SPEC;
+  const level = gradeNum === 5 ? 'DARASA LA V (wanafunzi wa miaka 10-11)' : gradeNum === 6 ? 'DARASA LA VI (wanafunzi wa miaka 11-12)' : 'DARASA LA VII (wanafunzi wa miaka 12-13, wanaojiandaa na mtihani wa taifa)';
+  const ex = '{\"mcq\":[{\"q\":\"Mlo kamili ni kama chakula chenye ____\",\"a\":\"virutubisho vyote\",\"b\":\"protini zaidi\",\"c\":\"vitamini zaidi\",\"d\":\"kalisi na chuma\",\"ans\":\"A\"}],\\n' +
+    ' \"match\":{\"pairs\":[{\"a\":\"Parachuti\",\"b\":\"Hujazwa hewa ili iweze kuelea angani\"}],\"extra\":[\"Usanisinuru\",\"Intaneti\",\"Amfibia\"]},\\n' +
+    ' \"fill\":{\"words\":[\"himoglobini\",\"plazima\",\"vena\",\"petali\",\"kaswende\"],\"extra\":[\"sepali\",\"naitrojeni\",\"hemophilia\",\"selimundu\",\"kabonidayoksaidi\"],\"sentences\":[{\"s\":\"______ ni hali ya mwili kushindwa kugandisha damu pindi unapopata jeraha.\",\"ans\":\"hemophilia\"}]},\\n' +
+    ' \"q4\":[{\"q\":\"Kitendo cha usafirishaji wa maji kutoka kwenye myeyuko hafifu kwenda kwenye myeyuko mzito huitwaje?\",\"ans\":\"Osmosisi\"}],\\n' +
+    ' \"q5\":[{\"q\":\"Ua limeundwa na sehemu ya kiume na ya kike. Sehemu ya kiume ya ua inaitwaje?\",\"ans\":\"Stameni\"}],\\n' +
+    ' \"q6\":[{\"q\":\"Vifaa gani hutumika kumwokoa mtu aliyejaribu kwenye maji?\",\"ans\":\"Boya la kuokolea\"}],\\n' +
+    ' \"q7\":{\"diagram\":\"Mchoro wa mfumo wa upumuaji wa binadamu wenye sehemu tatu zilizowekewa herufi A, B na C\",\"items\":[{\"q\":\"Jina la sehemu iliyoonyeshwa kwa herufi A ni ____\",\"ans\":\"Koo la hewa\"}]}' +
+    (needQ8 ? ',\\n \"q8\":[{\"q\":\"Swali la kueleza au kukokotoa 1\",\"ans\":\"Jibu\"},{\"q\":\"Swali 2\",\"ans\":\"Jibu\"}]' : '') + '}';
+  let p = 'MTIHANI MZIMA UNATAKIWA UANDIKWE KWA KISWAHILI SANIFU RAHISI. Hii ni karatasi ya somo la SAYANSI NA TEKNOLOJIA.\\n' +
+    'Wewe ni mtunzi wa mitihani ya shule za msingi Tanzania (mtindo wa Halmashauri / TAMISEMI / NECTA).\\n' +
+    'Andika YALIYOMO ya mtihani wa Sayansi na Teknolojia wa ' + level + ' kuhusu mada hizi: \"' + topics + '\".\\n' +
+    'Mada zinaweza kuwa kwa Kiingereza: zielewe, kisha andika kila swali na jibu kwa Kiswahili rahisi kinacholingana na darasa (maneno ya kisayansi yabaki kama yanavyotumika Tanzania). Maswali yagawanywe kwa usawa katika mada zote zilizotolewa.\\n' +
+    'MTAALA NI WA UMAHIRI: kila swali lipime uwezo wa kutumia maarifa katika hali halisi (utambuzi, matumizi, ulinganisho), si kukariri tu. Kila swali liwe fupi, mahususi, lenye jibu MOJA lililo wazi. Ukweli wa kisayansi uwe sahihi kabisa.\\n' +
+    'Rudisha OBJECT MOJA TU ya JSON halali - bila markdown, bila maelezo yoyote. Tumia nukuu mbili za kawaida; ndani ya sentensi tumia nukuu moja ikihitajika. Jaza kila kipengele kwa IDADI KAMILI hapa chini.\\n\\n' +
+    'Q1 \"mcq\": maswali ' + S.mcq + ' ya kuchagua jibu sahihi; kila moja lina chaguo NNE a, b, c, d (moja sahihi tu) na \"ans\" ni herufi A, B, C au D. Jibu sahihi lisiwe herufi ileile mara zote.\\n' +
+    'Q2 \"match\": \"pairs\" = jozi ' + S.match + ' ambapo \"a\" ni neno/kitu (mf. Parachuti, Mchanganyiko wa gesi mbalimbali, Vitamini) na \"b\" ni maelezo/kazi/maana yake sahihi (fupi); \"extra\" = maelezo/maneno ' + S.matchExtra + ' ya ziada yasiyolingana na kitu chochote katika \"a\" (programu itachanganya Fungu B).\\n' +
+    'Q3 \"fill\": \"words\" = maneno ' + S.fill + ' ya kisayansi (neno MOJA kila moja) ambayo ni majibu; \"extra\" = maneno ' + S.fillExtra + ' ya ziada yanayohusiana na mada lakini yasiyofaa katika sentensi; \"sentences\" = sentensi ' + S.fill + ', kila moja ikiwa na nafasi ______ moja na \"ans\" ni neno kutoka \"words\" (kila neno litumike mara moja). Sentensi zisiwe na jibu lingine linalowezekana kutoka \"extra\".\\n' +
+    'Q4 \"q4\": maswali ' + S.q4 + ', Q5 \"q5\": maswali ' + S.q5 + ', Q6 \"q6\": maswali ' + S.q6 + ' ya majibu mafupi (neno moja hadi sentensi moja); kila kipengele kiwe na \"q\" na \"ans\". Ni maswali ya kuandika jibu fupi (taja, eleza kazi, andika jina, kwa nini). Q4, Q5 na Q6 zihusu mada tofauti kati ya zilizotolewa.\\n' +
+    'Q7 \"q7\": mchoro utachorwa na mwalimu: \"diagram\" = maelezo mafupi ya mchoro unaohitajika (kitu gani, na sehemu zipi zimewekewa herufi C, D, E... au A, B, C), na \"items\" = maswali ' + S.q7 + ' yanayorejea herufi za mchoro huo (mf. jina la sehemu A, kazi ya sehemu B, madhara/hatua inayofuata), kila moja na \"ans\".\\n' +
+    (needQ8 ? 'Q8 \"q8\": maswali ' + S.q8 + ' ya kueleza au kukokotoa (ikiwa ni hesabu, onyesha namba kamili na jibu liwe sahihi; kitengo kiwe wazi), kila moja na \"q\" na \"ans\".\\n' : '') +
+    '\\nMFANO WA MUUNDO (muundo tu - USINAKILI maudhui; toa idadi kamili katika kila array):\\n' + ex + '\\nUKUMBUSHO WA MWISHO: JSON yote iwe kwa Kiswahili.';
+  if(problems && problems.length){
+    p += '\\n\\nJIBU LAKO LA AWALI LILIKATALIWA KWA SABABU: ' + problems.join('; ') + '.\\nRudisha JSON KAMILI tena na kila kipengele kwa idadi kamili.';
+  }
+  return p;
+}
+
+function sci7Check(o, needQ8){
+  const S = SCI7_SPEC, problems = [];
+  const str = v => String(v == null ? '' : v).trim();
+  const obj = k => (o && o[k] && typeof o[k] === 'object' && !Array.isArray(o[k])) ? o[k] : {};
+  const arr = v => Array.isArray(v) ? v : [];
+  const pairsOf = list => arr(list).filter(x => x && str(x.q) && str(x.ans)).map(x => ({ q: str(x.q), ans: str(x.ans) }));
+
+  // Q1: chaguo A-D
+  const keys = ['a','b','c','d'];
+  const mcq = arr(o && o.mcq).filter(x => x && str(x.q) && keys.every(k => str(x[k]))).map(x => {
+    const m = str(x.ans).match(/^\(?([A-Da-d])(?:[\).:\s]|$)/);
+    let L = m ? m[1].toUpperCase() : '';
+    if(!L){ const hit = keys.find(k => str(x[k]).toLowerCase() === str(x.ans).toLowerCase()); L = hit ? hit.toUpperCase() : ''; }
+    return L ? { q: str(x.q), a: str(x.a), b: str(x.b), c: str(x.c), d: str(x.d), ans: L } : null;
+  }).filter(Boolean).slice(0, S.mcq);
+
+  // Q2: jozi
+  const M = obj('match');
+  const seenA = new Set();
+  const pairs = arr(M.pairs).filter(x => x && str(x.a) && str(x.b)).map(x => ({ a: str(x.a), b: str(x.b) }))
+    .filter(x => { const k = x.a.toLowerCase(); if(seenA.has(k)) return false; seenA.add(k); return true; }).slice(0, S.match);
+  const usedB = new Set(pairs.map(x => x.b.toLowerCase()));
+  const mextra = arr(M.extra).map(str).filter(t => t && !usedB.has(t.toLowerCase())).slice(0, S.matchExtra);
+
+  // Q3: jaza nafasi
+  const F = obj('fill');
+  const sentences = arr(F.sentences).filter(x => x && /_{2,}/.test(str(x.s)) && str(x.ans)).map(x => ({ s: str(x.s), ans: str(x.ans) })).slice(0, S.fill);
+  const ansSet = new Set(sentences.map(x => x.ans.toLowerCase()));
+  const fextra = arr(F.extra).map(str).filter(t => t && !ansSet.has(t.toLowerCase())).slice(0, S.fillExtra);
+  const fill = { sentences, extra: fextra };
+
+  const q4 = pairsOf(o && o.q4).slice(0, S.q4), q5 = pairsOf(o && o.q5).slice(0, S.q5), q6 = pairsOf(o && o.q6).slice(0, S.q6);
+  const Q7 = obj('q7');
+  const q7 = { diagram: str(Q7.diagram), items: pairsOf(Q7.items).slice(0, S.q7) };
+  const q8 = needQ8 ? pairsOf(o && o.q8).slice(0, S.q8) : [];
+
+  const need = (name, got, want) => { if(got < want) problems.push('\"' + name + '\" has ' + got + ' valid items but needs exactly ' + want); };
+  need('mcq (each with a,b,c,d and ans A-D)', mcq.length, S.mcq);
+  need('match.pairs', pairs.length, S.match);
+  need('match.extra', mextra.length, S.matchExtra);
+  need('fill.sentences (each must contain ______)', sentences.length, S.fill);
+  need('fill.extra', fextra.length, S.fillExtra);
+  need('q4', q4.length, S.q4); need('q5', q5.length, S.q5); need('q6', q6.length, S.q6);
+  need('q7.items', q7.items.length, S.q7);
+  if(str(q7.diagram).length < 8) problems.push('\"q7.diagram\" is missing (short description of the diagram to draw)');
+  if(needQ8) need('q8', q8.length, S.q8);
+
+  const all = [].concat(mcq.map(x => [x.q, x.a, x.b, x.c, x.d].join(' ')), pairs.map(x => x.a + ' ' + x.b), sentences.map(x => x.s),
+    q4.concat(q5, q6, q7.items, q8).map(x => x.q + ' ' + x.ans));
+  let score = mcq.length + pairs.length + mextra.length + sentences.length + fextra.length + q4.length + q5.length + q6.length + q7.items.length + q8.length + (q7.diagram ? 1 : 0);
+  if(sw7LooksEnglish(all)){ problems.push('the content is written in English - rewrite EVERYTHING in Kiswahili'); score = 0; }
+  return { problems, score, data: { mcq, pairs, mextra, fill, q4, q5, q6, q7, q8 } };
+}
+
+// Mchoro wa lever (kama swali 8 la karatasi halisi): uzito m1 kwa umbali d1, uzito m2 kwa umbali X
+function sci7LeverSvg(w1, d1, w2){
+  const F = 'font-family=\"Arial,Helvetica,sans-serif\"';
+  return '<svg viewBox=\"0 0 300 135\" xmlns=\"http://www.w3.org/2000/svg\" ' + F + ' font-size=\"11\">' +
+    '<line x1=\"40\" y1=\"45\" x2=\"260\" y2=\"45\" stroke=\"#111\" stroke-width=\"2.5\"/>' +
+    '<polygon points=\"150,45 128,95 172,95\" fill=\"#fff\" stroke=\"#111\" stroke-width=\"2\"/>' +
+    '<line x1=\"40\" y1=\"45\" x2=\"40\" y2=\"80\" stroke=\"#111\"/><line x1=\"260\" y1=\"45\" x2=\"260\" y2=\"80\" stroke=\"#111\"/>' +
+    '<rect x=\"15\" y=\"80\" width=\"50\" height=\"26\" fill=\"#fff\" stroke=\"#111\" stroke-width=\"1.5\"/><text x=\"40\" y=\"97\" text-anchor=\"middle\">' + w1 + ' kg</text>' +
+    '<rect x=\"235\" y=\"80\" width=\"50\" height=\"26\" fill=\"#fff\" stroke=\"#111\" stroke-width=\"1.5\"/><text x=\"260\" y=\"97\" text-anchor=\"middle\">' + w2 + ' kg</text>' +
+    '<line x1=\"42\" y1=\"22\" x2=\"148\" y2=\"22\" stroke=\"#111\"/><polyline points=\"48,18 42,22 48,26\" fill=\"none\" stroke=\"#111\"/><polyline points=\"142,18 148,22 142,26\" fill=\"none\" stroke=\"#111\"/>' +
+    '<text x=\"95\" y=\"16\" text-anchor=\"middle\">' + d1 + ' m</text>' +
+    '<line x1=\"152\" y1=\"22\" x2=\"258\" y2=\"22\" stroke=\"#111\"/><polyline points=\"158,18 152,22 158,26\" fill=\"none\" stroke=\"#111\"/><polyline points=\"252,18 258,22 252,26\" fill=\"none\" stroke=\"#111\"/>' +
+    '<text x=\"205\" y=\"16\" text-anchor=\"middle\">X m</text>' +
+    '<line x1=\"150\" y1=\"26\" x2=\"150\" y2=\"45\" stroke=\"#111\" stroke-dasharray=\"2 2\"/></svg>';
+}
+
+function sci7BuildExam(d, gradeNum, topics){
+  const S = SCI7_SPEC, M = SCI7_MARKS;
+  const std = gradeNum === 5 ? 'V' : gradeNum === 6 ? 'VI' : 'VII';
+  const R = i => romanFromIndex(i);
+  const BR = '   [      ]';
+  const LINE = '______________________________________';
+  const L8 = 'ABCDEFGH';
+  const figs = {};
+
+  const mA = S.mcq * M.mcq + S.match * M.match + S.fill * M.fill;
+  const mB = (S.q4 + S.q5 + S.q6) * M.b;
+  const mC = (S.q7 + S.q8) * M.c;
+  const marks = n => 'Alama ' + n;
+  const shortQ = (x, mk, i) => ({ roman: R(i), text: /_{3,}/.test(x.q) ? x.q : x.q + '   ' + LINE, marks: mk });
+
+  const sections = [];
+  sections.push({
+    number: 'A.1', heading: 'SEHEMU A (ALAMA ' + mA + ') — Jibu maswali yote katika sehemu hii — 1. Chagua herufi ya jibu sahihi na uiandike katika kisanduku',
+    note: marks(S.mcq * M.mcq),
+    questions: d.mcq.map((x, i) => ({ roman: R(i), text: x.q + BR + '\nA. ' + x.a + '\nB. ' + x.b + '\nC. ' + x.c + '\nD. ' + x.d, marks: M.mcq }))
+  });
+
+  // Q2: oanisha — Fungu B lina vitu 5 sahihi + 3 vya ziada (A-H), vimechanganywa
+  const listB = eng7ShuffleDifferent(d.pairs.map(x => x.b).concat(d.mextra));
+  const matchAns = d.pairs.map(x => L8[listB.indexOf(x.b)]);
+  const q2 = [{ roman: '', text: 'FUNGU A', marks: 0 }];
+  d.pairs.forEach((x, i) => q2.push({ roman: R(i), text: x.a + BR, marks: M.match }));
+  q2.push({ roman: '', text: 'FUNGU B\n' + listB.map((t, i) => L8[i] + '.   ' + t).join('\n'), marks: 0 });
+  sections.push({
+    number: 'A.2', heading: '2. Oanisha maneno yaliyopo katika Fungu A na yale yaliyopo katika Fungu B ili kupata dhana sahihi',
+    note: marks(S.match * M.match), questions: q2
+  });
+
+  // Q3: jaza nafasi — kisanduku cha maneno 10 (majibu 5 + ya ziada 5), vimechanganywa
+  const box = eng7Shuffle(d.fill.sentences.map(x => x.ans).concat(d.fill.extra));
+  const q3 = [{ roman: '', text: 'Maneno: ' + box.join(', '), marks: 0 }];
+  d.fill.sentences.forEach((x, i) => q3.push({ roman: R(i), text: x.s, marks: M.fill }));
+  sections.push({
+    number: 'A.3', heading: '3. Kamilisha sentensi zifuatazo kwa kutumia maneno yaliyoachwa wazi kwenye kisanduku hapo chini',
+    note: marks(S.fill * M.fill), questions: q3
+  });
+
+  sections.push({
+    number: 'B.4', heading: 'SEHEMU B (ALAMA ' + mB + ') — Jibu maswali yote katika sehemu hii — 4.',
+    note: marks(S.q4 * M.b), questions: d.q4.map((x, i) => shortQ(x, M.b, i))
+  });
+  sections.push({
+    number: 'B.5', heading: '5.', note: marks(S.q5 * M.b), questions: d.q5.map((x, i) => shortQ(x, M.b, i))
+  });
+  sections.push({
+    number: 'B.6', heading: '6.', note: marks(S.q6 * M.b), questions: d.q6.map((x, i) => shortQ(x, M.b, i))
+  });
+
+  // Q7: mchoro — mwalimu anaambatanisha mchoro (kitufe cha mchoro kwenye swali)
+  const q7 = [{ roman: '', text: '[ MCHORO: weka hapa ' + d.q7.diagram + ' — tumia kitufe cha mchoro kwenye safu hii ]', marks: 0 }];
+  d.q7.items.forEach((x, i) => q7.push(shortQ(x, M.c, i)));
+  sections.push({
+    number: 'C.7', heading: 'SEHEMU C (ALAMA ' + mC + ') — Jibu maswali yote katika sehemu hii — 7. Chunguza mchoro ufuatao kisha jibu maswali yafuatayo',
+    note: marks(S.q7 * M.c), questions: q7
+  });
+
+  // Q8: lever + kazi (hesabu zinakokotolewa na programu) ikiwa mada zinahusu kazi/nguvu; vinginevyo maswali ya AI
+  let q8 = [], key8 = '', head8 = '8. Jibu maswali yote katika sehemu hii';
+  if(sci7WantsLever(topics) || !d.q8.length){
+    const w2 = [20, 25, 40, 50][Math.floor(Math.random() * 4)];
+    const k = [2, 3, 4][Math.floor(Math.random() * 3)];
+    const w1 = w2 * k, d1 = 2 + Math.floor(Math.random() * 4), X = d1 * k;
+    const F = [20, 25, 30, 40, 50, 60][Math.floor(Math.random() * 6)], dist = [4, 5, 6, 8, 10][Math.floor(Math.random() * 5)], W = F * dist;
+    const id = m7id();
+    figs[id] = { id, svg: sci7LeverSvg(w1, d1, w2), model: null, title: 'Lever' };
+    q8 = [
+      { roman: R(0), text: 'Kokotoa thamani ya X kwenye mchoro ufuatao   ' + LINE, marks: M.c, figs: [id], figOpt: { [id]: { pos: 'before', size: 's' } } },
+      { roman: R(1), text: 'Kazi ya Joule ' + W + ' ilifanyika katika umbali wa mita ' + dist + ' uelekeo wa kani. Tafuta kani iliyotumika.   ' + LINE, marks: M.c }
+    ];
+    key8 = 'i. Kanuni ya vilemeo: uzito x umbali (kushoto) = uzito x umbali (kulia)\n   ' + w1 + ' x ' + d1 + ' = ' + w2 + ' x X  =>  X = ' + (w1 * d1) + ' / ' + w2 + ' = ' + X + ' m\nii. Kazi = Kani x Umbali  =>  Kani = ' + W + ' / ' + dist + ' = ' + F + ' N';
+  } else {
+    q8 = d.q8.map((x, i) => shortQ(x, M.c, i));
+    key8 = d.q8.map((x, i) => R(i) + '. ' + x.ans).join('\n');
+  }
+  sections.push({ number: 'C.8', heading: head8, note: marks(S.q8 * M.c), questions: q8 });
+
+  let key = 'MWONGOZO WA KUSAHIHISHA - SAYANSI NA TEKNOLOJIA, DARASA LA ' + std + '\n(Jumla alama 50: Sehemu A = 20, B = 20, C = 10)\n';
+  key += '\nSWALI 1 (alama 1 kila kipengele)\n'; d.mcq.forEach((x, i) => { key += R(i) + '. ' + x.ans + '  (' + x[x.ans.toLowerCase()] + ')\n'; });
+  key += '\nSWALI 2 (alama 1 kila kipengele)\n'; d.pairs.forEach((x, i) => { key += R(i) + '. ' + matchAns[i] + '  (' + x.a + ' - ' + x.b + ')\n'; });
+  key += '\nSWALI 3 (alama 1 kila kipengele)\n'; d.fill.sentences.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
+  key += '\nSWALI 4 (alama 2 kila kipengele)\n'; d.q4.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
+  key += '\nSWALI 5 (alama 2 kila kipengele)\n'; d.q5.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
+  key += '\nSWALI 6 (alama 2 kila kipengele)\n'; d.q6.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
+  key += '\nSWALI 7 (alama 2 kila kipengele; mchoro: ' + d.q7.diagram + ')\n'; d.q7.items.forEach((x, i) => { key += R(i) + '. ' + x.ans + '\n'; });
+  key += '\nSWALI 8 (alama 2 kila kipengele)\n' + key8 + '\n';
+
+  const header = {
+    lines: ['MTIHANI WA MAJARIBIO', 'DARASA LA ' + std, 'SAYANSI NA TEKNOLOJIA', 'MUDA: SAA 1:30'],
+    instructions: [
+      'Karatasi hii ina sehemu A, B na C yenye jumla ya maswali nane',
+      'Jibu maswali yote katika kila sehemu',
+      'Simu ya mkononi au kikokotozi haviruhusiwi kwenye chumba cha mtihani'
+    ],
+    language: 'sw', assessorTable: false
+  };
+  return { header, examTitle: 'SAYANSI NA TEKNOLOJIA — DARASA LA ' + std, sections, answerKey: key.trim(), figs };
+}
+
+async function generateSci7Exam(topics, gradeNum){
+  const model = AI_MODEL;
+  const extra = /gpt-oss/i.test(model) ? { reasoning_effort: 'low' } : {};
+  const needQ8 = !sci7WantsLever(topics);
+  let best = null, problems = [], lastErr = null;
+  for(let attempt = 1; attempt <= 3; attempt++){
+    let raw;
+    try{
+      raw = await callClaude(sci7BuildPrompt(topics, attempt > 1 ? problems : null, gradeNum, needQ8), 6000, extra);
+    }catch(e){
+      if(!best) throw e;
+      lastErr = e; break;
+    }
+    const cut = callClaude.lastFinish === 'length';
+    let chk;
+    try{
+      chk = sci7Check(mtParseJSON(raw).obj, needQ8);
+    }catch(e){
+      problems = ['the reply was not valid JSON' + (cut ? ' (it was cut off - keep every item short)' : '')];
+      lastErr = e; continue;
+    }
+    if(!best || chk.score > best.score) best = chk;
+    if(!chk.problems.length){ best = chk; break; }
+    problems = chk.problems.concat(cut ? ['the output was cut off - keep every item short'] : []);
+  }
+  if(!best) throw new Error((lastErr && lastErr.message) || 'AI haikurudisha mtihani unaoeleweka.');
+  if(best.score === 0) throw new Error('AI iliandika mtihani kwa Kiingereza badala ya Kiswahili. Bonyeza \"Tengeneza Mtihani\" tena (au jaribu modeli nyingine).');
+  // Hakikisha vipengele vyenye upungufu havivunji mtihani: jaza nafasi tupu ili mwalimu aandike mwenyewe
+  const d = best.data, S = SCI7_SPEC;
+  const pad = (a, n, mk) => { while(a.length < n) a.push(mk()); };
+  pad(d.mcq, S.mcq, () => ({ q: 'Andika swali jipya hapa...', a: '', b: '', c: '', d: '', ans: 'A' }));
+  pad(d.pairs, S.match, () => ({ a: '(andika neno)', b: '(andika maelezo)' }));
+  pad(d.fill.sentences, S.fill, () => ({ s: '______ (andika sentensi hapa)', ans: '' }));
+  pad(d.q4, S.q4, () => ({ q: 'Andika swali jipya hapa...', ans: '' })); pad(d.q5, S.q5, () => ({ q: 'Andika swali jipya hapa...', ans: '' })); pad(d.q6, S.q6, () => ({ q: 'Andika swali jipya hapa...', ans: '' }));
+  pad(d.q7.items, S.q7, () => ({ q: 'Andika swali jipya hapa...', ans: '' }));
+  if(!d.q7.diagram) d.q7.diagram = 'mchoro unaohusiana na mada';
+  const warning = '✔️ Mtihani huu umetengenezwa kwa muundo wa karatasi halisi ya Sayansi na Teknolojia (Sehemu A alama 20, B alama 20, C alama 10). ' +
+    'SWALI 7 linahitaji MCHORO: ' + d.q7.diagram + '. Bonyeza kitufe cha mchoro kwenye safu ya kwanza ya Swali 7 ili uuchore au uchague kutoka maktaba/Gallery, kisha uondoe maandishi ya mabano. ' +
+    (best.problems.length ? '⚠️ Vipengele vifuatavyo havikukamilika baada ya majaribio 3: ' + best.problems.join('; ') + '. Bonyeza \"Tengeneza Mtihani\" tena, au ongeza maswali kwa \"+ Ongeza Swali la Mkono\". ' : '') +
+    'Hakiki kabla ya kuchapisha.';
+  return { exam: sci7BuildExam(d, gradeNum, topics), warning };
+}
+
 function mtShowWarning(){
   if(!mtWarning) return;
   const out = document.getElementById('mt_output');
@@ -4129,6 +4388,7 @@ async function generateMitihani(){
   const useMath7 = /^darasa/i.test(grade) && gradeNum >= 5 && gradeNum <= 7 && subject === 'Hisabati'; // karatasi halisi (Hisabati, Darasa 5-7)
   const useEng7 = /^darasa/i.test(grade) && gradeNum >= 5 && gradeNum <= 7 && (subject === 'English' || subject === 'Kiingereza'); // karatasi halisi (English, Darasa 5-7)
   const useSw7 = /^darasa/i.test(grade) && gradeNum >= 5 && gradeNum <= 7 && subject === 'Kiswahili'; // karatasi halisi (Kiswahili, Darasa 5-7)
+  const useSci7 = /^darasa/i.test(grade) && gradeNum >= 5 && gradeNum <= 7 && subject === 'Sayansi na Teknolojia'; // karatasi halisi (Sayansi na Teknolojia, Darasa 5-7)
 
   let formatInstructions;
   if(isLowerPrimary){
@@ -4213,6 +4473,9 @@ MUHIMU SANA: (1) Kila swali LAZIMA lihusiane moja kwa moja na mada "${topics}" n
       examData = r.exam; mtWarning = r.warning || '';
     } else if(useSw7){
       const r = await generateSw7Exam(topics, gradeNum);
+      examData = r.exam; mtWarning = r.warning || '';
+    } else if(useSci7){
+      const r = await generateSci7Exam(topics, gradeNum);
       examData = r.exam; mtWarning = r.warning || '';
     } else {
       const raw = await callClaude(prompt, 6500);
