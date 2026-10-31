@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -572,6 +573,9 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
         <div class="field"><label>Darasa/Kidato</label><select id="mt_grade"></select></div>
         <div class="field"><label>Somo</label><select id="mt_subject"></select></div>
         <div class="field"><label>Mada/vipengele vilivyofundishwa</label><textarea id="mt_topics" placeholder="mfano: Ukoloni Tanganyika, harakati za uhuru, viongozi wa TANU"></textarea></div>
+        <div class="field"><label>Jina la shule (hiari)</label><input type="text" id="mt_school" maxlength="60" placeholder="mfano: Shule ya Msingi Mlimani"></div>
+        <div class="field"><label>Toleo (hiari)</label><select id="mt_version"><option value="">— Bila toleo —</option><option value="A">Toleo A</option><option value="B">Toleo B</option><option value="C">Toleo C</option></select></div>
+        <p class="hint" style="margin-top:0;">Shule na toleo likiwa lilelile, mtihani wa Hisabati hutoka uleule; shule au toleo tofauti hutoa mtihani tofauti. Masomo mengine hupata mwelekeo tofauti na hayarudii maswali ya mitihani ya karibuni uliyotengeneza kwenye kifaa hiki.</p>
         <button class="generate" id="mt_btn" onclick="generateMitihani()">Tengeneza Mtihani</button>
         <p class="hint">Muundo: Sehemu 1-7 (namba za kawaida), maswali ndani ya kila sehemu kwa Kirumi (i, ii, iii...), ikifuata mtindo wa NECTA.</p>
       </div>
@@ -2484,6 +2488,7 @@ async function callClaude(prompt, maxTokens, extra){
   const models = [AI_MODEL];
   if(typeof PH_MODELS !== 'undefined') PH_MODELS.forEach(m=>{ if(models.indexOf(m) < 0) models.push(m); }); // akiba ikiwa seva haikubali modeli iliyochaguliwa
   let response = null, detail = "";
+  if(window.MT_VARIANT_NOTE){ prompt = prompt + window.MT_VARIANT_NOTE; window.MT_AI_USED = true; } // toleo/shule: mwelekeo mpya + usirudie maswali ya karibuni (Mitihani tu)
   for(const m of models){
     const body = { model: m, max_tokens: maxTokens || 2000, messages: [{ role:"user", content: prompt }] };
     if(extra){ Object.assign(body, extra); if(!/gpt-oss/i.test(m)) delete body.reasoning_effort; } // reasoning_effort ni ya gpt-oss tu
@@ -3436,12 +3441,275 @@ function m7q8(){
   return out;
 }
 
+/* ---- Michoro mipya (Darasa la 5 na la 7) ---- */
+function m7svgBar(labels, values, title){
+  const x0 = 38, y0 = 140, H = 110, W = 190, mx = 100, bw = Math.min(30, W / labels.length - 10);
+  let s = '<svg viewBox="0 0 250 175" xmlns="http://www.w3.org/2000/svg"><g stroke="#111" fill="none" stroke-width="1.4"><line x1="' + x0 + '" y1="' + y0 + '" x2="' + (x0 + W + 8) + '" y2="' + y0 + '"/><line x1="' + x0 + '" y1="' + y0 + '" x2="' + x0 + '" y2="' + (y0 - H - 6) + '"/></g>';
+  for(let v = 0; v <= mx; v += 20){
+    const y = y0 - v * H / mx;
+    s += '<line x1="' + x0 + '" y1="' + y + '" x2="' + (x0 + W) + '" y2="' + y + '" stroke="#999" stroke-width="0.5"/><text x="' + (x0 - 5) + '" y="' + (y + 3) + '" font-size="9" text-anchor="end" ' + M7_FONT + ' fill="#111">' + v + '</text>';
+  }
+  const gap = W / labels.length;
+  labels.forEach((lb, i) => {
+    const h = values[i] * H / mx, x = x0 + gap * i + (gap - bw) / 2;
+    s += '<rect x="' + x.toFixed(1) + '" y="' + (y0 - h).toFixed(1) + '" width="' + bw + '" height="' + h.toFixed(1) + '" fill="#bbb" stroke="#111" stroke-width="1.2"/>' +
+         '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (y0 + 12) + '" font-size="8" text-anchor="middle" ' + M7_FONT + ' fill="#111">' + lb + '</text>';
+  });
+  return s + '<text x="125" y="170" font-size="9" text-anchor="middle" ' + M7_FONT + ' fill="#111">' + title + '</text></svg>';
+}
+function m7svgTri(la, lb, lc){
+  const t = (x, y, s) => '<text x="' + x + '" y="' + y + '" font-size="12" text-anchor="middle" font-style="italic" ' + M7_FONT + ' fill="#111">' + s + '</text>';
+  return '<svg viewBox="0 0 250 160" xmlns="http://www.w3.org/2000/svg"><polygon points="125,15 25,140 225,140" fill="none" stroke="#111" stroke-width="1.8"/>' +
+    t(125, 48, la) + t(62, 133, lb) + t(188, 133, lc) + '</svg>';
+}
+function m7svgRect(l, w){
+  return '<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg"><rect x="30" y="20" width="170" height="85" fill="none" stroke="#111" stroke-width="1.8"/>' +
+    '<text x="115" y="125" font-size="12" text-anchor="middle" ' + M7_FONT + ' fill="#111">' + l + ' sm</text>' +
+    '<text x="205" y="66" font-size="12" ' + M7_FONT + ' fill="#111">' + w + ' sm</text></svg>';
+}
+function m7svgCircle(r){
+  return '<svg viewBox="0 0 200 190" xmlns="http://www.w3.org/2000/svg"><circle cx="100" cy="90" r="75" fill="none" stroke="#111" stroke-width="1.8"/>' +
+    '<line x1="100" y1="90" x2="175" y2="90" stroke="#111" stroke-width="1.6"/><circle cx="100" cy="90" r="2.6" fill="#111"/>' +
+    '<text x="138" y="84" font-size="12" text-anchor="middle" ' + M7_FONT + ' fill="#111">' + r + ' sm</text></svg>';
+}
+const m7fmtT = (h, m) => h + ':' + (m < 10 ? '0' : '') + m;
+const m7hm = mins => (mins >= 60 ? Math.floor(mins / 60) + ' saa ' : '') + (mins % 60 ? (mins % 60) + ' dakika' : '');
+const m7name = () => m7pick(['Juma', 'Baraka', 'Hamisi', 'Salim', 'Neema', 'Rehema', 'Zawadi', 'Amina', 'Furaha', 'Asha']);
+
+/* ---- DARASA LA 5 (rahisi zaidi: namba kamili, sehemu za kawaida, desimali, asilimia za msingi) ---- */
+function m7g5q1(){
+  const out = [], f = math3Fmt;
+  let a = m7ri(1000, 9999), b = m7ri(100, 999);
+  out.push({ t: f(a) + ' + ' + f(b) + ' =', a: f(a + b) });
+  a = m7ri(10000, 99999); b = m7ri(1000, 9999);
+  out.push({ t: f(a) + ' − ' + f(b) + ' =', a: f(a - b) });
+  a = m7ri(12, 99); b = m7ri(11, 60);
+  out.push({ t: a + ' × ' + b + ' =', a: f(a * b) });
+  const dv = m7pick([12, 13, 14, 15, 16, 17, 18, 19]), qq = m7ri(100, 999);
+  out.push({ t: f(dv * qq) + ' ÷ ' + dv + ' =', a: f(qq) });
+  let d = m7pick([5, 6, 7, 8, 9]), w1 = m7ri(1, 5), w2 = m7ri(1, 5), n1 = m7ri(1, d - 1), n2 = m7ri(1, d - 1);
+  out.push({ t: w1 + ' ' + n1 + '/' + d + ' + ' + w2 + ' ' + n2 + '/' + d + ' =', a: m7mixed((w1 * d + n1) + (w2 * d + n2), d) });
+  d = m7pick([5, 6, 7, 8, 9]); const w4 = m7ri(1, 5), w3 = w4 + m7ri(1, 4), n3 = m7ri(1, d - 1), n4 = m7ri(1, d - 1);
+  out.push({ t: w3 + ' ' + n3 + '/' + d + ' − ' + w4 + ' ' + n4 + '/' + d + ' =', a: m7mixed((w3 * d + n3) - (w4 * d + n4), d) });
+  d = m7pick([3, 4, 5, 6, 8]); const n = m7ri(1, d - 1), k = d * m7ri(2, 9);
+  out.push({ t: n + '/' + d + ' × ' + k + ' =', a: String(n * k / d) });
+  const A = m7ri(100, 999), B = m7ri(11, 99);
+  out.push({ t: (A / 100).toFixed(2) + ' + ' + (B / 10).toFixed(1) + ' =', a: m7dec((A + 10 * B) / 100, 2) });
+  const A2 = m7ri(1000, 3000), B2 = m7ri(11, 99);
+  out.push({ t: (A2 / 100).toFixed(2) + ' − ' + (B2 / 10).toFixed(1) + ' =', a: m7dec((A2 - 10 * B2) / 100, 2) });
+  const p = m7pick([10, 20, 25, 50]), amt = 40 * m7ri(2, 40);
+  out.push({ t: 'Tafuta ' + p + '% ya ' + f(amt) + ' =', a: String(p * amt / 100) });
+  return out;
+}
+function m7g5q2(){
+  const out = [], f = math3Fmt;
+  let dg = m7shuf([1,2,3,4,5,6,7,8,9]).slice(0, 6); const pos = m7ri(0, 5), val = dg[pos] * Math.pow(10, 5 - pos);
+  out.push({ t: 'Andika thamani ya ' + dg[pos] + ' katika namba ifuatayo ' + f(Number(dg.join(''))) + '.', a: f(val) + ' (' + m7words(val).toLowerCase() + ')' });
+  const n2 = m7ri(100, 999) * 1000 + m7pick([5, 12, 40, 150, 208, 375, 642, 900]);
+  out.push({ t: 'Andika namba ifuatayo kwa maneno ' + f(n2), a: m7words(n2) });
+  const dd = m7shuf([1,2,3,4,5,6,7,8,9]), dec = dd.slice(0, 2), ip = dd[2] * 10 + dd[3], kk = m7ri(0, 1);
+  out.push({ t: 'Andika thamani ya ' + dec[kk] + ' katika namba ifuatayo ' + ip + '.' + dec.join(''), a: dec[kk] + '/' + Math.pow(10, kk + 1) + ' (0.' + '0'.repeat(kk) + dec[kk] + ')' });
+  const n4 = m7ri(10000, 99999), s4 = String(n4), parts = [];
+  for(let i = 0; i < 5; i++) if(s4[i] !== '0') parts.push(s4[i] + '0'.repeat(4 - i));
+  out.push({ t: 'Andika namba ifuatayo kwa kirefu ' + f(n4) + '.', a: parts.join(' + ') });
+  const n5 = m7ri(1000, 99999), unit = m7pick([100, 1000]);
+  out.push({ t: 'Kadiria namba ' + f(n5) + ' kwa karibu na ' + (unit === 100 ? 'mia' : 'elfu') + ' iliyo karibu.', a: f(Math.round(n5 / unit) * unit) });
+  const r6 = m7ri(100, 999);
+  out.push({ t: 'Andika kwa kirumi namba ifuatayo ' + r6, a: m7roman(r6) });
+  return out;
+}
+function m7g5q3(){
+  const out = [], st = m7ri(2, 20), sp = m7ri(3, 9), sq = [0, 1, 2, 3].map(i => st + i * sp);
+  out.push({ t: 'Wanafunzi wa darasa la tano walipewa mpangilio wa namba ufuatao ' + sq.join(', ') + ', ______. Namba inayofuata itakuwa ni ngapi?', a: (st + 4 * sp) + ' (kila namba inaongezeka kwa ' + sp + ')' });
+  const sh = m7ri(7, 9), sm = m7pick([0, 15, 30, 45]), d = m7pick([40, 45, 50, 60, 75, 80, 90, 100]), em = sh * 60 + sm + d;
+  out.push({ t: 'Kipindi cha Hisabati kilianza saa ' + m7fmtT(sh, sm) + ' asubuhi na kuisha saa ' + m7fmtT(Math.floor(em / 60), em % 60) + ' asubuhi. Kipindi hicho kilichukua muda gani?', a: m7hm(d) + ' (' + d + ' dakika)' });
+  const N = m7pick([12, 18, 20, 24, 28, 30, 36, 40, 42, 45, 48]), fs = []; for(let i = 1; i <= N; i++) if(N % i === 0) fs.push(i);
+  out.push({ t: 'Andika vigawe vyote vya ' + N + '.', a: fs.join(', ') });
+  return out;
+}
+function m7g5q4(){
+  const out = [], f = math3Fmt;
+  const p = m7pick([10, 20, 25, 50]), buy = 1000 * m7ri(4, 50), gain = buy * p / 100, sell = buy + gain;
+  out.push({ t: m7name() + ' alinunua ' + m7pick(['saa', 'baiskeli', 'redio', 'simu', 'shati', 'ndoo']) + ' kwa shilingi ' + f(buy) + ' na kuiuza kwa shilingi ' + f(sell) + '. Je, alipata faida ya asilimia ngapi?', a: 'Faida = ' + f(sell) + ' − ' + f(buy) + ' = ' + f(gain) + '; asilimia = ' + f(gain) + '/' + f(buy) + ' × 100 = ' + p + '%' });
+  let ns, tries = 0;
+  do { ns = [m7ri(10, 90), m7ri(10, 90), m7ri(10, 90), m7ri(10, 90)]; tries++; } while(ns.reduce((x, y) => x + y, 0) % 4 !== 0 && tries < 500);
+  while(ns.reduce((x, y) => x + y, 0) % 4 !== 0) ns[3]++;
+  const sum = ns.reduce((x, y) => x + y, 0);
+  out.push({ t: 'Tafuta wastani wa namba zifuatazo ' + ns.slice(0, 3).join(', ') + ' na ' + ns[3], a: '(' + ns.join(' + ') + ') ÷ 4 = ' + sum + ' ÷ 4 = ' + (sum / 4) });
+  const pc = m7pick([5, 12, 25, 35, 40, 45, 60, 75, 80]);
+  out.push({ t: 'Badili ' + pc + '% kuwa desimali', a: pc + '/100 = ' + m7dec(pc / 100, 2) });
+  return out;
+}
+function m7g5q5(){
+  const out = [], f = math3Fmt;
+  const r = m7pick([[1,2],[2,3],[3,4],[1,3],[2,5],[3,5],[1,4]]), k = m7ri(2, 12), amt = (r[0] + r[1]) * k * 1000, n1 = m7name();
+  out.push({ t: 'Shilingi ' + f(amt) + ' zimegawiwa kati ya ' + n1 + ' na ndugu yake kwa uwiano wa ' + r[0] + ':' + r[1] + '. Je, ndugu yake alipata shilingi ngapi?', a: 'Sehemu = ' + r[0] + ' + ' + r[1] + ' = ' + (r[0] + r[1]) + '; ' + r[1] + '/' + (r[0] + r[1]) + ' × ' + f(amt) + ' = sh ' + f(r[1] * k * 1000) });
+  const c = m7ri(2, 9), x = m7ri(2, 15), b = m7ri(1, 20);
+  out.push({ t: 'Tafuta thamani ya n katika ' + c + 'n + ' + b + ' = ' + (c * x + b), a: c + 'n = ' + (c * x + b) + ' − ' + b + ' = ' + c * x + '; n = ' + x });
+  const den = m7pick([3, 4, 5, 6, 8, 10]), num = m7ri(1, den - 1), N = den * m7ri(5, 15);
+  out.push({ t: 'Darasa lina wanafunzi ' + N + '. Kati yao ' + num + '/' + den + ' ni wasichana. Je, kuna wavulana wangapi?', a: 'Wasichana = ' + num + '/' + den + ' × ' + N + ' = ' + (N * num / den) + '; wavulana = ' + N + ' − ' + (N * num / den) + ' = ' + (N - N * num / den) });
+  return out;
+}
+function m7g5q6(){
+  const out = [];
+  const a = m7ri(1, 9), b = 5 * m7ri(1, 19), c = m7ri(1, 9), d = 5 * m7ri(1, 19), T = a * 100 + b + c * 100 + d;
+  out.push({ t: 'Jumlisha: m ' + a + ' sm ' + b + ' na m ' + c + ' sm ' + d + '.', a: 'm ' + Math.floor(T / 100) + ' sm ' + (T % 100) });
+  const L1 = m7ri(5, 20), ml1 = 50 * m7ri(0, 19), L2 = m7ri(1, L1 - 1), ml2 = 50 * m7ri(0, 19), t = (L1 * 1000 + ml1) - (L2 * 1000 + ml2);
+  out.push({ t: 'Toa: Lita ' + L1 + ' ml ' + ml1 + ' − Lita ' + L2 + ' ml ' + ml2 + '.', a: 'Lita ' + Math.floor(t / 1000) + ' ml ' + (t % 1000) });
+  const l = m7ri(8, 30), w = m7ri(4, l - 1);
+  out.push({ t: 'Mstatili una urefu wa sm ' + l + ' na upana wa sm ' + w + '. Tafuta mzingo wake.', a: 'Mzingo = 2 × (' + l + ' + ' + w + ') = ' + 2 * (l + w) + ' sm' });
+  return out;
+}
+function m7g5q7(){
+  const out = [];
+  const sets = [['Mahindi', 'Mpunga', 'Maharage', 'Mtama'], ['Embe', 'Chungwa', 'Papai', 'Ndizi'], ['Kiswahili', 'Hisabati', 'Sayansi', 'English'], ['Ng\'ombe', 'Mbuzi', 'Kondoo', 'Kuku']];
+  const labs = m7pick(sets), vals = labs.map(() => 10 * m7ri(2, 9)), sum = vals.reduce((x, y) => x + y, 0);
+  out.push({ t: 'Chunguza chati ya miraba ifuatayo kisha tafuta jumla ya vipimo vyote vinne.', a: vals.join(' + ') + ' = ' + sum, fig: { svg: m7svgBar(labs, vals, 'Chati ya miraba'), title: 'Chati ya miraba', size: 's' } });
+  const h = m7ri(1, 12), m = m7ri(0, 11) * 5;
+  out.push({ t: 'Andika saa inayoonyeshwa kwenye saa ifuatayo kwa tarakimu.', a: m7fmtT(h, m), fig: { svg: m7svgClock(h, m), title: 'Saa ya ukutani', size: 's' } });
+  return out;
+}
+function m7g5q8(){
+  const out = [];
+  const a = m7ri(30, 80), b = m7ri(30, 80);
+  out.push({ t: 'Tafuta thamani ya x katika pembetatu ifuatayo.', a: 'x = 180° − (' + a + '° + ' + b + '°) = ' + (180 - a - b) + '°', fig: { svg: m7svgTri(a + '°', b + '°', 'x'), title: 'Pembetatu', size: 's' } });
+  const l = m7ri(6, 20), w = m7ri(3, l - 1);
+  out.push({ t: 'Tafuta eneo la mstatili ufuatao.', a: 'Eneo = urefu × upana = ' + l + ' × ' + w + ' = ' + (l * w) + ' sm²', fig: { svg: m7svgRect(l, w), title: 'Mstatili', size: 's' } });
+  const s = m7ri(4, 25);
+  out.push({ t: 'Upande mmoja wa mraba una urefu wa sm ' + s + '. Tafuta mzingo wake.', a: 'Mzingo = 4 × ' + s + ' = ' + (4 * s) + ' sm' });
+  return out;
+}
+
+/* ---- DARASA LA 7 (magumu zaidi: kugawanya desimali/sehemu, namba hasi, riba, algebra, duara, ujazo) ---- */
+function m7g7q1(){
+  const out = [], f = math3Fmt;
+  let a = m7ri(10000, 99999), b = m7ri(10000, 99999);
+  out.push({ t: f(a) + ' + ' + f(b) + ' =', a: f(a + b) });
+  const x = m7ri(2, 9); let y = m7ri(12, 99); if(y % 10 === 0) y += 1;
+  out.push({ t: (x / 100).toFixed(2) + ' × ' + (y / 10).toFixed(1) + ' =', a: m7dec(x * y / 1000, 3) });
+  const dv = m7pick([20, 40, 50, 25, 5, 80]), q = m7ri(3, 60);
+  out.push({ t: m7dec(dv * q / 100, 2) + ' ÷ ' + m7dec(dv / 100, 2) + ' =', a: String(q) });
+  const fa = m7pick([[2,3],[3,4],[5,6],[3,5],[4,7]]), fb = m7pick([[1,2],[2,3],[3,8],[5,6],[3,4]]);
+  out.push({ t: fa[0] + '/' + fa[1] + ' ÷ ' + fb[0] + '/' + fb[1] + ' =', a: m7mixed(fa[0] * fb[1], fa[1] * fb[0]) });
+  const d1 = m7pick([2, 3, 4, 5]), d2 = m7pick([3, 4, 5, 6]), w1 = m7ri(1, 3), w2 = m7ri(1, 3), n1 = m7ri(1, d1 - 1), n2 = m7ri(1, d2 - 1);
+  out.push({ t: w1 + ' ' + n1 + '/' + d1 + ' × ' + w2 + ' ' + n2 + '/' + d2 + ' =', a: m7mixed((w1 * d1 + n1) * (w2 * d2 + n2), d1 * d2) });
+  const p = m7ri(5, 30), q2 = m7ri(5, 30), r = m7ri(5, 30);
+  out.push({ t: '(-' + p + ') + (-' + q2 + ') − (-' + r + ') =', a: String(-p - q2 + r) });
+  const pc = m7pick([12, 15, 35, 45, 65, 75]), amt = 100 * m7ri(2, 40);
+  out.push({ t: 'Tafuta ' + pc + '% ya ' + f(amt) + ' =', a: String(pc * amt / 100) });
+  const n8 = m7ri(12, 40);
+  out.push({ t: 'Tafuta kipeuo cha pili cha ' + f(n8 * n8), a: String(n8) });
+  const n9 = m7ri(6, 15);
+  out.push({ t: 'Tafuta mchemraba wa ' + n9 + ' =', a: f(n9 * n9 * n9) });
+  const dv2 = m7ri(21, 49), qq = m7ri(500, 1999);
+  out.push({ t: f(dv2 * qq) + ' ÷ ' + dv2 + ' =', a: f(qq) });
+  return out;
+}
+function m7g7q2(){
+  const out = [], f = math3Fmt;
+  let dg = m7shuf([0,1,2,3,4,5,6,7,8,9]); if(dg[0] === 0){ const i = dg.findIndex(v => v !== 0); [dg[0], dg[i]] = [dg[i], dg[0]]; }
+  const num = dg.slice(0, 7); let pos = m7ri(0, 6); while(num[pos] === 0) pos = m7ri(0, 6);
+  const val = num[pos] * Math.pow(10, 6 - pos);
+  out.push({ t: 'Andika thamani ya ' + num[pos] + ' katika namba ifuatayo ' + f(Number(num.join(''))) + '.', a: f(val) + ' (' + m7words(val).toLowerCase() + ')' });
+  const n2 = m7ri(10, 99) * 1000000 + m7ri(100, 999) * 1000 + m7pick([5, 12, 40, 150, 208, 375]);
+  out.push({ t: 'Andika namba ifuatayo kwa maneno ' + f(n2), a: m7words(n2) });
+  const dd = m7shuf([1,2,3,4,5,6,7,8,9]), dec = dd.slice(0, 4), ip = dd[4] * 10 + dd[5], kk = m7ri(1, 3);
+  out.push({ t: 'Andika thamani ya ' + dec[kk] + ' katika namba ifuatayo ' + ip + '.' + dec.join(''), a: dec[kk] + '/' + Math.pow(10, kk + 1) + ' (0.' + '0'.repeat(kk) + dec[kk] + ')' });
+  const n4 = m7ri(100000, 999999), s4 = String(n4), parts = [];
+  for(let i = 0; i < 6; i++) if(s4[i] !== '0') parts.push(s4[i] + '0'.repeat(5 - i));
+  out.push({ t: 'Andika namba ifuatayo kwa kirefu ' + f(n4) + '.', a: parts.join(' + ') });
+  let d = m7pick([4, 5, 6, 7, 8, 9, 10]), n = m7ri(d + 1, 3 * d); while(m7gcd(n, d) !== 1) n = m7ri(d + 1, 3 * d);
+  out.push({ t: 'Tafuta kipeuo cha pili cha ' + m7mixed(n * n, d * d), a: m7mixed(n, d) });
+  const r6 = m7ri(1000, 3999);
+  out.push({ t: 'Andika kwa kirumi namba ifuatayo ' + f(r6), a: m7roman(r6) });
+  return out;
+}
+function m7g7q3(){
+  const out = [], a = m7ri(2, 9), d = m7ri(3, 8), n = m7ri(8, 15), sq = [0, 1, 2, 3].map(i => a + i * d);
+  out.push({ t: 'Mfuatano wa namba ni ' + sq.join(', ') + ', ... Tafuta namba ya ' + n + ' katika mfuatano huu.', a: 'Namba ya ' + n + ' = ' + a + ' + (' + n + ' − 1) × ' + d + ' = ' + (a + (n - 1) * d) });
+  const dh = m7ri(6, 11), dm = 5 * m7ri(0, 11), ah = m7ri(1, 5), am = 5 * m7ri(0, 11), dur = (ah + 12) * 60 + am - (dh * 60 + dm);
+  out.push({ t: 'Treni iliondoka Dodoma saa ' + m7fmtT(dh, dm) + ' asubuhi na kufika Dar es Salaam saa ' + m7fmtT(ah, am) + ' jioni. Safari ilichukua muda gani?', a: m7hm(dur) + ' (' + dur + ' dakika)' });
+  const N = m7pick([60, 72, 84, 90, 120, 126, 150, 180]), fs = []; let m = N, p = 2;
+  while(m > 1){ while(m % p === 0){ fs.push(p); m /= p; } p++; }
+  out.push({ t: 'Andika ' + N + ' kama zao la vigawe tasa.', a: fs.join(' × ') + ' = ' + N });
+  return out;
+}
+function m7g7q4(){
+  const out = [], f = math3Fmt;
+  const p = m7pick([10, 15, 20, 25, 30]), price = 1000 * m7ri(10, 80), np = price * (100 - p) / 100;
+  out.push({ t: 'Bei ya ' + m7pick(['redio', 'baiskeli', 'televisheni', 'simu', 'kabati']) + ' ni shilingi ' + f(price) + '. Duka lilitoa punguzo la ' + p + '%. Je, bei mpya ni shilingi ngapi?', a: 'Punguzo = ' + p + '/100 × ' + f(price) + ' = ' + f(price * p / 100) + '; bei mpya = ' + f(price) + ' − ' + f(price * p / 100) + ' = sh ' + f(np) });
+  let A, ns, last, tries = 0;
+  do { A = m7ri(40, 90); ns = [m7ri(20, 99), m7ri(20, 99), m7ri(20, 99), m7ri(20, 99)]; last = 5 * A - ns.reduce((x, y) => x + y, 0); tries++; } while((last < 10 || last > 100) && tries < 1000);
+  if(last < 10 || last > 100){ A = 60; ns = [50, 70, 55, 65]; last = 60; }
+  out.push({ t: 'Wastani wa alama za wanafunzi watano ni ' + A + '. Alama za wanafunzi wanne ni ' + ns.join(', ') + '. Tafuta alama ya mwanafunzi wa tano.', a: '5 × ' + A + ' = ' + 5 * A + '; ' + 5 * A + ' − ' + ns.reduce((x, y) => x + y, 0) + ' = ' + last });
+  const P = 100 * m7ri(50, 500), r = m7pick([5, 8, 10, 12]), t = m7pick([2, 3, 4, 5]);
+  out.push({ t: 'Tafuta riba rahisi ya shilingi ' + f(P) + ' kwa asilimia ' + r + ' kwa mwaka kwa muda wa miaka ' + t + '.', a: 'Riba = (P × R × T)/100 = (' + f(P) + ' × ' + r + ' × ' + t + ')/100 = sh ' + f(P * r * t / 100) });
+  return out;
+}
+function m7g7q5(){
+  const out = [], f = math3Fmt;
+  const r = m7pick([[1,2,3],[2,3,5],[1,3,4],[3,4,5],[2,2,1]]), k = m7ri(2, 12), tot = r[0] + r[1] + r[2], amt = tot * k * 1000;
+  out.push({ t: 'Shilingi ' + f(amt) + ' zimegawiwa kwa ndugu watatu kwa uwiano wa ' + r.join(':') + '. Je, wa pili alipata shilingi ngapi?', a: 'Sehemu = ' + r.join(' + ') + ' = ' + tot + '; ' + r[1] + '/' + tot + ' × ' + f(amt) + ' = sh ' + f(r[1] * k * 1000) });
+  const c = m7ri(2, 9), x = m7ri(3, 20), b = m7ri(3, 30);
+  out.push({ t: 'Tafuta thamani ya x katika ' + c + 'x − ' + b + ' = ' + (c * x - b), a: c + 'x = ' + (c * x - b) + ' + ' + b + ' = ' + c * x + '; x = ' + x });
+  let w1, d1, w2, tries = 0;
+  do { w1 = m7pick([4, 6, 8, 10, 12]); d1 = m7ri(6, 30); w2 = m7pick([3, 5, 6, 9, 12, 15, 20]); tries++; } while(((w1 * d1) % w2 !== 0 || w1 === w2) && tries < 1000);
+  if((w1 * d1) % w2 !== 0){ w1 = 6; d1 = 15; w2 = 9; }
+  out.push({ t: 'Wafanyakazi ' + w1 + ' hukamilisha kazi fulani kwa siku ' + d1 + '. Wafanyakazi ' + w2 + ' wangekamilisha kazi hiyo kwa siku ngapi?', a: 'Kazi = ' + w1 + ' × ' + d1 + ' = ' + w1 * d1 + '; siku = ' + w1 * d1 + ' ÷ ' + w2 + ' = ' + (w1 * d1 / w2) });
+  return out;
+}
+function m7g7q6(){
+  const out = [];
+  const a = m7ri(2, 20), b = 50 * m7ri(1, 19), c = m7ri(2, 20), d = 50 * m7ri(1, 19), T = a * 1000 + b + c * 1000 + d;
+  out.push({ t: 'Jumlisha: Km ' + a + ' m ' + b + ' na Km ' + c + ' m ' + d + '.', a: 'Km ' + Math.floor(T / 1000) + ' m ' + (T % 1000) });
+  const k1 = m7ri(20, 90), g1 = 50 * m7ri(0, 19), k2 = m7ri(5, k1 - 5), g2 = 50 * m7ri(0, 19), t = (k1 * 1000 + g1) - (k2 * 1000 + g2);
+  out.push({ t: 'Toa: Kg ' + k1 + ' g ' + g1 + ' − Kg ' + k2 + ' g ' + g2 + '.', a: 'Kg ' + Math.floor(t / 1000) + ' g ' + (t % 1000) });
+  const s = m7pick([40, 45, 50, 60, 72, 80]), tm = m7pick([2, 3, 4, 5]);
+  out.push({ t: 'Basi lilisafiri umbali wa Km ' + (s * tm) + ' kwa saa ' + tm + '. Tafuta mwendokasi wake kwa Km kwa saa.', a: 'Mwendokasi = umbali ÷ muda = ' + (s * tm) + ' ÷ ' + tm + ' = Km ' + s + ' kwa saa' });
+  return out;
+}
+function m7g7q7(){
+  const out = [], f = math3Fmt;
+  let w, h, tries = 0; do { w = m7ri(2, 8); h = m7ri(2, 8); tries++; } while((w * h) % 2 !== 0 && tries < 100);
+  if((w * h) % 2 !== 0) h = 4;
+  const x1 = m7ri(-5, 5 - w), y1 = m7ri(-5, 5 - h);
+  out.push({ t: 'Nukta A(' + x1 + ',' + y1 + '), B(' + (x1 + w) + ',' + y1 + ') na C(' + (x1 + w) + ',' + (y1 + h) + ') zimeunganishwa kuunda pembetatu ABC. Tafuta eneo la pembetatu hiyo.', a: 'AB = ' + w + ', BC = ' + h + '; eneo = ½ × ' + w + ' × ' + h + ' = ' + (w * h / 2) + ' (vipimo²)' });
+  let ps = [10, 10, 10, 10, 10]; for(let i = 0; i < 10; i++) ps[m7ri(0, 4)] += 5;
+  const names = m7shuf(['Chakula', 'Vitabu', 'Ada', 'Usafiri', 'Mavazi']), unk = m7ri(0, 4), T = 20000 * m7ri(2, 20);
+  const secs = ps.map((p, i) => ({ name: names[i], deg: Math.round(p * 3.6), show: i !== unk }));
+  out.push({ t: 'Chati ya pai inaonyesha matumizi ya bajeti ya shilingi ' + f(T) + ' ya familia. Tafuta kiasi cha pesa kilichotumika kwa ' + names[unk].toLowerCase() + '.',
+    a: 'Pembe ya ' + names[unk].toLowerCase() + ' = ' + secs[unk].deg + '°; kiasi = ' + secs[unk].deg + '/360 × ' + f(T) + ' = sh ' + f(T * ps[unk] / 100) + ' (' + ps[unk] + '%)',
+    fig: { svg: m7svgPie(secs), title: 'Chati ya pai ya bajeti', size: 's' } });
+  return out;
+}
+function m7g7q8(){
+  const out = [];
+  const bs = m7pick([30, 45, 60, 90]);
+  out.push({ t: 'Tafuta thamani ya x katika pembetatu ifuatayo.', a: 'x + 2x + ' + bs + '° = 180°; 3x = ' + (180 - bs) + '°; x = ' + ((180 - bs) / 3) + '°', fig: { svg: m7svgTri('x', '2x', bs + '°'), title: 'Pembetatu', size: 's' } });
+  const r = m7pick([7, 14, 21, 28]);
+  out.push({ t: 'Tafuta eneo la duara lifuatalo (π = 22/7).', a: 'Eneo = πr² = 22/7 × ' + r + ' × ' + r + ' = ' + (22 * r * r / 7) + ' sm²', fig: { svg: m7svgCircle(r), title: 'Duara', size: 's' } });
+  const L = m7ri(5, 15), W = m7ri(3, 12), H = m7ri(2, 10);
+  out.push({ t: 'Boksi lina urefu wa sm ' + L + ', upana wa sm ' + W + ' na kimo cha sm ' + H + '. Tafuta ujazo wake.', a: 'Ujazo = ' + L + ' × ' + W + ' × ' + H + ' = ' + (L * W * H) + ' sm³' });
+  return out;
+}
+
+const M7_GRADE = {
+  5: { 1: m7g5q1, 2: m7g5q2, 3: m7g5q3, 4: m7g5q4, 5: m7g5q5, 6: m7g5q6, 7: m7g5q7, 8: m7g5q8 },
+  7: { 1: m7g7q1, 2: m7g7q2, 3: m7g7q3, 4: m7g7q4, 5: m7g7q5, 6: m7g7q6, 7: m7g7q7, 8: m7g7q8 }
+};
+// Darasa la 6 linaendelea kutumia violezo vya awali (m7q1-m7q8) bila mabadiliko
+function m7qFor(gradeNum, n){
+  const ov = M7_GRADE[gradeNum];
+  if(ov && ov[n]) return ov[n]();
+  return [null, m7q1, m7q2, m7q3, m7q4, m7q5, m7q6, m7q7, m7q8][n]();
+}
+
 function math7BuildExam(gradeNum){
   const std = gradeNum === 5 ? 'V' : gradeNum === 6 ? 'VI' : 'VII';
   const R = i => romanFromIndex(i), M = MATH7_M, year = new Date().getFullYear();
   const figs = {};
   const lead = { 1: 'SEHEMU A: (ALAMA 10) — Jibu maswali yote katika sehemu hii — 1.', 2: 'SEHEMU B: (ALAMA 30) — Jibu maswali yote katika sehemu hii — 2.', 7: 'SEHEMU C: (ALAMA 10) — Jibu maswali yote katika sehemu hii — 7.' };
-  const data = { 1: m7q1(), 2: m7q2(), 3: m7q3(), 4: m7q4(), 5: m7q5(), 6: m7q6(), 7: m7q7(), 8: m7q8() };
+  const data = {}; for(let n = 1; n <= 8; n++) data[n] = m7qFor(gradeNum, n); // Darasa 5 na 7 vina violezo vyao; Darasa 6 vya awali
   const sections = []; let key = 'MWONGOZO WA KUSAHIHISHA - HISABATI, DARASA LA ' + std + '\n(Majibu yamekokotolewa na programu; Swali 1-2 alama 1 kila kipengele, Swali 3-8 alama 2 kila kipengele)\n';
   for(let n = 1; n <= 8; n++){
     const mk = n === 1 ? M.q1 : n === 2 ? M.q2 : M['q' + n];
@@ -4360,10 +4628,65 @@ function mtShowWarning(){
   if(out) out.insertAdjacentHTML('afterbegin', '<div class="mt-warn">' + escapeHtml(mtWarning) + '</div>');
 }
 
+/* ===================== SHULE NA TOLEO (A/B/C) KWA MITIHANI YOTE (KIONGEZEO) =====================
+   Jina la shule + toleo huamua namba nasibu (Hisabati na uchanganyaji wa orodha): kuandika shule ileile na toleo lilelile
+   hutoa mtihani uleule; shule au toleo tofauti hutoa mtihani tofauti. Kwa masomo yanayotumia AI, AI hupewa "mwelekeo" tofauti
+   (kulingana na shule/toleo) na orodha ya maswali ya mitihani ya karibuni ya darasa/somo hilo (kwenye kifaa hiki) ili isiyarudie. */
+const MT_THEMES = ['maisha ya kijijini', 'maisha ya mjini', 'shuleni na darasani', 'shambani na kilimo', 'sokoni na biashara ndogo', 'afya na usafi',
+  'mazingira na hifadhi ya wanyama', 'usafiri na barabara', 'nyumbani na familia', 'michezo na burudani', 'ufugaji na uvuvi', 'sherehe na mikusanyiko ya jamii'];
+function mtNormSchool(s){ return String(s || '').normalize('NFC').replace(/\s+/g, ' ').trim().slice(0, 60); }
+function mtHash(str){ let h = 2166136261 >>> 0; for(let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+function mtMulberry(seed){ let a = seed >>> 0; return function(){ a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// Huweka Math.random yenye mbegu; hurejesha kazi inayorudisha ya awali (itumike kwenye finally)
+function mtSeedRandom(school, version, grade, subject){
+  const orig = Math.random;
+  Math.random = mtMulberry(mtHash(school.toLowerCase() + '|' + version + '|' + grade + '|' + subject));
+  return function(){ Math.random = orig; };
+}
+function mtRecentKey(grade, subject){ return 'mt_recent|' + grade + '|' + subject; }
+function mtRecentGet(grade, subject){ try{ return JSON.parse(localStorage.getItem(mtRecentKey(grade, subject)) || '[]'); }catch(e){ return []; } }
+function mtRecentSave(grade, subject, exam){
+  try{
+    const qs = [];
+    (exam.sections || []).forEach(s => (s.questions || []).forEach(q => {
+      const t = String(q.text || '').split('\n')[0].replace(/_{2,}|\[\s*\]/g, '').replace(/\s+/g, ' ').trim();
+      if(t.length >= 15 && t.length < 400) qs.push(t.slice(0, 80));
+    }));
+    const all = qs.concat(mtRecentGet(grade, subject)).slice(0, 60);
+    localStorage.setItem(mtRecentKey(grade, subject), JSON.stringify(all));
+  }catch(e){}
+}
+// Maelezo yanayoongezwa kwenye ombi la AI wakati wa kutengeneza mtihani (hurejeshwa kuwa tupu baada ya kumaliza)
+function mtBuildVariantNote(school, version, grade, subject){
+  const theme = (school || version) ? MT_THEMES[mtHash(school.toLowerCase() + '|' + version) % MT_THEMES.length] : MT_THEMES[Math.floor(Math.random() * MT_THEMES.length)];
+  const recent = mtRecentGet(grade, subject).slice(0, 30);
+  let n = '\n\nTOLEO LA MTIHANI HUU' + (school ? ' (shule: ' + school + (version ? ', toleo ' + version : '') + ')' : (version ? ' (toleo ' + version + ')' : '')) +
+    ': andika maswali na mifano MAPYA yasiyo ya kawaida kupita kiasi. Kwa mada zinazoruhusu, tumia mazingira ya "' + theme + '" kwenye hadithi na mifano ili mtihani huu utofautiane na mitihani mingine ya mada hiyo hiyo. Majina ya watu na maeneo yawe ya Kitanzania na tofauti.';
+  if(recent.length) n += '\nUSIRUDIE maswali haya yaliyotumika karibuni (andika mengine tofauti):\n- ' + recent.join('\n- ');
+  return n;
+}
+// Weka jina la shule na toleo kwenye kichwa cha karatasi
+function mtApplySchoolHeader(exam, school, version){
+  if(!exam || (!school && !version)) return;
+  const line = (school ? 'SHULE: ' + school.toUpperCase() : '') + (school && version ? '  —  ' : '') + (version ? 'TOLEO ' + version : '');
+  if(!exam.header) exam.header = { lines: [], instructions: [], assessorTable: false };
+  if(!Array.isArray(exam.header.lines)) exam.header.lines = [];
+  exam.header.lines = exam.header.lines.filter(l => !/^SHULE:/.test(l));
+  exam.header.lines.splice(Math.min(1, exam.header.lines.length), 0, line);
+}
+(function(){
+  function init(){
+    try{ const el = document.getElementById('mt_school'); if(el && !el.value) el.value = localStorage.getItem('mt_school') || ''; }catch(e){}
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+
 async function generateMitihani(){
   const grade = document.getElementById('mt_grade').value;
   const subject = document.getElementById('mt_subject').value;
   const topics = document.getElementById('mt_topics').value.trim();
+  const school = mtNormSchool((document.getElementById('mt_school')||{}).value);
+  const version = ((document.getElementById('mt_version')||{}).value) || '';
   const btn = document.getElementById('mt_btn');
   const output = document.getElementById('mt_output');
   const copyBtn = document.getElementById('mt_copyBtn');
@@ -4454,8 +4777,17 @@ MUHIMU SANA: (1) Kila swali LAZIMA lihusiane moja kwa moja na mada "${topics}" n
     while(stack.length){ const open = stack.pop(); s += (open==='{') ? '}' : ']'; }
     return s;
   }
+  let mtRestoreRnd = null;
   try{
     mtWarning = '';
+    try{ localStorage.setItem('mt_school', school); }catch(e){}
+    if(school || version){
+      mtRestoreRnd = mtSeedRandom(school, version, grade, subject);   // namba/uchanganyaji unaotabirika kwa shule+toleo
+      window.MT_VARIANT_NOTE = mtBuildVariantNote(school, version, grade, subject);
+    } else {
+      window.MT_VARIANT_NOTE = mtBuildVariantNote('', '', grade, subject);   // bila shule: bado usirudie maswali ya karibuni
+    }
+    window.MT_AI_USED = false;
     if(useEng4){
       const r = await generateEng4Exam(topics, subject, gradeNum);
       examData = r.exam; mtWarning = r.warning || '';
@@ -4497,6 +4829,8 @@ MUHIMU SANA: (1) Kila swali LAZIMA lihusiane moja kwa moja na mada "${topics}" n
         mtWarning = '⚠️ AI ilifika kikomo cha maneno — hakikisha maswali yote yapo; ikiwa yamepungua bonyeza "Tengeneza Mtihani" tena.';
       }
     }
+    mtApplySchoolHeader(examData, school, version);
+    if(window.MT_AI_USED) mtRecentSave(grade, subject, examData);
     document.getElementById('mt_headLabel').textContent = examData.examTitle || `${subject.toUpperCase()} — ${grade.toUpperCase()}`;
     renderExamEditor();
     mtShowWarning();
@@ -4504,6 +4838,8 @@ MUHIMU SANA: (1) Kila swali LAZIMA lihusiane moja kwa moja na mada "${topics}" n
   }catch(err){
     output.innerHTML = `<div class="error-box">Samahani, imeshindikana kutengeneza mtihani (${escapeHtml(err.message||"")}). Jaribu tena.</div>`;
   }finally{
+    if(mtRestoreRnd) mtRestoreRnd();
+    window.MT_VARIANT_NOTE = ''; window.MT_AI_USED = false;
     btn.disabled = false; btn.textContent = originalLabel;
   }
 }
@@ -10409,4 +10745,3 @@ function phBar(){
 </script>
 </body>
 </html>
-
