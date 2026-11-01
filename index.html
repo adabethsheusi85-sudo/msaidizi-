@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -5531,20 +5530,23 @@ function azTermPlan(t, capStr){
   const after = hasBreak ? azWeeksBetween(Bo, C) : [];
   return { before, after, hasBreak, mclose:c.mclose, mopen:c.mopen, close:c.close, total: before.length + after.length };
 }
-/* Darasa la 6 na la 7: azimio la maandalizi ya mitihani linaishia Juni. Madarasa mengine: azimio moja linaloendelea (Muhula 1 + Muhula 2). */
+/* Darasa la 6 na la 7: azimio linaishia Agosti (Septemba = marudio ya mtihani wa taifa). Darasa la 4: azimio linaishia Septemba (Oktoba = mtihani wa taifa). Madarasa mengine: azimio moja linaloendelea (Muhula 1 + Muhula 2). */
 function azIsJuneGrade(grade){ return /^\s*darasa\s+la\s+(6|7|vi|vii)\s*$/i.test(grade || ''); }
+function azIsGrade4(grade){ return /^\s*darasa\s+la\s+(4|iv)\s*$/i.test(grade || ''); }
 function azLayout(grade, weeksInput){
   const cal = azCalGet();
   const junior = azIsJuneGrade(grade);
+  const g4 = azIsGrade4(grade);
+  const capIdx = junior ? 7 : (g4 ? 8 : 99);   // faharasa ya mwezi wa mwisho: 7 = Agosti, 8 = Septemba
   const fb = ()=> Array.from({length: weeksInput || 13}, ()=>({month:'', wom:''}));
   const year1 = (azParse(cal.t1.open) || new Date()).getFullYear();
+  const year2 = (azParse(cal.t2.open) || azParse(cal.t1.open) || new Date()).getFullYear();
   const slots = [], breaks = [];
-  const addTerm = (termNo, plan, junior)=>{
+  const addTerm = (termNo, plan, limited)=>{
     let list = plan ? plan.before.concat(plan.after) : fb();
     let brkAt = (plan && plan.hasBreak) ? plan.before.length : -1;
-    if(junior){   // ondoa wiki zilizo nje ya Januari–Juni
-      const keep = list.map(x=> !x.month || AZ_MONTHS.indexOf(x.month) <= 5);
-      const cut = keep.filter(k=>!k).length;
+    if(limited){   // ondoa wiki zilizo nje ya mwezi wa mwisho wa azimio
+      const keep = list.map(x=> !x.month || AZ_MONTHS.indexOf(x.month) <= capIdx);
       list = list.filter((x,i)=> keep[i]);
       if(brkAt > list.length) brkAt = -1;
     }
@@ -5553,9 +5555,17 @@ function azLayout(grade, weeksInput){
     return plan;
   };
   if(junior){
-    const p = azTermPlan('t1', year1 + '-06-30');
-    addTerm(1, p, true);
-    breaks.push({ at: slots.length, type:'june', close: p ? p.close : '' });
+    const p1 = azTermPlan('t1'), p2 = azTermPlan('t2', year2 + '-08-31');
+    addTerm(1, p1, false);
+    if(p1) breaks.push({ at: slots.length, type:'end1', close:p1.close, nextOpen:cal.t2.open });
+    addTerm(2, p2, true);
+    breaks.push({ at: slots.length, type:'june', close: p2 ? p2.close : '' });
+  } else if(g4){
+    const p1 = azTermPlan('t1'), p2 = azTermPlan('t2', year2 + '-09-30');
+    addTerm(1, p1, false);
+    if(p1) breaks.push({ at: slots.length, type:'end1', close:p1.close, nextOpen:cal.t2.open });
+    addTerm(2, p2, true);
+    breaks.push({ at: slots.length, type:'sep4', close: p2 ? p2.close : '' });
   } else {
     const p1 = azTermPlan('t1'), p2 = azTermPlan('t2');
     addTerm(1, p1, false);
@@ -5563,7 +5573,7 @@ function azLayout(grade, weeksInput){
     addTerm(2, p2, false);
     if(p2) breaks.push({ at: slots.length, type:'end2', close:p2.close });
   }
-  return { junior, slots, breaks, usable: Math.max(0, slots.length - 1), calendarOk: junior ? !!azTermPlan('t1') : !!(azTermPlan('t1') && azTermPlan('t2')) };
+  return { junior, g4, slots, breaks, usable: Math.max(0, slots.length - 1), calendarOk: !!(azTermPlan('t1') && azTermPlan('t2')) };
 }
 function azCalRefresh(){
   const t1 = parseInt((document.getElementById('az_cal_t1_days')||{}).value,10) || 0;
@@ -5575,7 +5585,9 @@ function azCalRefresh(){
   if(lay.calendarOk && w) w.value = lay.slots.length;
   const info = document.getElementById('az_scope_info');
   if(info) info.textContent = lay.junior
-    ? 'Januari – Juni (maandalizi ya mitihani) · wiki ' + lay.slots.length
+    ? 'Januari – Agosti (maandalizi ya mtihani wa taifa; Septemba ni marudio) · wiki ' + lay.slots.length
+    : lay.g4
+    ? 'Januari – Septemba (Oktoba ni mtihani wa taifa; marudio yanasubiri) · wiki ' + lay.slots.length
     : 'Muhula wa 1 + wa 2 kwa pamoja (azimio moja linaloendelea) · wiki ' + lay.slots.length;
 }
 function azCalInit(){
@@ -6010,7 +6022,7 @@ async function generateAzimio(){
     const plan = lay.calendarOk;
     const termNo = 1;                       // azimio moja: mada zote zinagawanywa kwenye wiki zote za kipindi
     const usable1 = lay.usable, usable2 = 0; // wiki ya mwisho = Marudio na Mtihani
-    const scopeLabel = lay.junior ? 'Maandalizi ya mitihani (Januari – Juni)' : 'Muhula wa Kwanza na wa Pili (azimio moja)';
+    const scopeLabel = lay.junior ? 'Maandalizi ya mitihani (Januari – Agosti)' : lay.g4 ? 'Muhula wa Kwanza na wa Pili (Januari – Septemba)' : 'Muhula wa Kwanza na wa Pili (azimio moja)';
     const LG = azLang(subject);
     const recKey = ({ "History ya Tanzania na Maadili":"Historia ya Tanzania na Maadili", "Sayansi na Teknolojia":"Sayansi" })[subject] || subject;
     const rec = (MTAALA_TIE[grade] && MTAALA_TIE[grade][recKey]) || null;
@@ -6021,7 +6033,7 @@ async function generateAzimio(){
     try{ token = await firebase.auth().currentUser.getIdToken(); }
     catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); }
     const reqBody = JSON.stringify({ grade, subject, termNo, usable1, usable2, rec,
-      mode: lay.junior ? 'june' : 'merged', endMonth: lay.junior ? 'Juni' : '',
+      mode: lay.junior ? 'june' : 'merged', endMonth: lay.junior ? 'Agosti' : (lay.g4 ? 'Septemba' : ''),
       slots: slots.map(x=>({ month: x.month || '', wom: x.wom || '' })) });
     const doPost = (tk)=> fetch(PH_PROXY_URL + '/azimio', {
       method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + tk }, body: reqBody });
@@ -6049,7 +6061,8 @@ async function generateAzimio(){
     const brkAt = {}; lay.breaks.forEach(b=>{ (brkAt[b.at] = brkAt[b.at] || []).push(b); });
     const brkRow = (b)=>{
       if(b.type==='mid') return { brk:true, split:6, left: LG==='sw' ? 'MID TERM TEST (Mtihani wa Kati ya Muhula) — Likizo Fupi' : 'MID TERM TEST — SHORT HOLIDAY', right:`${azFmt(b.mclose)} — ${azFmt(b.mopen)}` };
-      if(b.type==='june') return { brk:true, split:6, left: LG==='sw' ? 'MWISHO WA AZIMIO — MAANDALIZI YA MITIHANI (JUNI)' : 'END OF SCHEME — EXAM PREPARATION (JUNE)', right: azFmt(b.close) || '—' };
+      if(b.type==='june') return { brk:true, split:6, left: LG==='sw' ? 'MWISHO WA AZIMIO (AGOSTI) — SEPTEMBA: MARUDIO YA MTIHANI WA TAIFA' : 'END OF SCHEME (AUGUST) — SEPTEMBER: NATIONAL EXAM REVISION', right: azFmt(b.close) || '—' };
+      if(b.type==='sep4') return { brk:true, split:6, left: LG==='sw' ? 'MWISHO WA AZIMIO (SEPTEMBA) — MARUDIO YANASUBIRI MTIHANI WA TAIFA (OKTOBA)' : 'END OF SCHEME (SEPTEMBER) — REVISION AWAITS NATIONAL EXAM (OCTOBER)', right: azFmt(b.close) || '—' };
       const nextOpen = b.type==='end1' && b.nextOpen && azFmt(b.nextOpen) ? azFmt(b.nextOpen) : (LG==='sw' ? 'kufungua mwaka unaofuata' : 'opening of next year');
       const lbl = b.type==='end1' ? (LG==='sw' ? 'LIKIZO YA MUHULA WA KWANZA' : 'END OF TERM ONE HOLIDAY') : (LG==='sw' ? 'LIKIZO YA MWISHO WA MWAKA (MUHULA WA PILI)' : 'END OF YEAR HOLIDAY (TERM TWO)');
       return { brk:true, split:6, left:lbl, right:`${azFmt(b.close)} — ${nextOpen}` };
@@ -6082,16 +6095,16 @@ async function generateAzimio(){
     if(missingRows) note += `Onyo: seva ilirudisha wiki ${srvRows.length} kati ya ${slots.length}; wiki ${missingRows} zimeachwa wazi — bonyeza "Tengeneza" tena. `;
     if(!plan) note += 'Kalenda ya muhula huu haijakamilika — jaza tarehe kwenye jedwali la kalenda juu ili Mwezi, Wiki na Mid-term vijipange zenyewe. ';
     if(jr){
-      note += `Mtaala rasmi wa TIE: mada zote na shughuli zote zimegawiwa kwenye wiki zote za kufundisha za ${lay.junior ? 'muhula wa kwanza (Januari – Juni)' : 'mwaka'} kwa mpangilio wa mtaala.${g5Hist ? ' Kila shughuli ya mtaala imeandikwa mara moja tu kwa maneno ya mtaala, na wiki zake zimeunganishwa (mfano Januari, Wiki 1–3). Mada zimesogezwa hadi mwisho wa kalenda; hakuna maudhui yaliyoongezwa nje ya mtaala.' : ''} Kila mada ndogo imepewa wiki kulingana na vipindi vyake vya mtaala (au idadi ya shughuli kama vipindi havipo), na kila shughuli iko kwenye mstari wake kwa maneno ya mtaala.${g5Hist ? '' : ' Wiki ya mwisho ni Marudio na Mtihani.'} Mbinu, Zana na Zana za Upimaji zimechaguliwa kulingana na mada na shughuli husika (hazirudiwi mfululizo) — zibadilishe kulingana na mazingira ya shule yako; ongeza kurasa kwenye Rejea. Safu ya Maoni imeachwa wazi kwa makusudi.`;
+      note += `Mtaala rasmi wa TIE: mada zote na shughuli zote zimegawiwa kwenye wiki zote za kufundisha za ${lay.junior ? 'Januari – Agosti' : lay.g4 ? 'Januari – Septemba' : 'mwaka'} kwa mpangilio wa mtaala.${g5Hist ? ' Kila shughuli ya mtaala imeandikwa mara moja tu kwa maneno ya mtaala, na wiki zake zimeunganishwa (mfano Januari, Wiki 1–3). Mada zimesogezwa hadi mwisho wa kalenda; hakuna maudhui yaliyoongezwa nje ya mtaala.' : ''} Kila mada ndogo imepewa wiki kulingana na vipindi vyake vya mtaala (au idadi ya shughuli kama vipindi havipo), na kila shughuli iko kwenye mstari wake kwa maneno ya mtaala.${g5Hist ? '' : ' Wiki ya mwisho ni Marudio na Mtihani.'} Mbinu, Zana na Zana za Upimaji zimechaguliwa kulingana na mada na shughuli husika (hazirudiwi mfululizo) — zibadilishe kulingana na mazingira ya shule yako; ongeza kurasa kwenye Rejea. Safu ya Maoni imeachwa wazi kwa makusudi.`;
       if(g5Hist) note += ` Ukaguzi wa ndani kabla ya kuonyesha: umefaulu ✓ (shughuli ${jr.totalActs}/${jr.totalActs} za mtaala zipo kwa mpangilio wake, hakuna mstari wa ziada, mada zinafika ${slots.length ? slots[slots.length-1].month : '—'}).`;
       note += jr.check.ok ? ` Ukaguzi wa sheria kali: umefaulu ✓ (shughuli ${jr.totalActs}/${jr.totalActs} zimewekwa, safu ${jr.check.rowsChecked} zimejazwa zote isipokuwa Maoni, aina ${jr.check.distinctM} za mbinu).` : ` Onyo la ukaguzi wa sheria kali: ${jr.check.problems.join('; ')}.`;
-      if(jr.overloaded) note += ` Onyo: mtaala unahitaji vipindi ${jr.needed} lakini kalenda ya muhula wa kwanza ina vipindi ${jr.capacity} tu (wiki ${jr.teachWeeks} × vipindi ${rec.w} kwa wiki). Mada zote zimewekwa ndani ya muhula wa kwanza kama ulivyoagiza, lakini wiki zina shughuli nyingi kuliko vipindi vilivyopo — punguza kina cha mada au ongeza vipindi.`;
+      if(jr.overloaded) note += ` Onyo: mtaala unahitaji vipindi ${jr.needed} lakini kalenda ya azimio hili ina vipindi ${jr.capacity} tu (wiki ${jr.teachWeeks} × vipindi ${rec.w} kwa wiki). Mada zote zimewekwa ndani ya kalenda ya azimio kama ulivyoagiza, lakini wiki zina shughuli nyingi kuliko vipindi vilivyopo — punguza kina cha mada au ongeza vipindi.`;
       else if(!jr.hasCap) note += ' Kumbuka: idadi ya vipindi kwa wiki haijawekwa kwenye data ya mtaala huu, kwa hiyo haikuweza kukaguliwa kama vipindi vinatosha.';
       if(jr.overflow) note += ` Onyo: kalenda haina wiki za kufundisha (${jr.teachWeeks}); mada ndogo ${jr.overflow} hazikupata wiki.`;
     }
     else if(!data) note += 'Hakuna data ya mtaala rasmi kwa somo/darasa hili bado — jaza jedwali mwenyewe. ';
     else {
-      note += `Vipindi (${data.weekly || '—'} kwa wiki) na mpangilio wa mada umetoka mtaala rasmi wa TIE; mada zimepangwa kwa mwendo unaofika mwisho wa mwaka (hadi Novemba), na wiki ya mwisho ya kila muhula imetengwa kwa marudio na mtihani. Mbinu, Zana, Zana za Upimaji na Maoni ni mapendekezo ya kiotomatiki (kulingana na somo na aina ya shughuli) — yabadilishe kulingana na mazingira ya shule yako; Rejea jaza mwenyewe.`;
+      note += `Vipindi (${data.weekly || '—'} kwa wiki) na mpangilio wa mada umetoka mtaala rasmi wa TIE; mada zimepangwa kwa mwendo unaofika mwisho wa azimio (${lay.g4 ? 'hadi Septemba' : 'hadi Novemba'}), na wiki ya mwisho ya kila muhula imetengwa kwa marudio na mtihani. Mbinu, Zana, Zana za Upimaji na Maoni ni mapendekezo ya kiotomatiki (kulingana na somo na aina ya shughuli) — yabadilishe kulingana na mazingira ya shule yako; Rejea jaza mwenyewe.`;
       const totalUsable = usable1;
       if(data.seq.length > totalUsable + 0) note += ` Kumbuka: mtaala una wiki ${data.seq.length} lakini kalenda ina wiki ${totalUsable} za kufundisha — baadhi ya mada za mwisho hazikutoshea.`;
     }
@@ -6109,7 +6122,7 @@ async function generateAzimio(){
     ['az_copyBtn','az_printBtn','az_docxBtn','az_saveBtn'].forEach(id=>{ const b=document.getElementById(id); if(b) b.classList.remove('hidden'); });
     const sb = document.getElementById('az_saveBtn'); if(sb){ sb.textContent = '💾 Hifadhi Azimio'; sb.disabled = false; }
     if(status) status.textContent = plan
-      ? `Azimio limetengenezwa kufuata kalenda (wiki ${slots.length}${lay.breaks.some(b=>b.type==='mid') ? ', Mid-term imeingizwa' : ''}${lay.junior ? ', hadi Juni' : ', mihula yote kwa pamoja'}).`
+      ? `Azimio limetengenezwa kufuata kalenda (wiki ${slots.length}${lay.breaks.some(b=>b.type==='mid') ? ', Mid-term imeingizwa' : ''}${lay.junior ? ', hadi Agosti' : lay.g4 ? ', hadi Septemba' : ', mihula yote kwa pamoja'}).`
       : 'Azimio limetengenezwa (kalenda haijakamilika — wiki zimetumia idadi uliyoandika).';
   }catch(e){
     if(status) status.textContent = 'Hitilafu: ' + e.message;
@@ -10745,3 +10758,4 @@ function phBar(){
 </script>
 </body>
 </html>
+
