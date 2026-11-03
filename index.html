@@ -6022,7 +6022,7 @@ async function generateAzimio(){
     let token;
     try{ token = await firebase.auth().currentUser.getIdToken(); }
     catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); }
-    const reqBody = JSON.stringify({ grade, subject, termNo, usable1, usable2, rec,
+    const reqBody = JSON.stringify({ grade, subject, termNo, usable1, usable2, rec, school, teacher,
       mode: lay.junior ? 'june' : 'merged', endMonth: lay.junior ? 'Juni' : '',
       slots: slots.map(x=>({ month: x.month || '', wom: x.wom || '' })) });
     const doPost = (tk)=> fetch(PH_PROXY_URL + '/azimio', {
@@ -10743,6 +10743,134 @@ function phBar(){
   function go(){ if(window.__libsStarted)return; window.__libsStarted=true; L.forEach(function(s){one(s,1)}); }
   window.__loadHeavyLibs=go;
   if(document.readyState==='complete') setTimeout(go,1500); else window.addEventListener('load',function(){setTimeout(go,1500)});
+})();
+</script>
+<script id="azMonitor">
+/* ===== AZIMIO ACTIVITY MONITORING — dashibodi ya admin (kiongezeo huru, haigusi Admin Dashboard ya zamani) ===== */
+(function(){
+  var panel=null, events=[], cursor=null, loading=false;
+  function $(i){return document.getElementById(i);}
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  var PLAN={trial:'Majaribio',paid:'Aliyelipia',admin:'Admin'};
+  var TZ='Africa/Dar_es_Salaam';
+  function fmt(t){try{return new Date(t).toLocaleString('en-GB',{timeZone:TZ,day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return ''+t;}}
+  function dayKey(t){try{return new Date(t).toLocaleDateString('en-CA',{timeZone:TZ});}catch(e){return '';}}
+
+  async function call(path,body){
+    var u=firebase.auth().currentUser; if(!u) throw new Error('Hujaingia.');
+    var tk=await u.getIdToken();
+    var r=await fetch(PH_PROXY_URL+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify(body||{})});
+    var j=null; try{j=await r.json();}catch(e){}
+    if(!r.ok) throw new Error((j&&j.error&&j.error.message)||('Hitilafu '+r.status));
+    return j;
+  }
+
+  function addCss(){
+    if($('azmCss')) return;
+    var st=document.createElement('style'); st.id='azmCss';
+    st.textContent='#azMon{position:fixed;inset:0;z-index:8700;display:none;overflow:auto;background:var(--chalk,#F4EFE1);font-family:"Helvetica Neue",Arial,sans-serif;color:#222}'
+    +'#azMon .azm-in{max-width:1100px;margin:0 auto;padding:14px 14px 40px}'
+    +'#azMon h2{margin:0;font-size:19px}#azMon h3{font-size:15px;margin:18px 0 6px}'
+    +'#azMon .azm-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-right:60px}'
+    +'#azMon .azm-btn{border:0;border-radius:6px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;color:#fff;background:#15291F;margin:4px 6px 0 0}'
+    +'#azMon .azm-btn.red{background:#b3261e}'
+    +'#azMon .azm-btn:disabled{opacity:.55;cursor:wait}'
+    +'#azMon input{width:100%;padding:9px 12px;border:1px solid #bbb;border-radius:6px;font-size:14px;box-sizing:border-box;margin:8px 0}'
+    +'#azMon .azm-cards{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}'
+    +'#azMon .azm-card{background:#fff;border:1px solid #d8cfb4;border-radius:8px;padding:8px 14px;min-width:120px}'
+    +'#azMon .azm-card b{display:block;font-size:20px}#azMon .azm-card span{font-size:12px;color:#555}'
+    +'#azMon .azm-wrap{overflow-x:auto;background:#fff;border:1px solid #d8cfb4;border-radius:8px}'
+    +'#azMon table{border-collapse:collapse;width:100%;font-size:13px}'
+    +'#azMon th,#azMon td{padding:7px 9px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}'
+    +'#azMon th{background:#f3ecd6;white-space:nowrap}'
+    +'#azMon .azm-bad{color:#b3261e;font-weight:700}#azMon .azm-warn{color:#c77700;font-weight:700}#azMon .azm-ok{color:#2e7d32}'
+    +'#azMon .azm-msg{font-size:13px;margin:6px 0;min-height:18px}';
+    document.head.appendChild(st);
+  }
+
+  function msg(t,bad){var m=$('azmMsg'); if(m){m.textContent=t||''; m.style.color=bad?'#b3261e':'#333';}}
+
+  function openPanel(){
+    addCss();
+    if(!panel){
+      panel=document.createElement('div'); panel.id='azMon';
+      panel.innerHTML='<div class="azm-in"><div class="azm-h"><h2>AZIMIO ACTIVITY MONITORING</h2><button type="button" class="azm-btn red" id="azmClose">Funga</button></div>'
+        +'<input id="azmSearch" type="search" placeholder="Tafuta kwa email, UID, shule, mwalimu au somo..." autocomplete="off">'
+        +'<button type="button" class="azm-btn" id="azmRef">Onyesha upya</button><button type="button" class="azm-btn" id="azmMore" style="display:none">Pakia zaidi</button>'
+        +'<div class="azm-msg" id="azmMsg"></div><div class="azm-cards" id="azmCards"></div>'
+        +'<h3>Akaunti</h3><div class="azm-wrap"><table><thead><tr><th>Akaunti</th><th>Aina</th><th>Yaliyofanikiwa</th><th>Yaliyokataliwa</th><th>Shule</th><th>Walimu</th><th>Mara ya mwisho</th><th>Tahadhari</th></tr></thead><tbody id="azmAcc"></tbody></table></div>'
+        +'<h3>Matukio ya hivi karibuni</h3><div class="azm-wrap"><table><thead><tr><th>Muda</th><th>Akaunti</th><th>Aina</th><th>Darasa</th><th>Somo</th><th>Shule</th><th>Mwalimu</th><th>Matokeo</th></tr></thead><tbody id="azmEv"></tbody></table></div></div>';
+      document.body.appendChild(panel);
+      $('azmClose').onclick=function(){panel.style.display='none';};
+      $('azmRef').onclick=function(){load(false);};
+      $('azmMore').onclick=function(){load(true);};
+      $('azmSearch').addEventListener('input',draw);
+    }
+    panel.style.display='block';
+    load(false);
+  }
+
+  async function load(more){
+    if(loading) return; loading=true;
+    var rb=$('azmRef'), mb=$('azmMore'); if(rb) rb.disabled=true; if(mb) mb.disabled=true;
+    msg('Inapakia...');
+    try{
+      var j=await call('/azimio-admin/events',{limit:500,cursor:more?cursor:undefined});
+      events=more?events.concat(j.events||[]):(j.events||[]);
+      cursor=j.cursor||null;
+      draw();
+      msg(events.length+' matukio yamepakiwa'+(cursor?' (yapo zaidi, bonyeza "Pakia zaidi")':'.'));
+    }catch(e){ msg(e.message,true); }
+    loading=false; if(rb) rb.disabled=false; if(mb){mb.disabled=false; mb.style.display=cursor?'inline-block':'none';}
+  }
+
+  function label(e){return esc(e.em||e.uid||'');}
+  function draw(){
+    var q=(($('azmSearch')||{}).value||'').trim().toLowerCase();
+    var list=events.filter(function(e){
+      if(!q) return true;
+      return [e.em,e.uid,e.sch,e.tch,e.s,e.g].join(' ').toLowerCase().indexOf(q)>-1;
+    });
+    var agg={}, today=dayKey(Date.now()), okAll=0, limAll=0, todayOk=0;
+    list.forEach(function(e){
+      var a=agg[e.uid]||(agg[e.uid]={uid:e.uid,em:e.em||'',plan:e.plan,ok:0,lim:0,last:0,sch:{},tch:{}});
+      if(e.r==='ok'){a.ok++; okAll++; if(dayKey(e.t)===today) todayOk++;} else {a.lim++; limAll++;}
+      if(e.t>a.last) a.last=e.t;
+      if(e.sch) a.sch[e.sch.toLowerCase()]=e.sch;
+      if(e.tch) a.tch[e.tch.toLowerCase()]=e.tch;
+    });
+    var accs=Object.keys(agg).map(function(k){return agg[k];}).sort(function(x,y){return y.last-x.last;});
+    $('azmCards').innerHTML=
+      '<div class="azm-card"><b>'+okAll+'</b><span>Maazimio yaliyotengenezwa</span></div>'
+      +'<div class="azm-card"><b>'+todayOk+'</b><span>Leo</span></div>'
+      +'<div class="azm-card"><b>'+limAll+'</b><span>Yaliyokataliwa (kikomo)</span></div>'
+      +'<div class="azm-card"><b>'+accs.length+'</b><span>Akaunti</span></div>';
+    $('azmAcc').innerHTML=accs.map(function(a){
+      var ns=Object.keys(a.sch).length, nt=Object.keys(a.tch).length, flags=[];
+      if(a.lim>0) flags.push('<span class="azm-bad">Amefikia kikomo</span>');
+      if(a.plan!=='admin' && (ns>=3||nt>=3)) flags.push('<span class="azm-warn">Shule/walimu wengi</span>');
+      return '<tr><td>'+label(a)+'</td><td>'+esc(PLAN[a.plan]||a.plan||'')+'</td><td>'+a.ok+'</td><td>'+a.lim+'</td><td>'+ns+'</td><td>'+nt+'</td><td>'+esc(fmt(a.last))+'</td><td>'+(flags.join('<br>')||'<span class="azm-ok">—</span>')+'</td></tr>';
+    }).join('')||'<tr><td colspan="8">Hakuna matukio bado.</td></tr>';
+    $('azmEv').innerHTML=list.map(function(e){
+      var ok=e.r==='ok';
+      return '<tr><td>'+esc(fmt(e.t))+'</td><td>'+label(e)+'</td><td>'+esc(PLAN[e.plan]||e.plan||'')+'</td><td>'+esc(e.g||'')+'</td><td>'+esc(e.s||'')+'</td><td>'+esc(e.sch||'')+'</td><td>'+esc(e.tch||'')+'</td><td>'+(ok?'<span class="azm-ok">Imefanikiwa</span>':'<span class="azm-bad">Imekataliwa (kikomo)</span>')+'</td></tr>';
+    }).join('')||'<tr><td colspan="8">Hakuna matukio bado.</td></tr>';
+  }
+
+  /* Kitufe kinaonekana kwa admin peke yake (kinafuata kitufe cha "Admin" kilichopo) */
+  function syncBtn(){
+    var bar=$('fbBar'), adm=$('msAdmBtn'); if(!bar||!adm) return;
+    var b=$('azMonBtn');
+    if(!b){
+      b=document.createElement('button'); b.type='button'; b.id='azMonBtn'; b.textContent='Azimio Monitor';
+      b.style.background='#2f6f8f'; b.style.display='none';
+      bar.insertBefore(b,adm.nextSibling);
+      b.onclick=openPanel;
+    }
+    var show=false; try{show=getComputedStyle(adm).display!=='none';}catch(e){}
+    b.style.display=show?'inline-block':'none';
+  }
+  setInterval(syncBtn,2000);
 })();
 </script>
 </body>
