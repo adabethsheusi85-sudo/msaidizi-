@@ -9868,7 +9868,7 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
 .msbtn{border:0;border-radius:6px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;color:#fff;background:var(--board-dark,#15291F);margin:4px 6px 0 0}
 .msbtn.alt{background:#d9932f}.msbtn.red{background:#b3261e}.msbtn:disabled{opacity:.55;cursor:wait}
 .msbox{background:#fff;border:1px solid #d8cfb4;border-radius:8px;padding:10px 12px;font-size:13.5px;margin:8px 0;word-break:break-word}
-#msAdm{z-index:8600;background:var(--chalk,#F4EFE1)}
+#msAdm{z-index:9100;background:var(--chalk,#F4EFE1)}
 #msAdm .msa-in{max-width:1100px;margin:0 auto;padding:14px 14px 40px}
 #msAdm .msa-h{display:flex;align-items:center;gap:10px;padding-right:170px;flex-wrap:wrap}
 #msAdm h2{margin:0;font-size:19px}
@@ -9884,7 +9884,7 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
 .mst{display:inline-block;padding:2px 9px;border-radius:12px;color:#fff;font-weight:700;font-size:12px;background:#777}
 .mst.PAYMENT_PENDING,.mst.PENDING{background:#8a5cc0}.mst.PAID{background:#2e7d32}.mst.NONE{background:#777}
 .mst.TRIAL{background:#2f6f8f}.mst.ACTIVE{background:#2e7d32}.mst.EXPIRED{background:#b3261e}
-#msModal{position:fixed;inset:0;z-index:8700;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:14px;font-family:'Helvetica Neue',Arial,sans-serif;color:#222}
+#msModal{position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:14px;font-family:'Helvetica Neue',Arial,sans-serif;color:#222}
 #msModal .msm{background:#F4EFE1;border-radius:12px;padding:18px;width:100%;max-width:640px;max-height:85vh;overflow:auto}
 #msModal h3{margin:0 0 8px;font-size:17px}
 #msModal table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:520px}
@@ -10768,7 +10768,7 @@ function phBar(){
   function addCss(){
     if($('azmCss')) return;
     var st=document.createElement('style'); st.id='azmCss';
-    st.textContent='#azMon{position:fixed;inset:0;z-index:8700;display:none;overflow:auto;background:var(--chalk,#F4EFE1);font-family:"Helvetica Neue",Arial,sans-serif;color:#222}'
+    st.textContent='#azMon{position:fixed;inset:0;z-index:9100;display:none;overflow:auto;background:var(--chalk,#F4EFE1);font-family:"Helvetica Neue",Arial,sans-serif;color:#222}'
     +'#azMon .azm-in{max-width:1100px;margin:0 auto;padding:14px 14px 40px}'
     +'#azMon h2{margin:0;font-size:19px}#azMon h3{font-size:15px;margin:18px 0 6px}'
     +'#azMon .azm-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-right:60px}'
