@@ -5581,8 +5581,9 @@ function azLayout(grade, weeksInput){
       const mi = plan.before.length - 2;
       if(list[mi] && list[mi].kind === 'teach'){ list[mi].kind = 'exam'; list[mi].examType = 'mid'; }
       // Wiki ya mwisho kabla ya likizo fupi (Machi / Septemba) = Kufunga tu (hakuna mada wala shughuli nyingine)
+      // (Haitumiki kwa darasa lenye kikomo cha Mtihani wa Taifa kilichoangukia likizo fupi — mf. Darasa la 4: azimio linaishia Septemba wiki ya 2 kama lilivyokuwa)
       const mc = plan.before.length - 1;
-      if(list[mc] && list[mc].kind === 'teach'){ list[mc].kind = 'close'; list[mc].closeType = 'mid'; list[mc].closeDate = plan.mclose || ''; }
+      if(plan.hasBreak && list[mc] && list[mc].kind === 'teach'){ list[mc].kind = 'close'; list[mc].closeType = 'mid'; list[mc].closeDate = plan.mclose || ''; }
     }
     if(plan && brkAt > 0) breaks.push({ at: slots.length + brkAt, type:'mid', mclose:plan.mclose, mopen:plan.mopen });
     slots.push.apply(slots, list);
