@@ -757,7 +757,7 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
         <div class="field"><label>Mada kuu zitakazofundishwa (moja kwa mstari, hiari)</label><textarea id="az_topics" placeholder="mfano: Ukoloni&#10;Harakati za Uhuru&#10;Uongozi baada ya Uhuru"></textarea></div>
         <button class="generate" id="az_btn" onclick="generateAzimio()">Tengeneza Azimio la Kazi</button>
         <div class="lp-status" id="az_status">Jaza taarifa hapo juu kisha bonyeza "Tengeneza" — jedwali moja litatengenezwa moja kwa moja kutoka mtaala rasmi wa TIE (haihitaji intaneti).</div>
-        <p class="hint">Muundo unafuata fomu rasmi ya Azimio la Kazi yenye vipengele 12: Umahiri Mkuu, Umahiri Mahususi, Shughuli za Ufundishaji, Shughuli za Ujifunzaji, Mwezi, Wiki, Vipindi, Mbinu, Zana za Kufundishia, Zana za Upimaji, Rejea na Maoni. Wiki hupangwa kufuata kalenda ya mihula (Mid-term huingizwa yenyewe). Darasa la 6 na la 7 linaishia Agosti wiki ya 2, Darasa la 4 Septemba wiki ya 2 (kisha maandalizi ya mtihani wa taifa). Kila muhula: wiki moja kabla ya kufunga ni ya Mtihani (mwalimu hujaza tarehe), na wiki ya mwisho ni ya Kufunga.</p>
+        <p class="hint">Muundo unafuata fomu rasmi ya Azimio la Kazi yenye vipengele 12: Umahiri Mkuu, Umahiri Mahususi, Shughuli za Ufundishaji, Shughuli za Ujifunzaji, Mwezi, Wiki, Vipindi, Mbinu, Zana za Kufundishia, Zana za Upimaji, Rejea na Maoni. Wiki hupangwa kufuata kalenda ya mihula (Mid-term huingizwa yenyewe). Darasa la 6 na la 7 linaishia Agosti wiki ya 2, Darasa la 4 Septemba wiki ya 2 (kisha maandalizi ya mtihani wa taifa). Kila muhula: wiki moja kabla ya kufunga ni ya Mtihani (mwalimu hujaza tarehe), na wiki ya mwisho ni ya Kufunga. Pia, wiki moja kabla ya kufunga nusu muhula (Machi na Septemba) ni ya Mtihani wa Nusu Muhula.</p>
       </div>
       <div class="output-panel">
         <div class="output-head"><span id="az_headLabel">AZIMIO LA KAZI</span>
@@ -5527,8 +5527,9 @@ function azTermPlan(t, capStr){
   const capD = azParse(capStr), cl = azParse(c.close);
   const bc0 = azParse(c.mclose), bo0 = azParse(c.mopen);
   const capped = !!(capD && cl && capD < cl);
+  let capInBreak = false;
   if(capped){   // kikomo (mfano mwisho wa wiki ya 2 ya Agosti/Septemba)
-    if(bc0 && bo0 && capD >= bc0 && capD < bo0){ c.close = c.mclose; c.mopen = ''; }   // kikomo kimeangukia likizo fupi: azimio linaishia kabla ya likizo
+    if(bc0 && bo0 && capD >= bc0 && capD < bo0){ c.close = c.mclose; c.mopen = ''; capInBreak = true; }   // kikomo kimeangukia likizo fupi: azimio linaishia kabla ya likizo
     else c.close = capStr;
   }
   const O = azParse(c.open), C = azParse(c.close), Bc = azParse(c.mclose), Bo = azParse(c.mopen);
@@ -5536,7 +5537,21 @@ function azTermPlan(t, capStr){
   const hasBreak = !!(Bc && Bo && Bc >= O && Bo > Bc && Bo <= C);
   const before = azWeeksBetween(O, hasBreak ? Bc : C);
   const after = hasBreak ? azWeeksBetween(Bo, C) : [];
-  return { before, after, hasBreak, capped, mclose:c.mclose, mopen:c.mopen, close:c.close, total: before.length + after.length };
+  // Kikomo (mfano Darasa la 4 — Septemba wiki ya 2) kikiangukia likizo fupi: wiki ya mwisho kabla ya likizo ndiyo mwisho wa azimio,
+  // kwa hiyo ipewe jina la wiki ya kikomo (Septemba wiki ya 2) na wiki zilizotangulia zihesabiwe kurudi nyuma mfululizo.
+  if(capInBreak && before.length){
+    const lastB = before[before.length-1];
+    const capWom = Math.min(4, Math.ceil(capD.getDate()/7));
+    if(lastB.month !== AZ_MONTHS[capD.getMonth()] || lastB.wom !== capWom){
+      let mi = capD.getMonth(), w = capWom;
+      for(let i = before.length-1; i >= 0; i--){
+        before[i] = { month: AZ_MONTHS[mi], wom: w };
+        if(w > 1) w--; else { w = 4; mi = (mi + 11) % 12; }
+      }
+    }
+  }
+  const midClose = !!(hasBreak || capInBreak);   // muhula una kufunga nusu muhula (Machi / Septemba)
+  return { before, after, hasBreak, midClose, capped, mclose:c.mclose, mopen:c.mopen, close:c.close, total: before.length + after.length };
 }
 /* Madarasa ya mitihani ya taifa:
    - Darasa la 6 na la 7: azimio linaishia Agosti, wiki ya 2 (kisha maandalizi ya Mtihani wa Taifa, Septemba).
@@ -5561,6 +5576,11 @@ function azLayout(grade, weeksInput){
     const list = (plan ? plan.before.concat(plan.after) : fb()).map(x=> ({ month:x.month || '', wom:x.wom || '', kind:'teach' }));
     const brkAt = (plan && plan.hasBreak) ? plan.before.length : -1;
     if(!isFinalCap && list.length >= 3){ list[list.length-2].kind = 'exam'; list[list.length-1].kind = 'close'; }
+    // Mtihani wa Nusu Muhula: wiki moja kabla ya kufunga nusu muhula (Machi na Septemba)
+    if(plan && plan.midClose && plan.before.length >= 3){
+      const mi = plan.before.length - 2;
+      if(list[mi] && list[mi].kind === 'teach'){ list[mi].kind = 'exam'; list[mi].examType = 'mid'; }
+    }
     if(plan && brkAt > 0) breaks.push({ at: slots.length + brkAt, type:'mid', mclose:plan.mclose, mopen:plan.mopen });
     slots.push.apply(slots, list);
   };
@@ -6078,7 +6098,9 @@ async function generateAzimio(){
     const jr = ((lay.junior || g5Hist) && rec) ? azBuildJuniorRows(rec, slots, subject, LG, grade, { noRev: g5Hist }) : null;
     // Wiki ya Mtihani (mwalimu hujaza tarehe) na wiki ya Kufunga — hupitia njia ileile ya mistari ya likizo (inafanya kazi kwenye Word, Chapisha na Nakili)
     const examRow = (sl)=>({ brk:true, split:6,
-      left: LG==='sw' ? `WIKI YA MTIHANI WA MUHULA — ${sl.month || '—'}, Wiki ${sl.wom || '—'}` : `EXAMINATION WEEK — ${sl.month || '—'}, Week ${sl.wom || '—'}`,
+      left: sl.examType==='mid'
+        ? (LG==='sw' ? `WIKI YA MTIHANI WA NUSU MUHULA — ${sl.month || '—'}, Wiki ${sl.wom || '—'}` : `MID-TERM EXAMINATION WEEK — ${sl.month || '—'}, Week ${sl.wom || '—'}`)
+        : (LG==='sw' ? `WIKI YA MTIHANI WA MUHULA — ${sl.month || '—'}, Wiki ${sl.wom || '—'}` : `EXAMINATION WEEK — ${sl.month || '—'}, Week ${sl.wom || '—'}`),
       right: LG==='sw' ? 'Mtihani kuanza: ........................   Kumaliza: ........................' : 'Exam starts: ........................   Ends: ........................' });
     const closeRow = (sl, term)=>({ brk:true, split:6,
       left: LG==='sw' ? `WIKI YA KUFUNGA SHULE — ${sl.month || '—'}, Wiki ${sl.wom || '—'}` : `CLOSING WEEK — ${sl.month || '—'}, Week ${sl.wom || '—'}`,
