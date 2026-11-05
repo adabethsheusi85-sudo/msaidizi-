@@ -11072,7 +11072,7 @@ function gridHtml(t){
   '<button class="rowBtn" onclick="tmXlsx(0)">⬇️ Pakua Excel</button><button class="rowBtn" onclick="tmCsv(0)">Pakua CSV</button><button class="rowBtn" onclick="tmXlsx(1)">Template Tupu</button><button class="rowBtn" onclick="tmPrint()">Chapisha</button></div>'+
   noSubj(t,sys,hasS)+'<div class="tm-scroll"><table class="results-table tm-ruled" id="tm_grid"><thead><tr><th class="tm-c">S/NO</th>'+(t.hasNo?'<th class="tm-c">NAMBA</th>':'')+'<th class="tm-nm">JINA LA MWANAFUNZI</th>'+t.subjects.map(function(s){return '<th class="tm-c">'+E(String(s).toUpperCase())+'</th>';}).join('')+(hasS?'<th class="tm-c">JUMLA</th><th class="tm-c">WASTANI</th><th class="tm-c">DARAJA</th>':'')+(sys?'<th class="tm-x"></th>':'')+'</tr></thead><tbody>'+
   t.students.map(function(s,i){ var ro=sys?'':' readonly';
-    var st=tmStat(t,s); return '<tr><td class="tm-c">'+(i+1)+'</td>'+(t.hasNo?'<td><input data-k="no" data-s="'+A(s.id)+'" value="'+A(s.no)+'" style="width:100px"'+ro+'></td>':'')+
+    var st=tmStat(t,s); return '<tr><td class="tm-c">'+(i+1)+'</td>'+(t.hasNo?'<td><input data-k="no" data-s="'+A(s.id)+'" value="'+A(s.no)+'" style="width:100%;min-width:150px"'+ro+'></td>':'')+
     '<td><input data-k="n" data-s="'+A(s.id)+'" value="'+A(s.name)+'" style="min-width:150px"'+ro+'></td>'+
     t.subjects.map(function(sub){ var v=s.marks[sub]; return '<td><input data-k="m" data-s="'+A(s.id)+'" data-j="'+A(sub)+'" value="'+A(v==null?'':v)+'" inputmode="decimal" style="width:62px"></td>'; }).join('')+
     (hasS?'<td class="tm-c tm-tot" data-t="j">'+st.j+'</td><td class="tm-c tm-tot" data-t="w">'+st.w+'</td><td class="tm-c tm-tot" data-t="d">'+st.d+'</td>':'')+(sys?'<td class="tm-x"><button class="rowBtn" data-k="del" data-s="'+A(s.id)+'">✕</button></td>':'')+'</tr>'; }).join('')+'</tbody></table></div>'+
@@ -11127,6 +11127,17 @@ window.tmAddSubj=function(){ var t=cur(); if(!t) return; var v=prompt('Jina la s
 var NAMEH=/^(jina|majina|name|names|mwanafunzi|wanafunzi|student|students|candidate)(\s|$)/, NAMEANY=/(^|\s)(jina|majina|name|names)(\s|$)/, NOH=/^(s n|sn|no|na|namba|nambari|number|nr|reg|regno|usajili|index|admission|adm|id|prem|premno|premnumber|cand no|candidate no|candidate number|exam no|examination no)(\s|$)/;
 function isNm(n){ return NAMEH.test(n)||NAMEANY.test(n); }
 var SKIP=/^(jumla|total|wastani|average|mean|nafasi|position|daraja|grade|maoni|remarks)(\s|$)/;
+var NOSUB=/^(combination|mchepuo|sex|jinsia|jinsi|gender|stream|class|darasa|school|shule|dob|age|umri)(\s|$)/;
+function hasSub(aoa,hdr){ var r=aoa[hdr]||[], s=aoa[hdr+1]; if(!s) return false; var nc=-1;
+  for(var c=0;c<r.length;c++){ var n=smNorm(String(r[c]==null?'':r[c]).trim()); if(n&&isNm(n)&&!NOH.test(n)){ nc=c; break; } }
+  if(nc>=0&&String(s[nc]==null?'':s[nc]).trim()!=='') return false;
+  var tx=0,nu=0; s.forEach(function(v){ v=String(v==null?'':v).trim(); if(!v) return; if(isFinite(Number(v.replace(',','.')))) nu++; else tx++; });
+  return tx>=1&&tx>=nu; }
+function dataStart(aoa,hdr){ return hdr+1+(hasSub(aoa,hdr)?1:0); }
+function effRow(aoa,hdr){ var r=(aoa[hdr]||[]).slice(); if(!hasSub(aoa,hdr)) return r; var s=aoa[hdr+1], w=Math.max(r.length,s.length), out=[];
+  for(var c=0;c<w;c++){ var a=String(r[c]==null?'':r[c]).trim(), b=String(s[c]==null?'':s[c]).trim(), n=smNorm(a);
+    if(a&&b&&(isNm(n)||NOH.test(n)||SKIP.test(n)||a==='#')) out.push(a); else out.push(b||a); }
+  return out; }
 function subjSet(){ var s={}; try{ SM_SUBJECT_ALIASES.forEach(function(g){g.forEach(function(x){s[x]=1;});});
   [].concat.apply([],Object.keys(primarySubjectsByGrade).map(function(k){return primarySubjectsByGrade[k];})).concat(secondaryALevelSubjects,secondaryOLevelSubjects).forEach(function(x){s[smNorm(x)]=1;}); }catch(e){} return s; }
 function roleOf(h,SS){ var raw=String(h==null?'':h).trim(), n=smNorm(raw); if(!raw) return {r:'puuza',u:false};
@@ -11136,15 +11147,17 @@ function roleOf(h,SS){ var raw=String(h==null?'':h).trim(), n=smNorm(raw); if(!r
 function pickHdr(aoa){ var SS=subjSet(), best=-1, bi=0;
   for(var i=0;i<Math.min(aoa.length,20);i++){ var sc=0; aoa[i].forEach(function(c){ var raw=String(c==null?'':c).trim(), n=smNorm(raw); if(!raw) return;
     if(isNm(n)&&!NOH.test(n)) sc+=3; else if(raw==='#'||NOH.test(n)) sc+=1; else if(SS[n]) sc+=2; else sc+=0.1; }); if(sc>best){ best=sc; bi=i; } }
+  var hasN=function(r){ return (r||[]).some(function(c){ var n=smNorm(String(c==null?'':c).trim()); return n&&isNm(n)&&!NOH.test(n); }); };
+  if(bi>0&&!hasN(aoa[bi])&&hasN(aoa[bi-1])) bi=bi-1;
   return bi; }
-function buildRoles(aoa,hdr){ var SS=subjSet(), row=aoa[hdr]||[], w=0; aoa.forEach(function(r){ if(r.length>w) w=r.length; });
+function buildRoles(aoa,hdr){ var SS=subjSet(), row=effRow(aoa,hdr), w=0; aoa.forEach(function(r){ if(r.length>w) w=r.length; });
   var roles=[], hasName=false, hasNo=false;
   for(var c=0;c<w;c++){ var x=roleOf(row[c],SS); if(x.r==='jina'){ if(hasName) x={r:'puuza',u:true}; hasName=true; } if(x.r==='namba'){ if(hasNo) x={r:'puuza',u:true}; hasNo=true; }
     roles.push({r:x.r,u:x.u,sub:String(row[c]==null?'':row[c]).trim()}); }
-  roles.forEach(function(x,ci){ if(x.r!=='puuza'||!x.sub) return; var n=smNorm(x.sub); if(SKIP.test(n)||n==='s no'||n==='sno'){ x.u=false; return; }
-    var ne=0,nu=0; for(var i=hdr+1;i<aoa.length;i++){ var v=String((aoa[i]||[])[ci]==null?'':aoa[i][ci]).trim(); if(v!==''){ ne++; if(isFinite(Number(v.replace(',','.')))) nu++; } }
+  roles.forEach(function(x,ci){ if(x.r!=='puuza'||!x.sub) return; var n=smNorm(x.sub); if(SKIP.test(n)||NOSUB.test(n)||n==='s no'||n==='sno'){ x.u=false; return; }
+    var ne=0,nu=0; for(var i=dataStart(aoa,hdr);i<aoa.length;i++){ var v=String((aoa[i]||[])[ci]==null?'':aoa[i][ci]).trim(); if(v!==''){ ne++; if(isFinite(Number(v.replace(',','.')))) nu++; } }
     if(ne===0||nu/ne>=0.7){ x.r='somo'; x.u=false; x.guess=true; } });
-  if(!hasName){ var bc=-1,bs=0; for(var c2=0;c2<w;c2++){ var cnt=0; for(var i=hdr+1;i<aoa.length;i++){ var v=String((aoa[i]||[])[c2]==null?'':aoa[i][c2]).trim(); if(v&&/^\p{L}[\p{L}'’.\- ]+$/u.test(v)&&v.length>=3) cnt+=(v.indexOf(' ')>0?2:1); } if(cnt>bs){bs=cnt;bc=c2;} }
+  if(!hasName){ var bc=-1,bs=0; for(var c2=0;c2<w;c2++){ var cnt=0; for(var i=dataStart(aoa,hdr);i<aoa.length;i++){ var v=String((aoa[i]||[])[c2]==null?'':aoa[i][c2]).trim(); if(v&&/^\p{L}[\p{L}'’.\- ]+$/u.test(v)&&v.length>=3) cnt+=(v.indexOf(' ')>0?2:1); } if(cnt>bs){bs=cnt;bc=c2;} }
     if(bc>=0){ roles[bc].r='jina'; roles[bc].guess=true; roles[bc].u=false; } }
   return roles; }
 async function readFile(f){
@@ -11156,11 +11169,13 @@ async function readFile(f){
   }catch(e){ note('Faili halikuweza kusomwa: '+e.message,'err'); } }
 function upRows(){ var nc=up.roles.map(function(x){return x.r;}).indexOf('jina'), out=[];
   if(nc<0) return out; for(var i=up.hdr+1;i<up.aoa.length;i++){ var v=String((up.aoa[i]||[])[nc]==null?'':up.aoa[i][nc]).trim(); if(v&&!SKIP.test(smNorm(v))) out.push(i); } return out; }
+function prevHtml(){ var a=up.aoa.slice(0,6), w=0; a.forEach(function(r){ if(r.length>w) w=r.length; }); w=Math.min(w,14);
+  return '<details style="margin:8px 0;"><summary class="hint">Angalia mistari ya kwanza ya faili lako</summary><div class="tm-scroll"><table class="results-table"><tbody>'+a.map(function(r,i){ var h='<tr><td>'+(i+1)+'</td>'; for(var c=0;c<w;c++) h+='<td>'+E(String(r[c]==null?'':r[c]).slice(0,18))+'</td>'; return h+'</tr>'; }).join('')+'</tbody></table></div></details>'; }
 function mapHtml(){
   if(!up) return ''; var rows=upRows(), hd='';
   for(var i=0;i<Math.min(up.aoa.length,20);i++) hd+='<option value="'+i+'"'+(i===up.hdr?' selected':'')+'>Mstari '+(i+1)+': '+E(up.aoa[i].filter(function(x){return String(x).trim();}).slice(0,3).join(' | '))+'</option>';
   var h='<div class="panel"><h3 class="tm-h">Tambua Safu za Template: '+E(up.file)+'</h3><p class="hint">Mfumo umejaribu kutambua. Kagua na urekebishe kama kuna kosa. Muundo wa faili lako HAUBADILISHWI — alama zitaandikwa tu kwenye safu za masomo ulizochagua.</p>'+
-  '<div class="field"><label>Mstari wa vichwa vya safu</label><select id="tm_hdr">'+hd+'</select></div><div class="tm-scroll"><table class="results-table"><thead><tr><th>Safu</th><th>Kichwa</th><th>Ni nini?</th><th>Jina la somo</th></tr></thead><tbody>';
+  prevHtml()+'<div class="field"><label>Mstari wa vichwa vya safu</label><select id="tm_hdr">'+hd+'</select></div><div class="tm-scroll"><table class="results-table"><thead><tr><th>Safu</th><th>Kichwa</th><th>Ni nini?</th><th>Jina la somo</th></tr></thead><tbody>';
   up.roles.forEach(function(x,c){ h+='<tr'+(x.u||x.guess?' class="tm-warn"':'')+'><td>'+String.fromCharCode(65+(c%26))+(c>=26?c:'')+'</td><td>'+E(x.sub)+(x.u?'<br><span class="hint">⚠️ Haijatambuliwa — chagua</span>':'')+(x.guess?'<br><span class="hint">⚠️ Imekisiwa — kagua</span>':'')+'</td><td><select data-c="'+c+'" data-f="r">'+
     [['jina','Jina la mwanafunzi'],['namba','Namba / S/N'],['somo','Somo (alama)'],['puuza','Puuza (usiguse)']].map(function(o){return '<option value="'+o[0]+'"'+(x.r===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+
     '</select></td><td><input data-c="'+c+'" data-f="s" value="'+A(x.sub)+'"'+(x.r==='somo'?'':' disabled')+'></td></tr>'; });
