@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -11071,6 +11070,7 @@ function gridHtml(t){
   (t.students.length?'':'<p class="hint">Hakuna wanafunzi bado.</p>')+
   (sys?'<details style="margin-top:10px;"><summary class="hint">Weka majina mengi kwa pamoja</summary><textarea id="tm_more" class="sm-textarea" rows="5" placeholder="Jina moja kwa mstari"></textarea><div class="sm-btnrow"><button class="rowBtn" onclick="tmAddMany()">Ongeza Majina</button></div></details>':'<p class="hint">Template yako: muundo wake haubadilishwi. Kuongeza wanafunzi, hariri faili lako kisha lipakie tena.</p>')+
   '</div><div class="panel" id="tm_rev" style="margin-top:16px;">'+reviewHtml(t)+'</div>';
+  return h;
 }
 function reviewHtml(t){
   var n=t.students.length, per=t.subjects.map(function(sub){ var f=t.students.filter(function(s){return s.marks[sub]!=null&&s.marks[sub]!=='';}).length; return {sub:sub,f:f}; });
@@ -11238,3 +11238,4 @@ document.head.appendChild(st);
 </script>
 </body>
 </html>
+
