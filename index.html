@@ -962,6 +962,7 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
     <div class="hub-tabs">
       <button class="hub-tab active" id="hubTab-results" onclick="setHubTab('results')">Ingiza Matokeo</button>
       <button class="hub-tab" id="hubTab-smart" onclick="setHubTab('smart')">⚡ Ingizo la Haraka</button>
+      <button class="hub-tab" id="hubTab-tmpl" onclick="tmShowTab()">📋 Template ya Matokeo</button>
       <button class="hub-tab" id="hubTab-online" onclick="setHubTab('online')">Tathmini Mtandaoni (Mfano)</button>
       <button class="hub-tab" id="hubTab-report" onclick="setHubTab('report')">Ripoti ya Darasa</button>
     </div>
@@ -1023,6 +1024,9 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
         <div id="sm_viewer" style="margin-top:14px;"></div>
       </div>
     </div>
+
+    <!-- Template ya Matokeo (kipengele kipya) -->
+    <div id="hub-tmpl" class="hidden"></div>
 
     <!-- Tathmini Mtandaoni (mockup) -->
     <div id="hub-online" class="hidden">
@@ -10948,6 +10952,283 @@ function phBar(){
     b.style.display=show?'inline-block':'none';
   }
   setInterval(syncBtn,2000);
+})();
+</script>
+<script id="tmModule">
+/* ===== 📋 TEMPLATE YA MATOKEO — kipengele kipya, moduli iliyojitenga =====
+   Haibadilishi function/ID/variable yoyote iliyopo. Inatumia tena: phOpen/phRead/phMatch/phCheck (kusoma picha kupitia Worker ileile,
+   bila kugusa ufunguo wala URL), smNorm/smSubjectKey/smTitle, downloadXlsxRows, triggerBlobDownload.
+   Uhifadhi: localStorage, ufunguo MPYA 'msaidizi_tm_v1_<uid>' (ufunguo wa Assessment za zamani haujaguswa). */
+(function(){
+if(window.__tmLoaded) return; window.__tmLoaded=true;
+var KEY='msaidizi_tm_v1_', T=null, V={mode:'list'}, up=null, ctx=null, plan=null;
+var $=function(i){return document.getElementById(i);};
+var E=function(s){return escapeHtml(String(s==null?'':s));}, A=function(s){return smAttr(s);};
+function uid(){ try{ return phUid()||'anon'; }catch(e){ return 'anon'; } }
+function load(){ var u=uid(); if(T&&T._u===u) return T; var d=null; try{ d=JSON.parse(localStorage.getItem(KEY+u)||'null'); }catch(e){}
+  if(!d||!Array.isArray(d.tpls)) d={tpls:[],active:null}; d._u=u; T=d; return T; }
+function save(){ try{ localStorage.setItem(KEY+T._u,JSON.stringify(T)); return true; }
+  catch(e){ note('Kivinjari hakiruhusu uhifadhi wa kudumu — pakua Excel kuhifadhi nakala ili usipoteze kazi.','warn'); return false; } }
+function note(t,ty){ var m=$('tm_msg'); if(m) m.innerHTML='<div class="sm-box '+(ty||'ok')+'">'+E(t)+'</div>'; }
+function cur(){ load(); return T.tpls.filter(function(t){return t.id===T.active;})[0]||null; }
+function rid(p){ return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function numNo(x){ x=String(x==null?'':x).trim(); return /^\d+$/.test(x)?Number(x):x; }
+function findSubj(t,n){ var k=smSubjectKey(n); return t.subjects.filter(function(s){return smSubjectKey(s)===k;})[0]||null; }
+function roster(t){ return t.students.map(function(s){ var n=(s.no===''||s.no==null)?[]:[s.no];
+  return {id:s.id,key:smNorm(s.name),name:s.name,sns:n}; }); }
+function hash(s){ var h=5381; for(var i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return String(h); }
+/* ---- majina ---- */
+function parseNames(txt){
+  var out=[], re=/^\s*#?(\d{1,5})\s*[.)\-:]?\s+(\S.*)$/u;
+  String(txt||'').split(/\r?\n/).forEach(function(l){ l=l.trim(); if(!l) return; var m=re.exec(l);
+    if(m&&/^\p{L}/u.test(m[2])) out.push({no:Number(m[1]),name:smTitle(m[2])}); else out.push({no:'',name:smTitle(l.replace(/^[#\-\*\.\)\s]+/,''))}); });
+  return out.filter(function(x){return x.name;});
+}
+function addStudents(t,list,keepNo){
+  var seen={}; t.students.forEach(function(s){ seen[smNorm(s.name)+'|'+s.no]=1; }); var n=0,sk=0;
+  list.forEach(function(x){ var no=x.no; if(t.hasNo&&no==='') no=t.students.length+1;
+    var k=smNorm(x.name)+'|'+no; if(seen[k]){ sk++; return; } seen[k]=1;
+    t.students.push({id:rid('s'),no:t.hasNo?no:'',name:x.name,marks:{}}); n++; });
+  return {n:n,skipped:sk};
+}
+function dupNames(t){ var c={}; t.students.forEach(function(s){ var k=smNorm(s.name); c[k]=(c[k]||0)+1; });
+  return Object.keys(c).filter(function(k){return c[k]>1;}); }
+/* ---- skrini kuu ---- */
+function render(){
+  var el=$('hub-tmpl'); if(!el) return; load(); var t=cur();
+  if(!T.tpls.length&&V.mode==='list') V.mode='new';
+  var h='<div id="tm_msg"></div><div class="panel" style="margin-bottom:16px;"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">';
+  if(T.tpls.length) h+='<select id="tm_sel" class="tm-sel">'+T.tpls.map(function(x){return '<option value="'+A(x.id)+'"'+(x.id===T.active?' selected':'')+'>'+E(x.name)+'</option>';}).join('')+'</select><button class="rowBtn" onclick="tmDelete()">Futa Template</button>';
+  h+='<button class="rowBtn" onclick="tmNew()">+ Template Mpya</button><label class="rowBtn" style="cursor:pointer;">📂 Pakia Template Yangu<input type="file" id="tm_file" accept=".xlsx,.xls,.csv" hidden></label></div></div>';
+  h+= V.mode==='new'?newForm(): V.mode==='map'?mapHtml(): (t?gridHtml(t):'');
+  el.innerHTML=h;
+  var s=$('tm_sel'); if(s) s.onchange=function(){ T.active=s.value; V.mode='list'; save(); render(); };
+  var f=$('tm_file'); if(f) f.onchange=function(){ var x=f.files&&f.files[0]; f.value=''; if(x) readFile(x); };
+  var g=$('tm_grid'); if(g) g.addEventListener('change',onGrid);
+  if(V.mode==='new'){ var gr=$('sm_grade'); if($('tm_grade')&&gr) $('tm_grade').value=gr.value; subsRefresh(); }
+  if(V.mode==='map') bindMap();
+}
+window.tmNew=function(){ V.mode='new'; render(); };
+window.tmShowTab=function(){
+  ['results','smart','online','report'].forEach(function(x){ var d=$('hub-'+x),b=$('hubTab-'+x); if(d) d.classList.add('hidden'); if(b) b.classList.remove('active'); });
+  $('hub-tmpl').classList.remove('hidden'); $('hubTab-tmpl').classList.add('active'); render();
+};
+var _sh=window.setHubTab;
+window.setHubTab=function(){ var d=$('hub-tmpl'),b=$('hubTab-tmpl'); if(d) d.classList.add('hidden'); if(b) b.classList.remove('active'); return _sh.apply(this,arguments); };
+/* ---- fomu ya template mpya ---- */
+function newForm(){
+  var opts=($('sm_grade')||{}).innerHTML||'';
+  return '<div class="panel"><h3 class="tm-h">Tengeneza Template ya Mfumo</h3>'+
+  '<div class="row2"><div class="field"><label>Jina la Template</label><input id="tm_name" type="text" placeholder="mfano: Darasa la 6A — Muhula wa 2"></div>'+
+  '<div class="field"><label>Darasa (kupendekeza masomo)</label><select id="tm_grade" onchange="tmSubsRefresh()">'+opts+'</select></div></div>'+
+  '<div class="field"><label>Aina ya Template</label><label class="tm-r"><input type="radio" name="tm_kind" value="names" checked> Majina pekee</label>'+
+  '<label class="tm-r"><input type="radio" name="tm_kind" value="subjects"> Majina + masomo</label>'+
+  '<label class="tm-r"><input type="radio" name="tm_kind" value="marks"> Majina + masomo + nafasi za alama</label></div>'+
+  '<div class="field"><label class="tm-r"><input type="checkbox" id="tm_hasno"> Weka namba ya mwanafunzi / usajili (S/N)</label></div>'+
+  '<div class="field"><label>Masomo (kwa aina zenye masomo) <button type="button" class="rowBtn" onclick="tmAllSubs()">Chagua zote</button></label><div id="tm_subs"></div>'+
+  '<input id="tm_custom" type="text" placeholder="Somo jingine (tenganisha kwa koma)" style="margin-top:8px;"></div>'+
+  '<div class="row2"><div class="field"><label>Alama za juu kwa kila somo</label><input id="tm_max" type="number" min="1" value="100"></div></div>'+
+  '<div class="field"><label>Majina ya wanafunzi — jina moja kwa mstari (unaweza kuanza na namba, mf. <b>12 Asha Juma</b>)</label><textarea id="tm_names" class="sm-textarea" rows="8" spellcheck="false"></textarea></div>'+
+  '<div class="sm-btnrow"><button class="sm-primary" onclick="tmCreate()">Tengeneza Template</button></div></div>';
+}
+function subsRefresh(){ var g=$('tm_grade'), c=$('tm_subs'); if(!g||!c) return; var keep={};
+  [].forEach.call(c.querySelectorAll('input:checked'),function(i){keep[i.value]=1;});
+  c.innerHTML=smClassSubjects(g.value).map(function(s){return '<label class="tm-chip"><input type="checkbox" value="'+A(s)+'"'+(keep[s]?' checked':'')+'> '+E(s)+'</label>';}).join(''); }
+window.tmSubsRefresh=subsRefresh;
+window.tmAllSubs=function(){ [].forEach.call(document.querySelectorAll('#tm_subs input'),function(i){i.checked=true;}); };
+window.tmCreate=function(){
+  load(); var name=$('tm_name').value.trim(); if(!name){ note('Andika jina la template.','warn'); return; }
+  var kind=document.querySelector('input[name=tm_kind]:checked').value, subs=[];
+  if(kind!=='names'){
+    var raw=[].map.call(document.querySelectorAll('#tm_subs input:checked'),function(i){return i.value;}).concat($('tm_custom').value.split(/[,;\n]/).map(function(x){return x.trim();}).filter(Boolean)), seen={};
+    raw.forEach(function(s){ var k=smSubjectKey(s); if(!seen[k]){ seen[k]=1; subs.push(s); } });
+    if(!subs.length){ note('Chagua angalau somo moja, au andika jina la somo.','warn'); return; } }
+  var max=parseFloat($('tm_max').value)||100, names=parseNames($('tm_names').value);
+  var t={id:rid('t'),name:name,grade:$('tm_grade').value,max:max,kind:kind,source:'system',hasNo:$('tm_hasno').checked||names.some(function(x){return x.no!=='';}),subjects:subs,students:[],fps:[],log:[]};
+  var r=addStudents(t,names); T.tpls.push(t); T.active=t.id; V.mode='list'; save(); render();
+  var d=dupNames(t); note('Template "'+name+'" imetengenezwa: wanafunzi '+r.n+', masomo '+subs.length+'.'+(d.length?' Tahadhari: majina '+d.length+' yanajirudia — weka S/N ili kuyatofautisha.':''),d.length?'warn':'ok');
+};
+window.tmDelete=function(){ var t=cur(); if(!t) return;
+  var filled=t.students.reduce(function(n,s){return n+Object.keys(s.marks).length;},0);
+  if(!confirm('Futa template "'+t.name+'"'+(filled?' pamoja na alama '+filled+' zilizomo':'')+'? Haiwezi kurudishwa.')) return;
+  T.tpls=T.tpls.filter(function(x){return x.id!==t.id;}); T.active=T.tpls[0]?T.tpls[0].id:null; V.mode='list'; save(); render(); };
+/* ---- jedwali la template ---- */
+function gridHtml(t){
+  var sys=t.source==='system', h='<div class="panel"><h3 class="tm-h">'+E(t.name)+' <span class="hint" style="display:inline;">(alama za juu '+t.max+(sys?'':' · template yako')+')</span></h3>'+
+  '<div class="tm-act"><button class="sm-primary" onclick="tmPhoto()">📷 Pakia Picha ya Matokeo</button></div><div class="tm-act">'+
+  (sys?'<button class="rowBtn" onclick="tmAddOne()">+ Mwanafunzi</button><button class="rowBtn" onclick="tmAddSubj()">+ Somo</button>':'')+
+  '<button class="rowBtn" onclick="tmXlsx(0)">⬇️ Pakua Excel</button><button class="rowBtn" onclick="tmCsv(0)">Pakua CSV</button><button class="rowBtn" onclick="tmXlsx(1)">Template Tupu</button><button class="rowBtn" onclick="tmPrint()">Chapisha</button></div>'+
+  '<div class="tm-scroll"><table class="results-table" id="tm_grid"><thead><tr><th>#</th>'+(t.hasNo?'<th>S/N</th>':'')+'<th>Jina</th>'+t.subjects.map(function(s){return '<th>'+E(s)+'</th>';}).join('')+(sys?'<th></th>':'')+'</tr></thead><tbody>'+
+  t.students.map(function(s,i){ var ro=sys?'':' readonly';
+    return '<tr><td>'+(i+1)+'</td>'+(t.hasNo?'<td><input data-k="no" data-s="'+A(s.id)+'" value="'+A(s.no)+'" style="width:54px"'+ro+'></td>':'')+
+    '<td><input data-k="n" data-s="'+A(s.id)+'" value="'+A(s.name)+'" style="min-width:150px"'+ro+'></td>'+
+    t.subjects.map(function(sub){ var v=s.marks[sub]; return '<td><input data-k="m" data-s="'+A(s.id)+'" data-j="'+A(sub)+'" value="'+A(v==null?'':v)+'" inputmode="decimal" style="width:62px"></td>'; }).join('')+
+    (sys?'<td><button class="rowBtn" data-k="del" data-s="'+A(s.id)+'">✕</button></td>':'')+'</tr>'; }).join('')+'</tbody></table></div>'+
+  (t.students.length?'':'<p class="hint">Hakuna wanafunzi bado.</p>')+
+  (sys?'<details style="margin-top:10px;"><summary class="hint">Weka majina mengi kwa pamoja</summary><textarea id="tm_more" class="sm-textarea" rows="5" placeholder="Jina moja kwa mstari"></textarea><div class="sm-btnrow"><button class="rowBtn" onclick="tmAddMany()">Ongeza Majina</button></div></details>':'<p class="hint">Template yako: muundo wake haubadilishwi. Kuongeza wanafunzi, hariri faili lako kisha lipakie tena.</p>')+
+  '</div><div class="panel" id="tm_rev" style="margin-top:16px;">'+reviewHtml(t)+'</div>';
+}
+function reviewHtml(t){
+  var n=t.students.length, per=t.subjects.map(function(sub){ var f=t.students.filter(function(s){return s.marks[sub]!=null&&s.marks[sub]!=='';}).length; return {sub:sub,f:f}; });
+  var none=t.students.filter(function(s){return !t.subjects.some(function(sub){return s.marks[sub]!=null&&s.marks[sub]!=='';});});
+  var h='<h3 class="tm-h">Ukaguzi wa Template</h3>';
+  if(!t.subjects.length) return h+'<p class="hint">Template haina masomo bado. Ongeza somo (+ Somo) ili kupandisha alama.</p>';
+  h+='<div class="tm-scroll"><table class="results-table"><thead><tr><th>Somo</th><th>Alama zilizoingia</th><th>Hazijaingia</th></tr></thead><tbody>'+
+   per.map(function(p){return '<tr><td>'+E(p.sub)+'</td><td>'+p.f+' / '+n+'</td><td>'+(n-p.f)+(p.f<n?' ⚠️':' ✅')+'</td></tr>';}).join('')+'</tbody></table></div>';
+  var miss=per.filter(function(p){return p.f===0;}).map(function(p){return p.sub;});
+  if(miss.length) h+='<p class="hint">Masomo ambayo bado hayajaingizwa kabisa: <b>'+E(miss.join(', '))+'</b></p>';
+  if(none.length) h+='<p class="hint">Wanafunzi wasio na alama yoyote ('+none.length+'): '+E(none.slice(0,15).map(function(s){return s.name;}).join(', ')+(none.length>15?' …':''))+'</p>';
+  return h; }
+function refreshRev(){ var t=cur(), r=$('tm_rev'); if(t&&r) r.innerHTML=reviewHtml(t); }
+function onGrid(e){
+  var t=cur(), i=e.target; if(!t||!i.dataset||!i.dataset.k) return; var s=t.students.filter(function(x){return x.id===i.dataset.s;})[0]; if(!s) return;
+  var k=i.dataset.k, v=i.value.trim();
+  if(k==='m'){ var sub=i.dataset.j; v=v.replace(',','.');
+    if(v===''){ delete s.marks[sub]; } else { var n=Number(v); if(!isFinite(n)||n<0||n>t.max){ note('Alama lazima iwe kati ya 0 na '+t.max+'.','warn'); i.value=s.marks[sub]==null?'':s.marks[sub]; return; } s.marks[sub]=n; i.value=n; } }
+  else if(t.source==='system'&&k==='n'){ if(!v){ i.value=s.name; return; } s.name=v; }
+  else if(t.source==='system'&&k==='no'){ s.no=numNo(v); }
+  save(); refreshRev();
+}
+document.addEventListener('click',function(e){ var b=e.target; if(!b||b.dataset==null||b.dataset.k!=='del'||!b.closest||!b.closest('#tm_grid')) return;
+  var t=cur(); if(!t) return; var s=t.students.filter(function(x){return x.id===b.dataset.s;})[0]; if(!s) return;
+  if(!confirm('Ondoa "'+s.name+'"'+(Object.keys(s.marks).length?' pamoja na alama zake':'')+' kutoka kwenye template?')) return;
+  t.students=t.students.filter(function(x){return x!==s;}); save(); render(); });
+window.tmAddOne=function(){ var t=cur(); if(!t) return; var v=prompt('Jina la mwanafunzi (unaweza kuanza na namba, mf. 12 Asha Juma):'); if(!v) return;
+  var r=addStudents(t,parseNames(v)); save(); render(); note(r.n?'Mwanafunzi ameongezwa.':'Mwanafunzi huyu tayari yupo (jina na S/N sawa).',r.n?'ok':'warn'); };
+window.tmAddMany=function(){ var t=cur(); if(!t) return; var r=addStudents(t,parseNames($('tm_more').value)); save(); render();
+  note('Wameongezwa '+r.n+(r.skipped?'; '+r.skipped+' walirukwa (tayari wapo)':'')+'.','ok'); };
+window.tmAddSubj=function(){ var t=cur(); if(!t) return; var v=prompt('Jina la somo la kuongeza:'); if(!v||!v.trim()) return; v=v.trim();
+  if(findSubj(t,v)){ note('Somo hili tayari lipo kwenye template.','warn'); return; } t.subjects.push(v); save(); render(); note('Somo "'+v+'" limeongezwa.','ok'); };
+/* ---- kupakia template kutoka nje ---- */
+var NAMEH=/^(jina|majina|name|names|mwanafunzi|wanafunzi|student|students|candidate)(\s|$)/, NOH=/^(s n|sn|no|na|namba|nambari|number|nr|reg|regno|usajili|index|admission|adm|id)(\s|$)/;
+var SKIP=/^(jumla|total|wastani|average|mean|nafasi|position|daraja|grade|maoni|remarks)(\s|$)/;
+function subjSet(){ var s={}; try{ SM_SUBJECT_ALIASES.forEach(function(g){g.forEach(function(x){s[x]=1;});});
+  [].concat.apply([],Object.keys(primarySubjectsByGrade).map(function(k){return primarySubjectsByGrade[k];})).concat(secondaryALevelSubjects,secondaryOLevelSubjects).forEach(function(x){s[smNorm(x)]=1;}); }catch(e){} return s; }
+function roleOf(h,SS){ var raw=String(h==null?'':h).trim(), n=smNorm(raw); if(!raw) return {r:'puuza',u:false};
+  if(raw==='#'||NOH.test(n)) return {r:'namba',u:false}; if(NAMEH.test(n)) return {r:'jina',u:false};
+  if(SS[n]) return {r:'somo',u:false}; return {r:'puuza',u:true}; }
+function pickHdr(aoa){ var SS=subjSet(), best=-1, bi=0;
+  for(var i=0;i<Math.min(aoa.length,20);i++){ var sc=0; aoa[i].forEach(function(c){ var raw=String(c==null?'':c).trim(), n=smNorm(raw); if(!raw) return;
+    if(NAMEH.test(n)) sc+=3; else if(raw==='#'||NOH.test(n)) sc+=1; else if(SS[n]) sc+=2; else sc+=0.1; }); if(sc>best){ best=sc; bi=i; } }
+  return bi; }
+function buildRoles(aoa,hdr){ var SS=subjSet(), row=aoa[hdr]||[], w=0; aoa.forEach(function(r){ if(r.length>w) w=r.length; });
+  var roles=[], hasName=false, hasNo=false;
+  for(var c=0;c<w;c++){ var x=roleOf(row[c],SS); if(x.r==='jina'){ if(hasName) x={r:'puuza',u:true}; hasName=true; } if(x.r==='namba'){ if(hasNo) x={r:'puuza',u:true}; hasNo=true; }
+    roles.push({r:x.r,u:x.u,sub:String(row[c]==null?'':row[c]).trim()}); }
+  if(!hasName){ var bc=-1,bs=0; for(var c2=0;c2<w;c2++){ var cnt=0; for(var i=hdr+1;i<aoa.length;i++){ var v=String((aoa[i]||[])[c2]==null?'':aoa[i][c2]).trim(); if(v&&isNaN(Number(v))&&v.length>=3) cnt++; } if(cnt>bs){bs=cnt;bc=c2;} }
+    if(bc>=0){ roles[bc].r='jina'; roles[bc].guess=true; roles[bc].u=false; } }
+  return roles; }
+async function readFile(f){
+  if(typeof XLSX==='undefined'){ note('Maktaba ya kusoma Excel haijapakia — hakikisha una mtandao kisha jaribu tena.','err'); return; }
+  try{ var wb=/\.csv$/i.test(f.name)?XLSX.read(await f.text(),{type:'string'}):XLSX.read(await f.arrayBuffer(),{type:'array'});
+    var aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:true,blankrows:true});
+    if(aoa.length<2){ note('Faili halina data ya kutosha.','err'); return; }
+    var hdr=pickHdr(aoa); up={file:f.name,aoa:aoa,hdr:hdr,roles:buildRoles(aoa,hdr)}; V.mode='map'; render();
+  }catch(e){ note('Faili halikuweza kusomwa: '+e.message,'err'); } }
+function upRows(){ var nc=up.roles.map(function(x){return x.r;}).indexOf('jina'), out=[];
+  if(nc<0) return out; for(var i=up.hdr+1;i<up.aoa.length;i++){ var v=String((up.aoa[i]||[])[nc]==null?'':up.aoa[i][nc]).trim(); if(v&&!SKIP.test(smNorm(v))) out.push(i); } return out; }
+function mapHtml(){
+  if(!up) return ''; var rows=upRows(), hd='';
+  for(var i=0;i<Math.min(up.aoa.length,20);i++) hd+='<option value="'+i+'"'+(i===up.hdr?' selected':'')+'>Mstari '+(i+1)+': '+E(up.aoa[i].filter(function(x){return String(x).trim();}).slice(0,3).join(' | '))+'</option>';
+  var h='<div class="panel"><h3 class="tm-h">Tambua Safu za Template: '+E(up.file)+'</h3><p class="hint">Mfumo umejaribu kutambua. Kagua na urekebishe kama kuna kosa. Muundo wa faili lako HAUBADILISHWI — alama zitaandikwa tu kwenye safu za masomo ulizochagua.</p>'+
+  '<div class="field"><label>Mstari wa vichwa vya safu</label><select id="tm_hdr">'+hd+'</select></div><div class="tm-scroll"><table class="results-table"><thead><tr><th>Safu</th><th>Kichwa</th><th>Ni nini?</th><th>Jina la somo</th></tr></thead><tbody>';
+  up.roles.forEach(function(x,c){ h+='<tr'+(x.u||x.guess?' class="tm-warn"':'')+'><td>'+String.fromCharCode(65+(c%26))+(c>=26?c:'')+'</td><td>'+E(x.sub)+(x.u?'<br><span class="hint">⚠️ Haijatambuliwa — chagua</span>':'')+(x.guess?'<br><span class="hint">⚠️ Imekisiwa — kagua</span>':'')+'</td><td><select data-c="'+c+'" data-f="r">'+
+    [['jina','Jina la mwanafunzi'],['namba','Namba / S/N'],['somo','Somo (alama)'],['puuza','Puuza (usiguse)']].map(function(o){return '<option value="'+o[0]+'"'+(x.r===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+
+    '</select></td><td><input data-c="'+c+'" data-f="s" value="'+A(x.sub)+'"'+(x.r==='somo'?'':' disabled')+'></td></tr>'; });
+  h+='</tbody></table></div><p class="hint">Wanafunzi waliotambuliwa: <b>'+rows.length+'</b>'+(rows.length?' — '+E(rows.slice(0,3).map(function(i){return String(up.aoa[i][up.roles.map(function(x){return x.r;}).indexOf('jina')]).trim();}).join(', '))+' …':' — chagua safu ya jina')+'</p>'+
+  '<div class="field"><label>Alama za juu kwa kila somo</label><input id="tm_umax" type="number" min="1" value="100" style="max-width:140px"></div>'+
+  '<div class="sm-btnrow"><button class="sm-primary" onclick="tmUpOk()">Thibitisha na Tumia Template</button><button class="rowBtn" onclick="tmUpCancel()">Ghairi</button></div></div>';
+  return h; }
+function bindMap(){ var hs=$('tm_hdr'); if(hs) hs.onchange=function(){ up.hdr=+hs.value; up.roles=buildRoles(up.aoa,up.hdr); render(); };
+  [].forEach.call(document.querySelectorAll('[data-f=r]'),function(s){ s.onchange=function(){ var c=+s.dataset.c, r=s.value;
+    if((r==='jina'||r==='namba')) up.roles.forEach(function(x,i){ if(i!==c&&x.r===r) x.r='puuza'; });
+    up.roles[c].r=r; up.roles[c].u=false; up.roles[c].guess=false; var mx=$('tm_umax')?$('tm_umax').value:''; render(); if($('tm_umax')) $('tm_umax').value=mx; }; });
+  [].forEach.call(document.querySelectorAll('[data-f=s]'),function(i){ i.onchange=function(){ up.roles[+i.dataset.c].sub=i.value.trim(); }; }); }
+window.tmUpCancel=function(){ up=null; V.mode='list'; render(); };
+window.tmUpOk=function(){
+  load(); var nc=up.roles.map(function(x){return x.r;}).indexOf('jina'); if(nc<0){ note('Chagua safu ya majina ya wanafunzi.','warn'); return; }
+  var no=up.roles.map(function(x){return x.r;}).indexOf('namba'), cols={}, subs=[], seen={}, bad='';
+  up.roles.forEach(function(x,c){ if(x.r!=='somo') return; if(!x.sub){ bad='Safu ya somo haina jina — liandike.'; return; } var k=smSubjectKey(x.sub); if(seen[k]){ bad='Somo "'+x.sub+'" limechaguliwa mara mbili.'; return; } seen[k]=1; cols[x.sub]=c; subs.push(x.sub); });
+  if(bad){ note(bad,'warn'); return; }
+  var max=parseFloat($('tm_umax').value)||100, rows=upRows(); if(!rows.length){ note('Hakuna wanafunzi waliotambuliwa.','warn'); return; }
+  var t={id:rid('t'),name:up.file.replace(/\.[^.]+$/,''),grade:($('sm_grade')||{}).value||'',max:max,kind:'upload',source:'upload',hasNo:no>=0,subjects:subs,students:[],fps:[],log:[],
+    up:{aoa:up.aoa,hdr:up.hdr,cols:cols}}, odd=0;
+  rows.forEach(function(i){ var r=up.aoa[i], s={id:rid('s'),row:i,no:no>=0?numNo(r[no]):'',name:String(r[nc]).trim(),marks:{}};
+    subs.forEach(function(sub){ var v=String(r[cols[sub]]==null?'':r[cols[sub]]).trim().replace(',','.'); if(v==='') return; var n=Number(v); if(isFinite(n)&&n>=0&&n<=max) s.marks[sub]=n; else odd++; });
+    t.students.push(s); });
+  T.tpls.push(t); T.active=t.id; up=null; V.mode='list'; save(); render();
+  var d=dupNames(t); note('Template yako imepakiwa: wanafunzi '+t.students.length+', masomo '+subs.length+'.'+(odd?' Visanduku '+odd+' vya alama havikueleweka (si namba au vimezidi '+max+') — vimeachwa kama vilivyo.':'')+(d.length?' Tahadhari: majina '+d.length+' yanajirudia.':''),(odd||d.length)?'warn':'ok');
+};
+/* ---- kupakua / kuchapisha ---- */
+function aoaOf(t,blank){
+  if(t.up){ var a=t.up.aoa.map(function(r){return r.slice();});
+    t.students.forEach(function(s){ t.subjects.forEach(function(sub){ var ci=t.up.cols[sub]; if(ci==null) return; var r=a[s.row]; while(r.length<=ci) r.push(''); r[ci]=blank?'':(s.marks[sub]==null?'':s.marks[sub]); }); });
+    return a; }
+  var h=[]; if(t.hasNo) h.push('S/N'); h.push('Jina'); t.subjects.forEach(function(s){h.push(s);});
+  return [h].concat(t.students.map(function(s){ var r=[]; if(t.hasNo) r.push(s.no); r.push(s.name); t.subjects.forEach(function(sub){ r.push(blank||s.marks[sub]==null?'':s.marks[sub]); }); return r; })); }
+window.tmXlsx=function(blank){ var t=cur(); if(!t) return; var rows=aoaOf(t,!!blank); if(rows.length<2&&!t.up){ note('Hakuna wanafunzi wa kupakua bado.','warn'); }
+  downloadXlsxRows(rows,t.name+(blank?' - tupu':''),'Matokeo'); };
+window.tmCsv=function(){ var t=cur(); if(!t) return; var rows=aoaOf(t,false);
+  var csv=rows.map(function(r){return r.map(function(c){c=String(c==null?'':c); return /[",\n;]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c;}).join(',');}).join('\r\n');
+  triggerBlobDownload(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),dlSafeName(t.name,'csv')); };
+window.tmPrint=function(){ var t=cur(); if(!t) return; var rows=aoaOf(t,false), f=document.createElement('iframe'); f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;'; document.body.appendChild(f);
+  var d=f.contentWindow.document; d.open(); d.write('<html><head><meta charset="utf-8"><title>'+E(t.name)+'</title><style>body{font-family:Arial,sans-serif;font-size:12px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #444;padding:4px 6px;text-align:left}th{background:#eee}</style></head><body><h3>'+E(t.name)+'</h3><table>'+
+    rows.map(function(r,i){return '<tr>'+r.map(function(c){return '<'+(i===(t.up?t.up.hdr:0)?'th':'td')+'>'+E(c)+'</'+(i===(t.up?t.up.hdr:0)?'th':'td')+'>';}).join('')+'</tr>';}).join('')+'</table></body></html>'); d.close();
+  setTimeout(function(){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ note('Uchapishaji umeshindwa kwenye kivinjari hiki — tumia "Pakua Excel".','warn'); } setTimeout(function(){ f.remove(); },2000); },300); };
+/* ---- picha: tumia kisomaji kilichopo (phOpen), peleka alama kwenye template ---- */
+window.tmPhoto=function(){
+  var t=cur(); if(!t) return; if(!t.students.length){ note('Weka majina ya wanafunzi kwenye template kwanza.','warn'); return; }
+  if(typeof phOpen!=='function'){ note('Kipengele cha picha hakipatikani.','err'); return; }
+  phOpen(); ctx={id:t.id}; ph.roster=roster(t); ph.max=t.max; ph.rows=[];
+  var o=$('ph_ov'); if(!o) return; var hb=o.querySelector('.ph-h b'); if(hb) hb.textContent='📷 Pakia Picha ya Matokeo — '+t.name;
+  var hint=o.querySelector('.ph-box > .hint'); if(hint) hint.textContent='Alama zitaingia kwenye template "'+t.name+'" pekee, kwenye safu ya somo utakalochagua. Picha husomwa kupitia seva ya AI ya mfumo (kama kawaida) na haihifadhiwi kwenye template. Majina na alama ni DRAFT — wewe ndiye unayethibitisha. Majina '+t.students.length+' ya template yanatumika kulinganisha; jina lisilolingana HALIONGEZWI.';
+  var dl=$('ph_sl'); if(dl) dl.innerHTML=t.subjects.map(function(s){return '<option value="'+A(s)+'">';}).join('');
+  var ins=$('ph_ins'); if(ins){ ins.style.display='none'; var b=document.createElement('button'); b.type='button'; b.className='sm-primary'; b.id='tm_push'; b.disabled=true; b.textContent='PANDISHA MATOKEO'; b.onclick=makePlan; ins.parentNode.insertBefore(b,ins); }
+  phStatus(); };
+var _ps=window.phStatus; window.phStatus=function(){ var r=_ps.apply(this,arguments); var b=$('tm_push'), i=$('ph_ins'); if(ctx&&b&&i) b.disabled=i.disabled; return r; };
+var _pcl=window.phClose; window.phClose=function(){ ctx=null; var m=$('tm_ov'); if(m) m.remove(); return _pcl.apply(this,arguments); };
+var _pc=window.phCheck;
+function tx(m){ if(/^Mwanafunzi mpya/.test(m)) return 'Jina halipo kwenye template — HALITAONGEZWA wala hakuna mwanafunzi mpya atakayetengenezwa. Litawekwa kwenye "Majina Hayajalinganishwa" na alama yake haitapandishwa. Chagua jina sahihi (kama lipo) au thibitisha kuliruka.';
+  return m.replace(/Assessment ya darasa hili/g,'template hii').replace(/Assessment zilizohifadhiwa/g,'template hii').replace(/Assessment/g,'template'); }
+window.phCheck=function(rows,max,rost){ var r=_pc.apply(this,arguments); if(ctx) r.forEach(function(c){ c.soft=c.soft.map(tx); if(c.info) c.info=c.info.map(tx); }); return r; };
+function makePlan(){
+  var t=cur(); if(!t||!ctx||t.id!==ctx.id) return; var somo=$('ph_somo').value.trim(); if(!somo){ alert('Andika au chagua somo la picha hii.'); return; }
+  var subj=findSubj(t,somo), addNew=false;
+  if(!subj){ if(t.source==='upload'){ alert('Somo "'+somo+'" halipo kwenye safu za template yako ('+(t.subjects.join(', ')||'hakuna')+'). Chagua somo lililopo. Mfumo haubadilishi muundo wa template yako.'); return; }
+    addNew=true; subj=smTitle(somo); }
+  var ros=roster(t), byId={}; t.students.forEach(function(s){byId[s.id]=s;});
+  var P={subj:subj,addNew:addNew,place:[],unm:[],conf:[],dups:[],susp:[],same:0}, used={}, on=ph.rows.filter(function(r){return r.on;});
+  on.forEach(function(r){ var m=phMatch(r.jina,r.no,ros);
+    if(m.t!=='exact'){ P.unm.push({jina:r.jina,alama:r.alama,why:m.t==='cands'?(m.same?'majina sawa kwenye template — andika S/N':'linafanana na zaidi ya jina moja — chagua jina sahihi'):'halipo kwenye template'}); return; }
+    var s=byId[m.st.id]; if(used[s.id]){ P.dups.push({jina:s.name,alama:r.alama,first:used[s.id].alama}); return; } used[s.id]=r; var v=Number(r.alama);
+    if(r.hakika!=='juu'||r.fix||m.snConflict) P.susp.push({name:s.name,alama:v,why:r.fix?'jina lilisahihishwa':(m.snConflict?'S/N tofauti':'uhakika mdogo wa kusoma')});
+    var old=s.marks[subj]; if(old===undefined||old===null||old==='') P.place.push({s:s,v:v}); else if(Number(old)===v) P.same++; else P.conf.push({s:s,old:old,v:v}); });
+  P.fp=hash(smNorm(subj)+'|'+on.map(function(r){return smNorm(r.jina)+':'+r.alama;}).join(',')); P.dupPhoto=(t.fps||[]).indexOf(P.fp)>=0; plan=P; showPlan(t); }
+function li(a,f){ return a.slice(0,12).map(f).join('')+(a.length>12?'<li>… na '+(a.length-12)+' zaidi</li>':''); }
+function showPlan(t){
+  var P=plan, m=$('tm_ov'); if(m) m.remove(); m=document.createElement('div'); m.id='tm_ov'; m.className='ph-ov'; m.style.zIndex=9999;
+  var h='<div class="ph-box"><div class="ph-h"><b>Hakiki Kabla ya Kupandisha</b><button type="button" id="tm_x">✕</button></div>'+
+   '<div class="sm-box ok">Somo: <b>'+E(P.subj)+'</b>'+(P.addNew?' (safu mpya itaongezwa kwenye template)':'')+'<br>Zitaingia: <b>'+P.place.length+'</b> · Tayari zipo (sawa): '+P.same+' · Hazijalinganishwa: <b>'+P.unm.length+'</b> · Migongano: '+P.conf.length+'</div>';
+  if(P.dupPhoto) h+='<div class="sm-box warn">⚠️ Orodha hii ya alama (somo hili, majina na alama zilezile) inaonekana kupandishwa tayari. <label><input type="checkbox" id="tm_dp"> Najua, endelea</label></div>';
+  if(P.unm.length) h+='<div class="sm-box warn"><h4>Majina Hayajalinganishwa ('+P.unm.length+') — hayatapandishwa</h4><ul>'+li(P.unm,function(x){return '<li>'+E(x.jina||'(bila jina)')+' — '+E(x.alama)+' · '+E(x.why)+'</li>';})+'</ul></div>';
+  if(P.dups.length) h+='<div class="sm-box warn"><h4>Majina yanayojirudia ('+P.dups.length+') — hayatapandishwa</h4><ul>'+li(P.dups,function(x){return '<li>'+E(x.jina)+': '+E(x.first)+' na '+E(x.alama)+'</li>';})+'</ul></div>';
+  if(P.susp.length) h+='<div class="sm-box warn"><h4>Zinazotiliwa shaka (ulizithibitisha) ('+P.susp.length+')</h4><ul>'+li(P.susp,function(x){return '<li>'+E(x.name)+' — '+E(x.alama)+' · '+E(x.why)+'</li>';})+'</ul></div>';
+  if(P.conf.length) h+='<div class="sm-box warn"><h4>Alama zilizopo tayari ni tofauti ('+P.conf.length+')</h4><ul>'+li(P.conf,function(x){return '<li>'+E(x.s.name)+': iliyopo '+E(x.old)+' → mpya '+E(x.v)+'</li>';})+'</ul><label><input type="checkbox" id="tm_ow"> Badilisha alama hizi zilizopo (kwa chaguo-msingi HAZIBADILISHWI)</label></div>';
+  h+='<div class="sm-btnrow"><button type="button" class="sm-primary" id="tm_go">PANDISHA MATOKEO</button><button type="button" class="rowBtn" id="tm_back">Rudi kukagua</button></div></div>';
+  m.innerHTML=h; document.body.appendChild(m);
+  var go=$('tm_go'); function sync(){ var dp=$('tm_dp'), ow=$('tm_ow'); go.disabled=!((P.place.length||(ow&&ow.checked&&P.conf.length))&&(!P.dupPhoto||(dp&&dp.checked))); }
+  m.addEventListener('change',sync); sync(); $('tm_x').onclick=$('tm_back').onclick=function(){ m.remove(); }; go.onclick=commit; }
+function commit(){
+  var t=cur(), P=plan; if(!t||!P) return; var ow=$('tm_ow')&&$('tm_ow').checked, n=P.place.length+(ow?P.conf.length:0);
+  if(ow&&P.conf.length>=5&&!confirm('Utabadilisha alama '+P.conf.length+' zilizokwishaingizwa kwenye '+P.subj+'. Una uhakika?')) return;
+  if(P.addNew&&!findSubj(t,P.subj)) t.subjects.push(P.subj);
+  P.place.forEach(function(x){ x.s.marks[P.subj]=x.v; }); if(ow) P.conf.forEach(function(x){ x.s.marks[P.subj]=x.v; });
+  (t.fps=t.fps||[]).push(P.fp); (t.log=t.log||[]).push({d:new Date().toISOString(),subj:P.subj,n:n}); if(t.log.length>50) t.log=t.log.slice(-50);
+  var un=P.unm.length, sj=P.subj; plan=null; save(); window.phClose(); V.mode='list'; render();
+  note('Zimepandishwa alama '+n+' kwenye safu ya '+sj+'.'+(un?' Majina '+un+' hayakulinganishwa (hayakupandishwa).':'')+' Unaweza kuendelea na somo jingine.',un?'warn':'ok'); }
+/* ---- mitindo ---- */
+var st=document.createElement('style'); st.textContent='.tm-h{font-family:\'Helvetica Neue\',Arial,sans-serif;font-size:15px;margin:0 0 10px}.tm-sel{max-width:100%;padding:6px}.tm-act{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tm-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}.tm-r,.tm-chip{display:inline-block;margin:4px 12px 4px 0;font-family:\'Helvetica Neue\',Arial,sans-serif;font-size:13px}.tm-warn td{background:rgba(217,147,47,.12)}#hub-tmpl .results-table select{max-width:150px;background:transparent;color:var(--chalk)}#hub-tmpl .ph-box ul{margin:4px 0 0 18px;padding:0}';
+document.head.appendChild(st);
 })();
 </script>
 </body>
