@@ -10972,7 +10972,8 @@ function save(){ try{ localStorage.setItem(KEY+T._u,JSON.stringify(T)); return t
 function note(t,ty){ var m=$('tm_msg'); if(m) m.innerHTML='<div class="sm-box '+(ty||'ok')+'">'+E(t)+'</div>'; }
 function cur(){ load(); return T.tpls.filter(function(t){return t.id===T.active;})[0]||null; }
 function rid(p){ return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
-function numNo(x){ x=String(x==null?'':x).trim(); return /^\d+$/.test(x)?Number(x):x; }
+function numNo(x){ x=String(x==null?'':x).trim(); return /^(0|[1-9]\d{0,5})$/.test(x)?Number(x):x; }
+function colL(n){ var r='',m; n=n+1; while(n>0){ m=(n-1)%26; r=String.fromCharCode(65+m)+r; n=Math.floor((n-1)/26); } return r; }
 function findSubj(t,n){ var k=smSubjectKey(n); return t.subjects.filter(function(s){return smSubjectKey(s)===k;})[0]||null; }
 function roster(t){ return t.students.map(function(s){ var n=(s.no===''||s.no==null)?[]:[s.no];
   return {id:s.id,key:smNorm(s.name),name:s.name,sns:n}; }); }
@@ -11090,7 +11091,7 @@ function noSubj(t,sys,hasS){
 window.tmPickSubs=function(){ var t=cur(); if(!t) return; var n=0;
   [].forEach.call(document.querySelectorAll('#tm_psubs input:checked:not(:disabled)'),function(i){ if(!findSubj(t,i.value)){ t.subjects.push(i.value); n++; } });
   if(!n){ note('Chagua angalau somo moja jipya.','warn'); return; } save(); render(); note('Masomo '+n+' yameongezwa kwenye template.','ok'); };
-window.tmRemap=function(){ var t=cur(); if(!t||!t.up) return; up={file:t.name,aoa:t.up.aoa,hdr:t.up.hdr,roles:buildRoles(t.up.aoa,t.up.hdr),replace:t.id}; V.mode='map'; render(); };
+window.tmRemap=function(){ var t=cur(); if(!t||!t.up) return; var _o=t.up.off||{r:0,c:0}, _m=t.up.mg||[], _a=analyse(t.up.aoa,t.up.hdr,_m,_o); up={file:t.name,aoa:t.up.aoa,hdr:t.up.hdr,ds:_a.ds,roles:_a.roles,off:_o,mg:_m,b64:t.up.b64||'',replace:t.id}; V.mode='map'; render(); };
 function reviewHtml(t){
   var n=t.students.length, per=t.subjects.map(function(sub){ var f=t.students.filter(function(s){return s.marks[sub]!=null&&s.marks[sub]!=='';}).length; return {sub:sub,f:f}; });
   var none=t.students.filter(function(s){return !t.subjects.some(function(sub){return s.marks[sub]!=null&&s.marks[sub]!=='';});});
@@ -11128,6 +11129,7 @@ var NAMEH=/^(jina|majina|name|names|mwanafunzi|wanafunzi|student|students|candid
 function isNm(n){ return NAMEH.test(n)||NAMEANY.test(n); }
 var SKIP=/^(jumla|total|wastani|average|mean|nafasi|position|daraja|grade|maoni|remarks)(\s|$)/;
 var NOSUB=/^(combination|mchepuo|sex|jinsia|jinsi|gender|stream|class|darasa|school|shule|dob|age|umri)(\s|$)/;
+var TOTR=/^(jumla|total)(\s|$)/, AVGR=/^(wastani|average|mean)(\s|$)/, POSR=/^(nafasi|position|rank)(\s|$)/;
 function hasSub(aoa,hdr){ var r=aoa[hdr]||[], s=aoa[hdr+1]; if(!s) return false; var nc=-1;
   for(var c=0;c<r.length;c++){ var n=smNorm(String(r[c]==null?'':r[c]).trim()); if(n&&isNm(n)&&!NOH.test(n)){ nc=c; break; } }
   if(nc>=0&&String(s[nc]==null?'':s[nc]).trim()!=='') return false;
@@ -11143,49 +11145,72 @@ function subjSet(){ var s={}; try{ SM_SUBJECT_ALIASES.forEach(function(g){g.forE
 function roleOf(h,SS){ var raw=String(h==null?'':h).trim(), n=smNorm(raw); if(!raw) return {r:'puuza',u:false};
   if(n==='s no'||n==='sno') return {r:'puuza',u:false};
   if(raw==='#'||NOH.test(n)) return {r:'namba',u:false}; if(isNm(n)) return {r:'jina',u:false};
+  if(TOTR.test(n)) return {r:'jumla',u:false}; if(AVGR.test(n)) return {r:'wastani',u:false}; if(POSR.test(n)) return {r:'nafasi',u:false};
+  if(SKIP.test(n)||NOSUB.test(n)) return {r:'puuza',u:false};
   if(SS[n]) return {r:'somo',u:false}; return {r:'puuza',u:true}; }
 function pickHdr(aoa){ var SS=subjSet(), best=-1, bi=0;
   for(var i=0;i<Math.min(aoa.length,20);i++){ var sc=0; aoa[i].forEach(function(c){ var raw=String(c==null?'':c).trim(), n=smNorm(raw); if(!raw) return;
     if(isNm(n)&&!NOH.test(n)) sc+=3; else if(raw==='#'||NOH.test(n)) sc+=1; else if(SS[n]) sc+=2; else sc+=0.1; }); if(sc>best){ best=sc; bi=i; } }
   var hasN=function(r){ return (r||[]).some(function(c){ var n=smNorm(String(c==null?'':c).trim()); return n&&isNm(n)&&!NOH.test(n); }); };
-  if(bi>0&&!hasN(aoa[bi])&&hasN(aoa[bi-1])) bi=bi-1;
+  if(!hasN(aoa[bi])){ for(var d=1;d<=3;d++){ if(bi-d>=0&&hasN(aoa[bi-d])){ bi=bi-d; break; } if(bi+d<aoa.length&&hasN(aoa[bi+d])){ bi=bi+d; break; } } }
   return bi; }
-function buildRoles(aoa,hdr){ var SS=subjSet(), row=effRow(aoa,hdr), w=0; aoa.forEach(function(r){ if(r.length>w) w=r.length; });
-  var roles=[], hasName=false, hasNo=false;
+function personLike(v,SS){ v=String(v==null?'':v).trim(); if(v.length<3||isFinite(Number(v))) return false; var n=smNorm(v);
+  if(isNm(n)||NOH.test(n)||SKIP.test(n)||NOSUB.test(n)||SS[n]) return false; return /^\p{L}[\p{L}'’.\- ]+$/u.test(v); }
+function nameColOf(aoa,hdr){ var r=aoa[hdr]||[]; for(var c=0;c<r.length;c++){ var n=smNorm(String(r[c]==null?'':r[c]).trim()); if(n&&isNm(n)&&!NOH.test(n)) return c; } return -1; }
+/* mstari wa kwanza wa mwanafunzi: ni mstari wa kwanza chini ya vichwa ambapo safu ya jina ina jina la mtu (vichwa vinaweza kuwa mistari 2-3) */
+function dsOf(aoa,hdr){ var nc=nameColOf(aoa,hdr); if(nc<0) return hdr+1+(hasSub(aoa,hdr)?1:0); var SS=subjSet();
+  for(var i=hdr+1;i<Math.min(aoa.length,hdr+6);i++){ if(personLike((aoa[i]||[])[nc],SS)) return i; } return hdr+1; }
+function mergeOf(mg,off,r,c){ var R=r+off.r, C=c+off.c; for(var i=0;i<(mg||[]).length;i++){ var m=mg[i]; if(R>=m.s.r&&R<=m.e.r&&C>=m.s.c&&C<=m.e.c) return m; } return null; }
+/* kichwa cha kila safu = maandishi ya mstari wa chini kabisa wa vichwa; ukiwa tupu (merge ya wima au mstari wa juu) tazama juu; vichwa vya kikundi (merge ya mlalo) havihesabiwi kuwa somo */
+function hdrLabels(aoa,hdr,ds,mg,off){ var w=0, out=[]; aoa.forEach(function(r){ if(r.length>w) w=r.length; });
+  for(var c=0;c<w;c++){ var lab=''; for(var r=ds-1;r>=hdr;r--){ var v=String((aoa[r]||[])[c]==null?'':aoa[r][c]).trim();
+      if(v){ var m=mergeOf(mg,off,r,c); if(r<ds-1&&m&&m.e.c>m.s.c) break; lab=v; break; } }
+    out.push(lab); }
+  return out; }
+function analyse(aoa,hdr,mg,off){ var ds=dsOf(aoa,hdr); return {ds:ds,roles:buildRoles(aoa,hdr,ds,hdrLabels(aoa,hdr,ds,mg,off))}; }
+function buildRoles(aoa,hdr,ds,row){ var SS=subjSet(), w=0; aoa.forEach(function(r){ if(r.length>w) w=r.length; });
+  var roles=[], hasName=false, hasNo=false, seenT={};
   for(var c=0;c<w;c++){ var x=roleOf(row[c],SS); if(x.r==='jina'){ if(hasName) x={r:'puuza',u:true}; hasName=true; } if(x.r==='namba'){ if(hasNo) x={r:'puuza',u:true}; hasNo=true; }
+    if(x.r==='jumla'||x.r==='wastani'||x.r==='nafasi'){ if(seenT[x.r]) x={r:'puuza',u:false}; seenT[x.r]=1; }
     roles.push({r:x.r,u:x.u,sub:String(row[c]==null?'':row[c]).trim()}); }
-  roles.forEach(function(x,ci){ if(x.r!=='puuza'||!x.sub) return; var n=smNorm(x.sub); if(SKIP.test(n)||NOSUB.test(n)||n==='s no'||n==='sno'){ x.u=false; return; }
-    var ne=0,nu=0; for(var i=dataStart(aoa,hdr);i<aoa.length;i++){ var v=String((aoa[i]||[])[ci]==null?'':aoa[i][ci]).trim(); if(v!==''){ ne++; if(isFinite(Number(v.replace(',','.')))) nu++; } }
+  var jIdx=-1; roles.forEach(function(x,ci){ if(jIdx<0&&x.r==='jumla') jIdx=ci; });
+  roles.forEach(function(x,ci){ if(x.r!=='puuza'||!x.sub) return; if(jIdx>=0&&ci>jIdx) return; var n=smNorm(x.sub); if(SKIP.test(n)||NOSUB.test(n)||n==='s no'||n==='sno'){ x.u=false; return; }
+    var ne=0,nu=0; for(var i=ds;i<aoa.length;i++){ var v=String((aoa[i]||[])[ci]==null?'':aoa[i][ci]).trim(); if(v!==''){ ne++; if(isFinite(Number(v.replace(',','.')))) nu++; } }
     if(ne===0||nu/ne>=0.7){ x.r='somo'; x.u=false; x.guess=true; } });
-  if(!hasName){ var bc=-1,bs=0; for(var c2=0;c2<w;c2++){ var cnt=0; for(var i=dataStart(aoa,hdr);i<aoa.length;i++){ var v=String((aoa[i]||[])[c2]==null?'':aoa[i][c2]).trim(); if(v&&/^\p{L}[\p{L}'’.\- ]+$/u.test(v)&&v.length>=3) cnt+=(v.indexOf(' ')>0?2:1); } if(cnt>bs){bs=cnt;bc=c2;} }
+  if(!hasName){ var bc=-1,bs=0; for(var c2=0;c2<w;c2++){ var cnt=0; for(var i=ds;i<aoa.length;i++){ var v=String((aoa[i]||[])[c2]==null?'':aoa[i][c2]).trim(); if(v&&/^\p{L}[\p{L}'’.\- ]+$/u.test(v)&&v.length>=3) cnt+=(v.indexOf(' ')>0?2:1); } if(cnt>bs){bs=cnt;bc=c2;} }
     if(bc>=0){ roles[bc].r='jina'; roles[bc].guess=true; roles[bc].u=false; } }
   return roles; }
 async function readFile(f){
   if(typeof XLSX==='undefined'){ note('Maktaba ya kusoma Excel haijapakia — hakikisha una mtandao kisha jaribu tena.','err'); return; }
-  try{ var wb=/\.csv$/i.test(f.name)?XLSX.read(await f.text(),{type:'string'}):XLSX.read(await f.arrayBuffer(),{type:'array'});
-    var aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:true,blankrows:true});
+  try{ var isX=/\.xlsx$/i.test(f.name), buf=null, wb;
+    if(/\.csv$/i.test(f.name)) wb=XLSX.read(await f.text(),{type:'string'}); else { buf=await f.arrayBuffer(); wb=XLSX.read(buf,{type:'array'}); }
+    var ws=wb.Sheets[wb.SheetNames[0]], rg=XLSX.utils.decode_range(ws['!ref']||'A1'), off={r:rg.s.r,c:rg.s.c}, mg=ws['!merges']||[];
+    var aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true,blankrows:true});
     if(aoa.length<2){ note('Faili halina data ya kutosha.','err'); return; }
-    var hdr=pickHdr(aoa); up={file:f.name,aoa:aoa,hdr:hdr,roles:buildRoles(aoa,hdr)}; V.mode='map'; render();
+    var b64='', warnF=''; if(isX&&buf){ var u8=new Uint8Array(buf), bs='', CH=0x8000; for(var k=0;k<u8.length;k+=CH) bs+=String.fromCharCode.apply(null,u8.subarray(k,k+CH)); b64=btoa(bs);
+      if(b64.length>2400000){ b64=''; warnF='Faili ni kubwa mno kuhifadhiwa kwenye kivinjari — muundo asilia hautahifadhiwa kikamilifu.'; } }
+    else warnF='Faili si .xlsx — muundo (rangi, mipaka, merge) hauwezi kuhifadhiwa. Likihifadhi kama .xlsx kisha lipakie tena.';
+    var hdr=pickHdr(aoa), an=analyse(aoa,hdr,mg,off); up={file:f.name,aoa:aoa,hdr:hdr,ds:an.ds,roles:an.roles,off:off,mg:mg,b64:b64}; V.mode='map'; render(); if(warnF) note(warnF,'warn');
   }catch(e){ note('Faili halikuweza kusomwa: '+e.message,'err'); } }
 function upRows(){ var nc=up.roles.map(function(x){return x.r;}).indexOf('jina'), out=[];
-  if(nc<0) return out; for(var i=up.hdr+1;i<up.aoa.length;i++){ var v=String((up.aoa[i]||[])[nc]==null?'':up.aoa[i][nc]).trim(); if(v&&!SKIP.test(smNorm(v))) out.push(i); } return out; }
+  if(nc<0) return out; for(var i=(up.ds!=null?up.ds:up.hdr+1);i<up.aoa.length;i++){ var v=String((up.aoa[i]||[])[nc]==null?'':up.aoa[i][nc]).trim(); if(!v){ if(out.length) break; continue; } if(SKIP.test(smNorm(v))) break; out.push(i); } return out; }
 function prevHtml(){ var a=up.aoa.slice(0,6), w=0; a.forEach(function(r){ if(r.length>w) w=r.length; }); w=Math.min(w,14);
-  return '<details style="margin:8px 0;"><summary class="hint">Angalia mistari ya kwanza ya faili lako</summary><div class="tm-scroll"><table class="results-table"><tbody>'+a.map(function(r,i){ var h='<tr><td>'+(i+1)+'</td>'; for(var c=0;c<w;c++) h+='<td>'+E(String(r[c]==null?'':r[c]).slice(0,18))+'</td>'; return h+'</tr>'; }).join('')+'</tbody></table></div></details>'; }
+  return '<details style="margin:8px 0;"><summary class="hint">Angalia mistari ya kwanza ya faili lako</summary><div class="tm-scroll"><table class="results-table"><tbody>'+a.map(function(r,i){ var h='<tr><td>'+(i+1)+'</td>'; for(var c=0;c<w;c++) h+='<td>'+E(String(r[c]==null?'':r[c]).slice(0,40))+'</td>'; return h+'</tr>'; }).join('')+'</tbody></table></div></details>'; }
 function mapHtml(){
   if(!up) return ''; var rows=upRows(), hd='';
   for(var i=0;i<Math.min(up.aoa.length,20);i++) hd+='<option value="'+i+'"'+(i===up.hdr?' selected':'')+'>Mstari '+(i+1)+': '+E(up.aoa[i].filter(function(x){return String(x).trim();}).slice(0,3).join(' | '))+'</option>';
   var h='<div class="panel"><h3 class="tm-h">Tambua Safu za Template: '+E(up.file)+'</h3><p class="hint">Mfumo umejaribu kutambua. Kagua na urekebishe kama kuna kosa. Muundo wa faili lako HAUBADILISHWI — alama zitaandikwa tu kwenye safu za masomo ulizochagua.</p>'+
   prevHtml()+'<div class="field"><label>Mstari wa vichwa vya safu</label><select id="tm_hdr">'+hd+'</select></div><div class="tm-scroll"><table class="results-table"><thead><tr><th>Safu</th><th>Kichwa</th><th>Ni nini?</th><th>Jina la somo</th></tr></thead><tbody>';
-  up.roles.forEach(function(x,c){ h+='<tr'+(x.u||x.guess?' class="tm-warn"':'')+'><td>'+String.fromCharCode(65+(c%26))+(c>=26?c:'')+'</td><td>'+E(x.sub)+(x.u?'<br><span class="hint">⚠️ Haijatambuliwa — chagua</span>':'')+(x.guess?'<br><span class="hint">⚠️ Imekisiwa — kagua</span>':'')+'</td><td><select data-c="'+c+'" data-f="r">'+
-    [['jina','Jina la mwanafunzi'],['namba','Namba / S/N'],['somo','Somo (alama)'],['puuza','Puuza (usiguse)']].map(function(o){return '<option value="'+o[0]+'"'+(x.r===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+
+  up.roles.forEach(function(x,c){ h+='<tr'+(x.u||x.guess?' class="tm-warn"':'')+'><td>'+colL(c+(up.off?up.off.c:0))+'</td><td>'+E(x.sub)+(x.u?'<br><span class="hint">⚠️ Haijatambuliwa — chagua</span>':'')+(x.guess?'<br><span class="hint">⚠️ Imekisiwa — kagua</span>':'')+'</td><td><select data-c="'+c+'" data-f="r">'+
+    [['jina','Jina la mwanafunzi'],['namba','Namba / S/N'],['somo','Somo (alama)'],['jumla','JUMLA'],['wastani','WASTANI'],['nafasi','NAFASI'],['puuza','Puuza (usiguse)']].map(function(o){return '<option value="'+o[0]+'"'+(x.r===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+
     '</select></td><td><input data-c="'+c+'" data-f="s" value="'+A(x.sub)+'"'+(x.r==='somo'?'':' disabled')+'></td></tr>'; });
-  h+='</tbody></table></div><p class="hint">Wanafunzi waliotambuliwa: <b>'+rows.length+'</b>'+(rows.length?' — '+E(rows.slice(0,3).map(function(i){return String(up.aoa[i][up.roles.map(function(x){return x.r;}).indexOf('jina')]).trim();}).join(', '))+' …':' — chagua safu ya jina')+'</p>'+
+  h+='</tbody></table></div><p class="hint">Wanafunzi waliotambuliwa: <b>'+rows.length+'</b>'+(rows.length?' — wa kwanza: '+E(rows.slice(0,3).map(function(i){return String(up.aoa[i][up.roles.map(function(x){return x.r;}).indexOf('jina')]).trim();}).join(', '))+' … wa mwisho: '+E(String(up.aoa[rows[rows.length-1]][up.roles.map(function(x){return x.r;}).indexOf('jina')]).trim())+' (mstari '+(rows[0]+(up.off?up.off.r:0)+1)+'–'+(rows[rows.length-1]+(up.off?up.off.r:0)+1)+')':' — chagua safu ya jina')+'</p>'+
   '<div class="field"><label>Alama za juu kwa kila somo</label><input id="tm_umax" type="number" min="1" value="100" style="max-width:140px"></div>'+
   '<div class="sm-btnrow"><button class="sm-primary" onclick="tmUpOk()">Thibitisha na Tumia Template</button><button class="rowBtn" onclick="tmUpCancel()">Ghairi</button></div></div>';
   return h; }
-function bindMap(){ var hs=$('tm_hdr'); if(hs) hs.onchange=function(){ up.hdr=+hs.value; up.roles=buildRoles(up.aoa,up.hdr); render(); };
+function bindMap(){ var hs=$('tm_hdr'); if(hs) hs.onchange=function(){ up.hdr=+hs.value; var an=analyse(up.aoa,up.hdr,up.mg,up.off||{r:0,c:0}); up.ds=an.ds; up.roles=an.roles; render(); };
   [].forEach.call(document.querySelectorAll('[data-f=r]'),function(s){ s.onchange=function(){ var c=+s.dataset.c, r=s.value;
-    if((r==='jina'||r==='namba')) up.roles.forEach(function(x,i){ if(i!==c&&x.r===r) x.r='puuza'; });
+    if(r!=='somo'&&r!=='puuza') up.roles.forEach(function(x,i){ if(i!==c&&x.r===r) x.r='puuza'; });
     up.roles[c].r=r; up.roles[c].u=false; up.roles[c].guess=false; var mx=$('tm_umax')?$('tm_umax').value:''; render(); if($('tm_umax')) $('tm_umax').value=mx; }; });
   [].forEach.call(document.querySelectorAll('[data-f=s]'),function(i){ i.onchange=function(){ up.roles[+i.dataset.c].sub=i.value.trim(); }; }); }
 window.tmUpCancel=function(){ up=null; V.mode='list'; render(); };
@@ -11194,9 +11219,10 @@ window.tmUpOk=function(){
   var no=up.roles.map(function(x){return x.r;}).indexOf('namba'), cols={}, subs=[], seen={}, bad='';
   up.roles.forEach(function(x,c){ if(x.r!=='somo') return; if(!x.sub){ bad='Safu ya somo haina jina — liandike.'; return; } var k=smSubjectKey(x.sub); if(seen[k]){ bad='Somo "'+x.sub+'" limechaguliwa mara mbili.'; return; } seen[k]=1; cols[x.sub]=c; subs.push(x.sub); });
   if(bad){ note(bad,'warn'); return; }
+  var tot={}; ['jumla','wastani','nafasi'].forEach(function(k){ var ix=up.roles.map(function(x){return x.r;}).indexOf(k); if(ix>=0) tot[k]=ix; });
   var max=parseFloat($('tm_umax').value)||100, rows=upRows(); if(!rows.length){ note('Hakuna wanafunzi waliotambuliwa.','warn'); return; }
   var t={id:rid('t'),name:up.file.replace(/\.[^.]+$/,''),grade:($('sm_grade')||{}).value||'',max:max,kind:'upload',source:'upload',hasNo:no>=0,subjects:subs,students:[],fps:[],log:[],
-    up:{aoa:up.aoa,hdr:up.hdr,cols:cols}}, odd=0;
+    up:{aoa:up.aoa,hdr:up.hdr,ds:up.ds,cols:cols,tot:tot,off:up.off||{r:0,c:0},mg:up.mg||[],b64:up.b64||''}}, odd=0;
   rows.forEach(function(i){ var r=up.aoa[i], s={id:rid('s'),row:i,no:no>=0?numNo(r[no]):'',name:String(r[nc]).trim(),marks:{}};
     subs.forEach(function(sub){ var v=String(r[cols[sub]]==null?'':r[cols[sub]]).trim().replace(',','.'); if(v==='') return; var n=Number(v); if(isFinite(n)&&n>=0&&n<=max) s.marks[sub]=n; else odd++; });
     t.students.push(s); });
@@ -11210,7 +11236,28 @@ function aoaOf(t,blank){
     return a; }
   var h=[]; if(t.hasNo) h.push('S/N'); h.push('Jina'); t.subjects.forEach(function(s){h.push(s);}); if(t.subjects.length) h.push('Jumla','Wastani','Daraja');
   return [h].concat(t.students.map(function(s){ var r=[]; if(t.hasNo) r.push(s.no); r.push(s.name); t.subjects.forEach(function(sub){ r.push(blank||s.marks[sub]==null?'':s.marks[sub]); }); var st=blank?{j:'',w:'',d:''}:tmStat(t,s); if(t.subjects.length) r.push(st.j,st.w,st.d); return r; })); }
-window.tmXlsx=function(blank){ var t=cur(); if(!t) return; var rows=aoaOf(t,!!blank); if(rows.length<2&&!t.up){ note('Hakuna wanafunzi wa kupakua bado.','warn'); }
+/* Template ya mtumiaji: fungua faili ASILIA, andika alama kwenye seli za masomo (na Jumla/Wastani/Nafasi kama ni thamani, si formula) — kila kitu kingine (mtindo, merge, upana, mipaka) kinabaki. */
+function okNum(v){ v=String(v==null?'':v).trim().replace(',','.'); return v!==''&&isFinite(Number(v)); }
+async function xlsxOrig(t,blank){
+  if(typeof ExcelJS==='undefined'){ note('Maktaba ya Excel (ExcelJS) haijapakia — hakikisha una mtandao kisha jaribu tena.','err'); return; }
+  try{ var bin=atob(t.up.b64), u8=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+    var wb=new ExcelJS.Workbook(); await wb.xlsx.load(u8.buffer); var ws=wb.worksheets[0], off=t.up.off||{r:0,c:0}, aoa=t.up.aoa;
+    function put(ri,ci,val){ var cell=ws.getCell(off.r+ri+1,off.c+ci+1); if(cell.isMerged&&cell.master&&cell.master.address!==cell.address) return;
+      var cv=cell.value; if(cv&&typeof cv==='object'&&(cv.formula||cv.sharedFormula)) return; cell.value=val; }
+    var pos={}; if(!blank&&t.up.tot&&t.up.tot.nafasi!=null){ var arr=t.students.map(function(s){return {s:s,j:tmStat(t,s).j};}).filter(function(x){return x.j!=='';}).sort(function(a,b){return b.j-a.j;}); arr.forEach(function(x,k){ pos[x.s.id]=(k>0&&arr[k-1].j===x.j)?pos[arr[k-1].s.id]:k+1; }); }
+    t.students.forEach(function(s){ if(s.row==null) return; var orow=aoa[s.row]||[];
+      t.subjects.forEach(function(sub){ var ci=t.up.cols[sub]; if(ci==null) return; var m=s.marks[sub], had=okNum(orow[ci]);
+        if(blank){ if(had||m!=null) put(s.row,ci,null); } else if(m!=null&&m!=='') put(s.row,ci,Number(m)); else if(had) put(s.row,ci,null); });
+      if(t.up.tot){ var st=tmStat(t,s), tt=t.up.tot;
+        if(blank){ ['jumla','wastani','nafasi'].forEach(function(k){ if(tt[k]!=null&&okNum(orow[tt[k]])) put(s.row,tt[k],null); }); }
+        else if(st.j!==''){ if(tt.jumla!=null) put(s.row,tt.jumla,st.j); if(tt.wastani!=null) put(s.row,tt.wastani,st.w); if(tt.nafasi!=null&&pos[s.id]) put(s.row,tt.nafasi,pos[s.id]); } } });
+    wb.calcProperties=wb.calcProperties||{}; wb.calcProperties.fullCalcOnLoad=true;
+    var out=await wb.xlsx.writeBuffer(); triggerBlobDownload(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),dlSafeName(t.name+(blank?' - tupu':''),'xlsx'));
+  }catch(e){ note('Kupakua kumeshindwa: '+e.message,'err'); } }
+window.tmXlsx=function(blank){ var t=cur(); if(!t) return;
+  if(t.up&&t.up.b64){ xlsxOrig(t,!!blank); return; }
+  if(t.up) note('Template hii haina nakala ya faili asilia (ilipakiwa kabla ya marekebisho haya, au si .xlsx). Pakia tena faili la .xlsx kupitia "Pakia Template Yangu" ili muundo wake uhifadhiwe kikamilifu.','warn');
+  var rows=aoaOf(t,!!blank); if(rows.length<2&&!t.up){ note('Hakuna wanafunzi wa kupakua bado.','warn'); }
   downloadXlsxRows(rows,t.name+(blank?' - tupu':''),'Matokeo'); };
 window.tmCsv=function(){ var t=cur(); if(!t) return; var rows=aoaOf(t,false);
   var csv=rows.map(function(r){return r.map(function(c){c=String(c==null?'':c); return /[",\n;]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c;}).join(',');}).join('\r\n');
@@ -11270,6 +11317,9 @@ function showPlan(t){
   var P=plan, m=$('tm_ov'); if(m) m.remove(); m=document.createElement('div'); m.id='tm_ov'; m.className='ph-ov'; m.style.zIndex=9999;
   var h='<div class="ph-box"><div class="ph-h"><b>Hakiki Kabla ya Kupandisha</b><button type="button" id="tm_x">✕</button></div>'+
    '<div class="sm-box ok">Somo: <b>'+E(P.subj)+'</b>'+(P.addNew?' (safu mpya itaongezwa kwenye template)':'')+'<br>Zitaingia: <b>'+P.place.length+'</b> · Tayari zipo (sawa): '+P.same+' · Hazijalinganishwa: <b>'+P.unm.length+'</b> · Migongano: '+P.conf.length+'</div>';
+  var tcol=''; if(t.up&&t.up.cols&&t.up.cols[P.subj]!=null) tcol=colL((t.up.off?t.up.off.c:0)+t.up.cols[P.subj]);
+  h+='<div class="sm-box ok">Safu itakayopokea alama: <b>'+(tcol?E(tcol)+' — ':'')+E(P.subj)+'</b>. Alama zitaandikwa kwenye safu hii pekee; safu nyingine hazitaguswa.</div>';
+  if(P.place.length) h+='<details open><summary class="hint">Hakiki alama zitakazoingia ('+P.place.length+')</summary><div class="tm-scroll"><table class="results-table"><thead><tr><th>S/No</th><th>Jina</th><th>Somo</th><th>Alama</th>'+(tcol?'<th>Seli</th>':'')+'</tr></thead><tbody>'+P.place.map(function(x){ return '<tr><td>'+E(x.s.no===''||x.s.no==null?'':x.s.no)+'</td><td>'+E(x.s.name)+'</td><td>'+E(P.subj)+'</td><td>'+E(x.v)+'</td>'+(tcol?'<td>'+E(tcol+((t.up.off?t.up.off.r:0)+x.s.row+1))+'</td>':'')+'</tr>'; }).join('')+'</tbody></table></div></details>';
   if(P.dupPhoto) h+='<div class="sm-box warn">⚠️ Orodha hii ya alama (somo hili, majina na alama zilezile) inaonekana kupandishwa tayari. <label><input type="checkbox" id="tm_dp"> Najua, endelea</label></div>';
   if(P.unm.length) h+='<div class="sm-box warn"><h4>Majina Hayajalinganishwa ('+P.unm.length+') — hayatapandishwa</h4><ul>'+li(P.unm,function(x){return '<li>'+E(x.jina||'(bila jina)')+' — '+E(x.alama)+' · '+E(x.why)+'</li>';})+'</ul></div>';
   if(P.dups.length) h+='<div class="sm-box warn"><h4>Majina yanayojirudia ('+P.dups.length+') — hayatapandishwa</h4><ul>'+li(P.dups,function(x){return '<li>'+E(x.jina)+': '+E(x.first)+' na '+E(x.alama)+'</li>';})+'</ul></div>';
@@ -11294,4 +11344,5 @@ document.head.appendChild(st);
 </script>
 </body>
 </html>
+
 
