@@ -11745,6 +11745,550 @@ window.AZCD={ open:openIt, close:closeIt, isEnabled:function(){ return !!S.enabl
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',addEntry); else addEntry();
 })();
 </script>
+
+<!-- ===================== SINKAMBA AI — msaidizi wa kidijitali (kiongezeo huru) =====================
+     - Hakuna API ya nje (si Gemini, Claude, OpenAI wala Groq); hakuna Google Drive API; hakuna malipo.
+     - Maarifa yote yako ndani ya faili hili: orodha ya vipengele halisi + injini ya kuelewa Kiswahili (JavaScript).
+     - Navigation inatumia TU functions/ID halisi za mfumo: showView, goHome, setHubTab, tmShowTab, setRatibaTab,
+       mcOpenFresh, AZCD.open. Kila njia inakaguliwa wakati wa kupakia; ikikosekana, kitufe chake kinafichwa.
+     - Mazungumzo yanahifadhiwa kwenye sessionStorage (ufunguo: sinkamba_session_v1) — yanaisha tabo ikifungwa.
+       Hayagusi Firebase, Google Login, usajili, malipo, Cloudflare Worker, mipaka ya matumizi wala database. -->
+<style id="skStyle">
+#skFab,#skPanel,#skPanel *{box-sizing:border-box}
+html.fb-locked #skFab,html.fb-locked #skPanel{display:none !important}
+#skFab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:9500;display:flex;align-items:center;gap:9px;
+  border:0;cursor:pointer;padding:0 16px 0 6px;height:56px;border-radius:30px;background:var(--amber,#D9932F);color:#26301F;
+  font:700 14px/1 'Helvetica Neue',Arial,sans-serif;letter-spacing:.2px;box-shadow:0 6px 20px rgba(0,0,0,.4),0 0 0 2px rgba(244,239,225,.18);
+  transition:transform .15s ease,background .15s ease}
+#skFab:hover{background:#E4A23F;transform:translateY(-2px)}
+#skFab:focus-visible,#skPanel button:focus-visible,#skPanel textarea:focus-visible{outline:3px solid #F4EFE1;outline-offset:2px}
+#skFab .sk-av{width:44px;height:44px}
+#skFab.sk-open{display:none}
+#skFab.sk-pulse::after{content:"";position:absolute;inset:-4px;border-radius:34px;border:2px solid var(--amber,#D9932F);animation:skPulse 2.2s ease-out 3}
+@keyframes skPulse{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.18)}}
+.sk-av{border-radius:50%;background:var(--board,#1F3B32);display:flex;align-items:center;justify-content:center;flex:none;position:relative;border:2px solid #F4EFE1}
+.sk-av svg{width:70%;height:70%}
+#skPanel{position:fixed;z-index:9600;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:410px;max-width:calc(100vw - 24px);
+  height:min(660px,calc(100vh - 32px));height:min(660px,calc(100dvh - 32px));display:none;flex-direction:column;overflow:hidden;
+  background:var(--paper,#FBF7EC);color:var(--ink,#26301F);border-radius:18px;box-shadow:0 18px 60px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.25);
+  font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.5}
+#skPanel.sk-on{display:flex;animation:skIn .22s ease-out}
+@keyframes skIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.sk-hd{display:flex;align-items:center;gap:11px;padding:12px 12px 12px 14px;background:var(--board-dark,#15291F);color:#F4EFE1;flex:none;border-bottom:3px solid var(--amber,#D9932F)}
+.sk-hd .sk-av{width:42px;height:42px;background:var(--amber,#D9932F);border-color:#F4EFE1}
+.sk-hd .sk-ttl{flex:1;min-width:0}
+.sk-hd b{display:block;font:700 17px/1.2 'Iowan Old Style',Georgia,serif;letter-spacing:.2px}
+.sk-hd small{display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(244,239,225,.72)}
+.sk-hd small i{width:8px;height:8px;border-radius:50%;background:#7BD88F;display:inline-block}
+.sk-hb{background:rgba(244,239,225,.1);color:#F4EFE1;border:0;border-radius:10px;min-width:40px;height:40px;cursor:pointer;font-size:13px;padding:0 10px}
+.sk-hb:hover{background:rgba(244,239,225,.2)}
+.sk-msgs{flex:1;overflow-y:auto;padding:14px 12px 6px;display:flex;flex-direction:column;gap:11px;overscroll-behavior:contain;scroll-behavior:smooth;
+  background:linear-gradient(180deg,#FBF7EC,#F6F0DF)}
+.sk-row{display:flex;gap:8px;align-items:flex-end;max-width:100%}
+.sk-row.sk-u{justify-content:flex-end}
+.sk-row .sk-av{width:30px;height:30px;background:var(--board,#1F3B32);margin-bottom:2px}
+.sk-b{max-width:86%;padding:10px 13px;border-radius:16px;word-wrap:break-word;overflow-wrap:anywhere;animation:skMsg .2s ease-out}
+@keyframes skMsg{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.sk-bot .sk-b{background:#fff;border:1px solid var(--paper-line,#E3D9BE);border-bottom-left-radius:5px;box-shadow:0 1px 2px rgba(60,50,20,.06)}
+.sk-u .sk-b{background:var(--board,#1F3B32);color:#F4EFE1;border-bottom-right-radius:5px;white-space:pre-wrap}
+.sk-b p{margin:0 0 8px}.sk-b p:last-child{margin-bottom:0}
+.sk-b .sk-h{font-weight:700;color:var(--board,#1F3B32)}
+.sk-b ol,.sk-b ul{margin:4px 0 8px;padding-left:22px}
+.sk-b li{margin:0 0 5px}
+.sk-b b{color:#1F3B32}
+.sk-b .sk-note{background:#FFF4DA;border-left:3px solid var(--amber,#D9932F);padding:7px 10px;border-radius:0 8px 8px 0;margin:6px 0;font-size:14px}
+.sk-acts{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.sk-go{border:0;cursor:pointer;background:var(--amber,#D9932F);color:#26301F;font:700 13.5px/1.2 'Helvetica Neue',Arial,sans-serif;padding:10px 14px;border-radius:12px;min-height:42px;text-align:left}
+.sk-go:hover{background:#E4A23F}
+.sk-chip{border:1px solid var(--board,#1F3B32);background:#fff;color:var(--board,#1F3B32);font:600 13px/1.2 'Helvetica Neue',Arial,sans-serif;padding:9px 12px;border-radius:20px;cursor:pointer;min-height:40px;white-space:nowrap}
+.sk-chip:hover{background:var(--board,#1F3B32);color:#F4EFE1}
+.sk-typing{display:inline-flex;gap:4px;padding:4px 2px}
+.sk-typing i{width:7px;height:7px;border-radius:50%;background:#8BA98A;animation:skDot 1s infinite ease-in-out}
+.sk-typing i:nth-child(2){animation-delay:.15s}.sk-typing i:nth-child(3){animation-delay:.3s}
+@keyframes skDot{0%,80%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(-5px);opacity:1}}
+.sk-quick{flex:none;display:flex;gap:7px;overflow-x:auto;padding:8px 12px;border-top:1px solid var(--paper-line,#E3D9BE);background:#F6F0DF;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.sk-ft{flex:none;display:flex;gap:8px;align-items:flex-end;padding:9px 10px calc(10px + env(safe-area-inset-bottom,0px));background:#F6F0DF;border-top:1px solid var(--paper-line,#E3D9BE)}
+.sk-ft textarea{flex:1;resize:none;border:1.5px solid #CDBF9A;border-radius:14px;padding:10px 12px;font:16px/1.4 'Helvetica Neue',Arial,sans-serif;color:#26301F;background:#fff;max-height:110px;min-height:44px}
+.sk-ft textarea:focus{border-color:var(--board,#1F3B32);outline:none}
+.sk-send{flex:none;width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;background:var(--board,#1F3B32);color:#F4EFE1;display:flex;align-items:center;justify-content:center}
+.sk-send:disabled{opacity:.4;cursor:default}
+.sk-send svg{width:22px;height:22px}
+.sk-hl{outline:3px solid var(--amber,#D9932F) !important;outline-offset:3px;animation:skHl 1s ease-in-out 3}
+@keyframes skHl{50%{outline-color:#fff}}
+.sk-card{cursor:pointer}
+@media (max-width:640px){
+  #skPanel{right:0;left:0;bottom:0;width:100%;max-width:100%;height:92vh;height:92dvh;border-radius:20px 20px 0 0}
+  #skFab{right:12px;padding:0;width:58px;height:58px;justify-content:center}
+  #skFab .sk-lbl{display:none}
+  #skFab .sk-av{width:48px;height:48px}
+  .sk-b{max-width:90%}
+}
+@media (min-width:641px) and (max-width:1100px){#skPanel{width:440px}}
+@media (prefers-reduced-motion:reduce){#skPanel.sk-on,.sk-b{animation:none}#skFab.sk-pulse::after{display:none}.sk-msgs{scroll-behavior:auto}}
+@media print{#skFab,#skPanel{display:none !important}}
+</style>
+
+<script id="sinkambaModule">
+(function(){
+'use strict';
+if(window.Sinkamba) return;
+
+/* ====================== Vifaa vidogo ====================== */
+var SS_KEY='sinkamba_session_v1', MAXMSG=70;
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function isFn(n){ return typeof window[n]==='function'; }
+function hasView(v){ return !!$('view-'+v); }
+function norm(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\u2018\u2019'`]/g,'')
+    .replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function lev(a,b){
+  var m=a.length,n=b.length; if(!m) return n; if(!n) return m;
+  var p=[],i,j; for(j=0;j<=n;j++) p[j]=j;
+  for(i=1;i<=m;i++){ var prev=p[0]; p[0]=i;
+    for(j=1;j<=n;j++){ var t=p[j]; p[j]=Math.min(p[j]+1,p[j-1]+1,prev+(a[i-1]===b[j-1]?0:1)); prev=t; } }
+  return p[n];
+}
+function wordMatch(t,k){
+  if(t===k) return true;
+  if(k.length>=5 && t.indexOf(k)===0) return true;                       // viambishi tamati: "andalioni", "mitihanini"
+  if(k.length>=6 && t.length>=k.length-1 && k.indexOf(t)===0) return true;   // neno limekatwa herufi 1
+  var d=k.length>=9?2:(k.length>=5?1:0);
+  return !!(d && Math.abs(t.length-k.length)<=d && lev(t,k)<=d);          // makosa madogo ya uandishi
+}
+function anyRe(re,s){ return re.test(s); }
+
+/* ====================== NAVIGATION HALISI ======================
+   Kila ingizo linatumia functions/ID zilizothibitishwa kwenye index.html. ok() hukagua uwepo wake. */
+var NAV={
+  dashibodi:{label:'Dashibodi', ok:function(){return isFn('goHome');}, go:function(){ window.goHome(); }},
+  mitihani:{label:'Kutunga Mitihani', ok:function(){return isFn('showView')&&hasView('mitihani')&&!!$('mt_btn');}, go:function(){ window.showView('mitihani'); }},
+  marking:{label:'Marking Scheme', ok:function(){return isFn('showView')&&hasView('marking')&&!!$('mk_btn');}, go:function(){ window.showView('marking'); }},
+  andalio:{label:'Andalio la Somo', ok:function(){return isFn('showView')&&hasView('andalio')&&!!$('an_btn');}, go:function(){ window.showView('andalio'); }},
+  azimio:{label:'Azimio la Kazi', ok:function(){return isFn('showView')&&hasView('azimio')&&!!$('az_btn');}, go:function(){ window.showView('azimio'); }},
+  kava:{label:'Azimio Cover Designer', ok:function(){return isFn('showView')&&hasView('azimio')&&(!!window.AZCD||!!$('azcd_open'));},
+    go:function(){ window.showView('azimio');
+      setTimeout(function(){ if(window.AZCD&&typeof window.AZCD.open==='function'){ window.AZCD.open(); }
+        else if($('azcd_open')){ focusEl($('azcd_open')); } },280); }},
+  tathmini:{label:'Tathmini ya Haraka', ok:function(){return isFn('showView')&&hasView('tathmini')&&!!$('ta_btn');}, go:function(){ window.showView('tathmini'); }},
+  ratiba_msingi:{label:'Ratiba ya Shule', ok:function(){return isFn('showView')&&hasView('ratiba');},
+    go:function(){ window.showView('ratiba'); if(isFn('setRatibaTab')&&$('ratibaTabMsingi')) window.setRatibaTab('msingi'); }},
+  ratiba_sek:{label:'Ratiba — Sekondari', ok:function(){return isFn('showView')&&hasView('ratiba')&&isFn('setRatibaTab')&&!!$('ratibaTabSekondari');},
+    go:function(){ window.showView('ratiba'); window.setRatibaTab('sekondari'); }},
+  benki:{label:'Benki ya Maswali', ok:function(){return isFn('showView')&&hasView('benki');}, go:function(){ window.showView('benki'); }},
+  michoro:{label:'Zana za Kuchora', ok:function(){return isFn('mcOpenFresh');}, go:function(){ window.mcOpenFresh(); }},
+  hub:{label:'Kituo cha Alama', ok:function(){return isFn('showView')&&hasView('hub');}, go:function(){ window.showView('hub'); }},
+  hub_results:{label:'Ingiza Matokeo', ok:function(){return isFn('showView')&&isFn('setHubTab')&&!!$('hub-results');}, go:function(){ window.showView('hub'); window.setHubTab('results'); }},
+  hub_smart:{label:'Ingizo la Haraka', ok:function(){return isFn('showView')&&isFn('setHubTab')&&!!$('hub-smart');}, go:function(){ window.showView('hub'); window.setHubTab('smart'); }},
+  hub_photo:{label:'Soma Matokeo kwa Picha', ok:function(){return isFn('showView')&&isFn('setHubTab')&&isFn('phOpen')&&!!$('hub-smart');},
+    go:function(){ window.showView('hub'); window.setHubTab('smart');
+      setTimeout(function(){ focusEl(document.querySelector('#hub-smart button[onclick*="phOpen"]')); },200); }},
+  hub_tmpl:{label:'Template ya Matokeo', ok:function(){return isFn('showView')&&isFn('tmShowTab')&&!!$('hubTab-tmpl');}, go:function(){ window.showView('hub'); window.tmShowTab(); }},
+  hub_online:{label:'Tathmini Mtandaoni (Mfano)', ok:function(){return isFn('showView')&&isFn('setHubTab')&&!!$('hub-online');}, go:function(){ window.showView('hub'); window.setHubTab('online'); }},
+  hub_report:{label:'Ripoti ya Darasa', ok:function(){return isFn('showView')&&isFn('setHubTab')&&!!$('hub-report');}, go:function(){ window.showView('hub'); window.setHubTab('report'); }}
+};
+function focusEl(el){ if(!el) return; try{ el.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
+  el.classList.add('sk-hl'); setTimeout(function(){ el.classList.remove('sk-hl'); },3200); }
+function navOk(k){ try{ return !!(NAV[k]&&NAV[k].ok()); }catch(e){ return false; } }
+function goNav(k){
+  if(!navOk(k)){ return false; }
+  try{ NAV[k].go(); }catch(e){ console.warn('Sinkamba nav:',e); return false; }
+  closePanel();
+  if(k!=='hub_photo'&&k!=='kava'){ try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); } }
+  return true;
+}
+
+/* ====================== MAARIFA YA MFUMO (vipengele halisi) ====================== */
+function F(o){ return o; }
+var FEATURES=[
+F({id:'mitihani',name:'Kutunga Mitihani',icon:'📝',nav:'mitihani',
+ kw:[['mtihani',3],['mitihani',3],['mtihan',3],['tunga',2],['kutunga',2.5],['exam',3],['test',1.5],['mock',2],['terminal',1.5],['midterm',2],['maswali ya mtihani',4],['karatasi ya mtihani',4],['paper',1]],
+ about:'Hutengeneza mtihani kamili wenye sehemu na muundo sahihi kwa somo na darasa/kidato ulichochagua. Ukimaliza unaweza kuuhifadhi kwenye Benki, kuunakili, kuupakua kwa Word au kuuchapisha.',
+ steps:['Fungua <b>Kutunga Mitihani</b> (kadi ya kwanza kwenye Dashibodi, au bonyeza kitufe cha kunipeleka hapa chini).','Chagua <b>Darasa/Kidato</b>, kisha <b>Somo</b>.','Andika <b>Mada/vipengele vilivyofundishwa</b>.','Kama unataka, jaza <b>Jina la shule</b> na <b>Toleo</b> (hiari).','Bonyeza <b>Tengeneza Mtihani</b> na subiri mtihani utokee.','Baada ya mtihani kutoka, tumia <b>💾 Hifadhi kwenye Benki</b>, <b>Nakili</b>, <b>⬇️ Pakua Word</b> au <b>Chapisha</b>.'],
+ tips:['Mtihani ulioupakua kwa Word unaweza kuuhariri zaidi kabla ya kuchapisha.'],
+ fix:['Hakikisha umechagua Darasa/Kidato na Somo, na umeandika Mada kabla ya kubonyeza <b>Tengeneza Mtihani</b>.','Mtihani ukikatika au kupungua maswali, bonyeza <b>Tengeneza Mtihani</b> tena.','Vitufe vya Hifadhi/Nakili/Pakua Word/Chapisha vinaonekana baada tu ya mtihani kutengenezwa.']}),
+F({id:'marking',name:'Marking Scheme',icon:'✅',nav:'marking',
+ kw:[['marking',4],['scheme',1.5],['marking scheme',5],['majibu',2],['mwongozo wa majibu',4],['mwongozo wa kusahihisha',4],['sahihisha',2.5],['kusahihisha',2.5],['kusahihishia',2.5],['mgawanyo wa alama',4],['mgawanyo',2]],
+ about:'Hutengeneza mwongozo wa majibu na mgawanyo wa alama kwa mtihani au mazoezi.',
+ steps:['Fungua <b>Marking Scheme</b> kwenye Dashibodi (au bonyeza kitufe cha kunipeleka).','Chagua <b>Darasa/Kidato</b> na <b>Somo</b>, kisha andika <b>Mada</b>.','Kama una maswali yako, yabandike kwenye kisanduku cha <b>Bandika maswali</b> (hiari). Ukiliacha tupu, mfumo utatengeneza maswali yake.','Bonyeza <b>Tengeneza Marking Scheme</b>.','Kisha tumia <b>Nakili</b>, <b>⬇️ Pakua Word</b> au <b>Chapisha</b>.'],
+ tips:['Kwa mwongozo unaolingana na mtihani wako halisi, bandika maswali yako mwenyewe.'],
+ fix:['Hakikisha umejaza Darasa/Kidato, Somo na Mada kabla ya kubonyeza kitufe.','Maswali uliyobandika yakiwa marefu sana, jaribu kuyagawa vipande vidogo.']}),
+F({id:'andalio',name:'Andalio la Somo',icon:'📘',nav:'andalio',
+ kw:[['andalio',4],['maandalio',4],['andaa somo',4],['kuandaa somo',4],['lesson plan',4],['lesson',2],['somo',0.8],['kipindi',0.8],['mada ndogo',2]],
+ about:'Hutengeneza andalio la somo (lesson plan) kulingana na darasa/kidato, muda wa somo, somo na mada ndogo.',
+ steps:['Fungua <b>Andalio la Somo</b> kwenye Dashibodi (au bonyeza kitufe cha kunipeleka).','Chagua <b>Darasa/Kidato</b> na <b>Muda wa somo</b>, kisha <b>Somo</b>.','Andika <b>Mada ndogo</b>.','Jaza <b>Kipengele mahususi cha kufundisha katika kipindi hiki</b> (unaweza kuchagua kutoka mapendekezo au kuandika chako).','Kama unataka, ongeza <b>Maelezo ya ziada</b> (hiari).','Bonyeza <b>Tengeneza Andalio</b> (kuna pia kitufe cha <b>⚡ Tengeneza</b>).','Baada ya hapo: <b>✏️ Hariri</b> kurekebisha, <b>💾 Hifadhi</b>, <b>📋 Nakili</b>, <b>🖨️ Chapisha</b> au <b>⬇️ Pakua Word</b>.'],
+ tips:['Tumia <b>✏️ Hariri</b> kurekebisha andalio kabla ya kulipakua.'],
+ fix:['Hakikisha umejaza Darasa/Kidato, Somo na Mada ndogo.','Kama andalio halijatoka, bonyeza <b>Tengeneza Andalio</b> tena baada ya kuhakikisha mtandao upo.','Usisahau <b>💾 Hifadhi</b> kabla ya kuondoka kwenye ukurasa.']}),
+F({id:'azimio',name:'Azimio la Kazi',icon:'🗓️',nav:'azimio',
+ kw:[['azimio',4],['azimio la kazi',5],['scheme of work',5],['schemes of work',5],['sow',2],['kalenda',2],['muhula',1.5],['mihula',1.5],['wiki kwa wiki',2]],
+ about:'Hutengeneza Azimio la Kazi lililopangwa wiki kwa wiki kufuata kalenda ya mihula uliyoijaza. Unaweza pia kubuni kava (ukurasa wa mbele) kwa Cover Designer.',
+ steps:['Fungua <b>Azimio la Kazi</b> kwenye Dashibodi (au bonyeza kitufe cha kunipeleka).','Juu utaona <b>📅 Kalenda ya Mihula ya Masomo</b>: jaza tarehe za Kufungua, Likizo fupi (kufunga/kufungua), Kufunga na idadi ya siku za masomo. Azimio hupangwa wiki kwa wiki kufuata kalenda hii.','Jaza <b>Jina la Shule</b>, <b>Jina la Mwalimu</b>, <b>Darasa/Kidato</b>, <b>Muhula</b>, <b>Somo</b> na <b>Mwaka</b>.','Kama unataka, andika <b>Mada kuu</b> zitakazofundishwa (moja kwa mstari, hiari).','Bonyeza <b>Tengeneza Azimio la Kazi</b>.','Kisha <b>💾 Hifadhi Azimio</b>, <b>Nakili</b>, <b>⬇️ Pakua Word</b> au <b>Chapisha</b>.'],
+ tips:['Unataka ukurasa wa mbele? Bonyeza <b>🎨 AZIMIO COVER DESIGNER</b> chini ya kitufe cha kutengeneza — niulize "kava ya azimio" nikueleze.'],
+ fix:['Jaza kalenda ya mihula kwanza; idadi ya wiki hujazwa kutoka kalenda hiyo.','Hakikisha Darasa/Kidato, Muhula na Somo vimechaguliwa.','Azimio likikosa wiki fulani, angalia tarehe za likizo fupi kwenye kalenda.']}),
+F({id:'kava',name:'Azimio Cover Designer',icon:'🎨',nav:'kava',
+ kw:[['kava',6],['cover',6],['jalada',6],['cover designer',5],['kava ya azimio',6],['nembo',2],['logo',2],['background',2],['ukurasa wa mbele',3],['picha ya mwalimu',3]],
+ about:'Hubuni kava (ukurasa wa mbele) wa Azimio la Kazi. Kava likiwashwa, linakuwa ukurasa wa 1 kwenye Word na Azimio linaanza ukurasa wa 2. Maandishi yote ni ya kuharirika.',
+ steps:['Fungua <b>Azimio la Kazi</b> na ujaze fomu yake (shule, mwalimu, darasa, somo n.k.) — kava hujazwa kutoka fomu hiyo.','Bonyeza <b>🎨 AZIMIO COVER DESIGNER</b> (chini ya kitufe cha Tengeneza Azimio la Kazi).','Tumia tabo: <b>Background</b> (chagua au <b>📁 Pakia background yangu</b>), <b>Mwalimu</b> (picha ya mwalimu, <b>📷 Pakia picha yangu</b> au <b>Bila picha</b>), <b>Maandishi</b>, <b>Rangi na Mapambo</b>, na <b>Nembo</b> (<b>🏫 Pakia nembo ya shule</b>).','Buruta picha ya mwalimu kwenye preview kuiweka mahali unapopataka.','Bonyeza <b>✅ Tumia kava hii kwenye Word</b>, kisha <b>⬇️ Pakua Word (kava + Azimio)</b>. Kama unataka picha ya kava tu: <b>🖼️ Pakua PNG ya kava</b>.'],
+ tips:['Ili kupakua Word, tengeneza Azimio la Kazi kwanza; PNG ya kava inapatikana wakati wowote.','Picha za background na walimu zinatoka folder la <b>assets/azimio-covers/</b> lililo kando ya index.html.'],
+ fix:['Picha zikikosekana, hakikisha folder la <b>assets/azimio-covers/</b> lipo kando ya index.html (pamoja na backgrounds na teachers).','Kava halionekani kwenye Word? Hakikisha umebonyeza <b>✅ Tumia kava hii kwenye Word</b> (kitufe hubadilika kuwa 🚫 Zima kava kikiwa kimewashwa).','Maandishi hayajajaa kutoka fomu? Bonyeza <b>↻ Jaza upya kutoka fomu ya Azimio</b> kwenye tabo ya Maandishi.']}),
+F({id:'tathmini',name:'Tathmini ya Haraka',icon:'🎯',nav:'tathmini',
+ kw:[['tathmini',3],['tathmini ya haraka',5],['kazi ya darasani',4],['classwork',3],['homework',3],['quiz',2],['zoezi',2],['mazoezi',1.5],['kazi ya nyumbani',4]],
+ about:'Hutengeneza tathmini fupi ya haraka: kazi ya darasani, homework au tathmini ya kuingia darasani (dakika 5–10).',
+ steps:['Fungua <b>Tathmini ya Haraka</b> kwenye Dashibodi (au bonyeza kitufe cha kunipeleka).','Chagua <b>Darasa/Kidato</b> na <b>Aina ya tathmini</b> (Kazi ya darasani, Homework au Tathmini ya kuingia darasani).','Chagua <b>Somo</b> na uandike <b>Mada</b>.','Bonyeza <b>Tengeneza Tathmini</b>.','Kisha <b>Nakili</b>, <b>⬇️ Pakua Excel</b> au <b>Chapisha</b>.'],
+ tips:[],
+ fix:['Hakikisha umejaza Darasa/Kidato, Aina ya tathmini, Somo na Mada.','Kitufe cha Pakua Excel kinaonekana baada ya tathmini kutengenezwa.']}),
+F({id:'ratiba',name:'Ratiba ya Shule',icon:'⏰',nav:'ratiba_msingi',
+ kw:[['ratiba',4],['timetable',4],['time table',4],['vipindi',2],['mapumziko',2],['ratiba ya shule',5],['ratiba ya somo',4]],
+ about:'Hutengeneza ratiba kamili ya shule (Shule ya Msingi au Sekondari) kutokana na muda wa kuanza, idadi ya vipindi, muda wa kipindi na masomo.',
+ steps:['Fungua <b>Ratiba ya Shule</b> kwenye Dashibodi (au bonyeza kitufe cha kunipeleka).','Chagua <b>Shule ya Msingi</b> au <b>Sekondari</b> juu ya ukurasa.','Jaza <b>Muda wa Kuanza Shule</b>, <b>Idadi ya Vipindi kwa Siku</b>, <b>Muda wa Kipindi Kimoja (dakika)</b> na uchague <b>Siku za Shule</b>.','Weka mapumziko kwa <b>+ Ongeza Mapumziko</b> (au <b>↺ Rudisha Muda wa Kawaida</b>) na ujaze jedwali la masomo.','Bonyeza <b>⚡ Tengeneza Ratiba Kamili</b>.','Pakua kwa <b>⬇️ Pakua Excel (.xlsx)</b> au <b>⬇️ Pakua Word (.docx)</b>; <b>Onyesha Ratiba ya Somo</b> huonyesha ratiba ya somo moja.'],
+ tips:['Masomo ya hiari (kama Kiarabu, Kichina, Kifaransa) yanaingia kwenye ratiba pale tu unapoweka idadi ya vipindi kwenye jedwali la masomo.'],
+ fix:['Hakikisha idadi ya vipindi na muda wa kipindi vimejazwa kabla ya <b>⚡ Tengeneza Ratiba Kamili</b>.','Ukibadilisha kati ya Msingi na Sekondari, jaza upya taarifa za ngazi hiyo.','Tumia <b>Hifadhi Taarifa za Ratiba</b> (kwenye Sekondari) kuhifadhi ulichojaza.']}),
+F({id:'benki',name:'Benki ya Maswali (Offline)',icon:'🗃️',nav:'benki',
+ kw:[['benki',4],['benki ya maswali',5],['question bank',5],['bank',2],['hifadhi swali',4],['changanya',3],['maswali yaliyohifadhiwa',4],['mitihani iliyohifadhiwa',4],['nakala rudufu',3],['rejesha',2],['backup',3]],
+ about:'Benki ya Maswali huhifadhi mitihani mizima na maswali yako, na inafanya kazi bila intaneti. Unaweza kutafuta, kufungua, kuchanganya maswali kutengeneza mtihani mpya, na kuweka nakala rudufu.',
+ steps:['Fungua <b>Benki ya Maswali (Offline)</b> kwenye Dashibodi (au bonyeza kitufe cha kunipeleka).','Juu utaona <b>Mitihani Mizima Iliyohifadhiwa</b>: tafuta kwa kichwa/mada, chuja kwa Darasa/Kidato, Somo au tarehe, kisha bonyeza <b>📂 Fungua</b>.','Kuongeza swali lako: jaza Darasa/Kidato, Somo, Mada, Swali, Chaguo A–D (E hiari) na Jibu Sahihi, kisha <b>💾 Hifadhi Swali</b>.','Kutengeneza mtihani mpya kutoka benki: chagua Darasa/Kidato, Somo, Mada (hiari) na Idadi ya maswali, kisha <b>🎲 Changanya na Tengeneza</b>.','Kisha <b>Nakili</b>, <b>⬇️ Pakua Word</b> au <b>Chapisha</b>. Tumia <b>⬇️ Pakua Benki (.json)</b> au <b>⬇️ Nakala rudufu ya mitihani na michoro (.json)</b> kuweka nakala salama; <b>⬆️ Rejesha</b> huirudisha.'],
+ tips:['Fanya nakala rudufu mara kwa mara — data za benki zinakaa kwenye kifaa ulichotumia.'],
+ fix:['Ukiona benki tupu, angalia vichujio (Darasa/Kidato, Somo, tarehe) — vinaweza kuficha mitihani.','Ukibadilisha simu au kivinjari, tumia <b>⬆️ Rejesha (.json)</b> na faili la nakala rudufu.','Usifute data za kivinjari (browser data) bila kufanya nakala rudufu kwanza.']}),
+F({id:'michoro',name:'Zana za Kuchora (Offline)',icon:'📐',nav:'michoro',
+ kw:[['chora',3],['kuchora',3],['michoro',3],['mchoro',3],['zana za kuchora',5],['diagram',3],['umbo',2],['ramani',1.5],['chati',1],['kalamu',1.5],['mstatili',2],['pembetatu',2]],
+ about:'Zana za kuchora maumbo, ramani rahisi, michoro ya sayansi na chati — bila intaneti. Unaweza kuhifadhi mchoro na kuutumia kwenye maswali na mitihani, au kujaribu <b>✨ Chora Kiotomatiki</b>.',
+ steps:['Fungua <b>Zana za Kuchora (Offline)</b> kwenye Dashibodi (au bonyeza kitufe cha kunipeleka).','Chagua zana: <b>▭ Mstatili</b>, <b>◯ Mduara</b>, <b>△ Pembetatu</b>, <b>╱ Mstari</b>, <b>➝ Mshale</b>, <b>✏️ Kalamu</b>, <b>🔤 Maandishi</b> na nyingine.','Chora kwenye uwanja; tumia <b>☝ Chagua</b> kusogeza au kurekebisha, na <b>↶</b> / <b>↷</b> kurudisha au kurudia.','Tumia <b>🔍−</b> / <b>🔍＋</b> kukuza au kupunguza, na <b>⤢ Panua Uwanja</b> kupata nafasi zaidi.','Ukimaliza, bonyeza <b>💾 Hifadhi</b> ili mchoro ubaki kwenye maktaba.'],
+ tips:['Mchoro ukiwa haujahifadhiwa, mfumo utakuuliza kabla ya kuondoka kwenye ukurasa wa kuchora.'],
+ fix:['Mchoro haujahifadhiwa? Bonyeza <b>💾 Hifadhi</b> kabla ya kuondoka.','Kuchora kwa kidole kwenye simu: tumia <b>✋ Sogeza</b> kusogeza uwanja na <b>☝ Chagua</b> kuchagua kitu.']}),
+F({id:'hub',name:'Kituo cha Alama (Assessment Hub)',icon:'📊',nav:'hub',
+ kw:[['alama',1.2],['ingiza alama',4],['ingiza matokeo',5],['alama za wanafunzi',3],['wanafunzi',0.5],['kituo cha alama',6],['kituo',2],['assessment hub',6],['hub',3],['assessment',2],['matokeo',2],['wastani',2],['ufaulu',2],['gredi',2],['grade',1],['nafasi',1.5],['ranking',2],['results',2],['result',2]],
+ about:'Kituo cha Alama kina tabo tano: <b>Ingiza Matokeo</b>, <b>⚡ Ingizo la Haraka</b>, <b>📋 Template ya Matokeo</b>, <b>Tathmini Mtandaoni (Mfano)</b> na <b>Ripoti ya Darasa</b>. Hapa unaingiza alama za wanafunzi, kuzichambua na kupata ripoti ya darasa.',
+ steps:['Fungua <b>Kituo cha Alama</b> kwenye Dashibodi (au bonyeza kitufe cha kunipeleka).','Kwenye tabo ya <b>Ingiza Matokeo</b>: andika <b>Jina la Mtihani/Mazoezi</b> na <b>Alama za Ufaulu (kiwango cha chini)</b>.','Bonyeza <b>+ Ongeza Mwanafunzi</b> kuingiza wanafunzi na alama zao, kisha <b>Kokotoa Matokeo</b>.','Kwa ingizo la haraka la alama nyingi, tumia tabo ya <b>⚡ Ingizo la Haraka</b>.','Fungua <b>Ripoti ya Darasa</b> kuona ripoti, kisha <b>⬇️ Pakua Word</b>, <b>⬇️ Pakua Excel</b> au <b>Chapisha</b>.'],
+ tips:['Kuna pia <b>📋 Template ya Matokeo</b> na <b>📷 SOMA MATOKEO KWA PICHA</b> — niulize kuhusu hizo nikueleze zaidi.'],
+ fix:['Hakikisha umeingiza alama kabla ya kubonyeza <b>Kokotoa Matokeo</b>.','Ripoti ya Darasa inategemea matokeo uliyoyaingiza/kuyachambua; ingiza kwanza, kisha fungua tabo ya Ripoti.']}),
+F({id:'ingizo_haraka',name:'Ingizo la Haraka (Kituo cha Alama)',icon:'⚡',nav:'hub_smart',parent:'hub',
+ kw:[['ingizo la haraka',6],['ingizo',3],['haraka',1],['bandika alama',4],['weka mfano',3],['chambua',2.5],['alama nyingi',3]],
+ about:'Ingizo la Haraka hukuwezesha kuingiza alama nyingi kwa pamoja (kwa kuandika/kubandika) kisha kuzichambua, badala ya kuingiza mwanafunzi mmoja mmoja.',
+ steps:['Fungua <b>Kituo cha Alama</b>, kisha tabo ya <b>⚡ Ingizo la Haraka</b>.','Chagua <b>Darasa / Kidato</b> na <b>Aina ya Assessment</b>; jina/mada ya assessment ni hiari.','Weka <b>Alama za Juu kwa kila somo</b>.','Andika au bandika alama kwenye kisanduku — mstari mmoja kwa kila alama (fuata mfano ulioandikwa kisanduku hicho).','Bonyeza <b>Chambua</b>. Unaweza kubonyeza <b>Weka Mfano</b> kuona jinsi inavyofanya kazi, au <b>Futa Maandishi</b> kuanza upya.'],
+ tips:['Badala ya kuandika, unaweza kutumia <b>📷 SOMA MATOKEO KWA PICHA</b>.'],
+ fix:['Ukiona makosa ya uchambuzi, bonyeza <b>Weka Mfano</b> kulinganisha muundo wa maandishi yako na mfano.','Hakikisha umeweka Alama za Juu kwa kila somo kabla ya <b>Chambua</b>.']}),
+F({id:'matokeo_picha',name:'Soma Matokeo kwa Picha',icon:'📷',nav:'hub_photo',parent:'hub',
+ kw:[['soma matokeo kwa picha',8],['kwa picha',4],['piga picha',4],['picha',2.5],['scan',3],['ocr',3],['kamera',2],['camera',2],['picha ya matokeo',5],['picha ya majina',3]],
+ about:'Kipengele cha <b>📷 SOMA MATOKEO KWA PICHA</b> kinasoma matokeo kutoka kwenye picha ya karatasi yako ili usiandike kwa mkono. Kinapatikana ndani ya tabo ya Ingizo la Haraka; pia <b>Template ya Matokeo</b> ina <b>📷 Pakia Picha ya Matokeo</b>.',
+ steps:['Fungua <b>Kituo cha Alama</b>, kisha tabo ya <b>⚡ Ingizo la Haraka</b>.','Chagua <b>Darasa / Kidato</b> na <b>Aina ya Assessment</b>, na uweke <b>Alama za Juu kwa kila somo</b>.','Bonyeza <b>📷 SOMA MATOKEO KWA PICHA</b> kisha piga picha au chagua picha kutoka kwenye simu.','Fuata hatua zitakazoonekana kwenye skrini, na ukague matokeo yaliyosomwa kabla ya kuyatumia.'],
+ tips:['Picha iwe wazi, yenye mwanga mzuri na karatasi isiyokunjwa — usomaji unakuwa sahihi zaidi.','Kipengele hiki kinahitaji mtandao.'],
+ fix:['Picha isipo somwa vizuri, piga tena ukiwa na mwanga zaidi na karatasi ikiwa tambarare.','Hakikisha mtandao upo; kipengele hiki hakifanyi kazi bila intaneti.','Kagua kila jina na alama baada ya kusoma — usomaji wa mwandiko unaweza kukosea.']}),
+F({id:'matokeo_template',name:'Template ya Matokeo',icon:'📋',nav:'hub_tmpl',parent:'hub',
+ kw:[['template',4],['template ya matokeo',7],['kiolezo',4],['templeti',4],['excel ya matokeo',4],['majina ya wanafunzi',3],['orodha ya majina',3]],
+ about:'Template ya Matokeo hukuwezesha kutengeneza (au kupakia) jedwali la Excel la wanafunzi na masomo, kisha kupanga matokeo ndani yake — hata kwa picha.',
+ steps:['Fungua <b>Kituo cha Alama</b>, kisha tabo ya <b>📋 Template ya Matokeo</b>.','Bonyeza <b>+ Template Mpya</b> (au <b>📂 Pakia Template Yangu</b> kama tayari una faili la Excel).','Weka majina ya wanafunzi (unaweza <b>📷 Soma Majina kwa Picha</b>) na uchague masomo.','Bonyeza <b>Tengeneza Template</b>.','Tumia <b>📷 Pakia Picha ya Matokeo</b> kupanga matokeo kutoka kwenye picha, kisha <b>⬇️ Pakua Excel</b> au <b>Pakua CSV</b>.'],
+ tips:['Unaweza pia kupakua <b>Template Tupu</b> kwa matumizi ya kuandika kwa mkono.'],
+ fix:['Template yako ya Excel isipotambulika, hakikisha ni faili la .xlsx na kichwa cha safu kinaonekana wazi.','Template ikiwa haina safu za masomo, chagua masomo kisha bonyeza <b>Weka Masomo Yaliyochaguliwa</b> au tumia <b>+ Somo</b>.']}),
+F({id:'hub_online',name:'Tathmini Mtandaoni (Mfano)',icon:'🌐',nav:'hub_online',parent:'hub',
+ kw:[['mtandaoni',4],['online',3],['tathmini mtandaoni',7],['tuma jibu',3]],
+ about:'Tathmini Mtandaoni (Mfano) ni mfano wa tathmini ambapo mwanafunzi hujibu maswali na alama huhesabiwa kiotomatiki.',
+ steps:['Fungua <b>Kituo cha Alama</b>, kisha tabo ya <b>Tathmini Mtandaoni (Mfano)</b>.','Soma maswali na uchague majibu.','Bonyeza <b>Tuma Jibu (alama huhesabiwa kiotomatiki)</b> kuona alama.'],
+ tips:['Hii ni sehemu ya mfano (demo).'],
+ fix:['Hakikisha umejibu maswali yote kabla ya kubonyeza <b>Tuma Jibu</b>.']}),
+F({id:'ripoti',name:'Ripoti ya Darasa',icon:'📑',nav:'hub_report',parent:'hub',
+ kw:[['ripoti',4],['ripoti ya darasa',7],['report',2.5],['pakua ripoti',4]],
+ about:'Ripoti ya Darasa inaonyesha muhtasari wa matokeo ya darasa kutokana na alama ulizoingiza, na unaweza kuipakua kwa Word au Excel au kuichapisha.',
+ steps:['Kwanza ingiza na ukokotoe matokeo (tabo ya <b>Ingiza Matokeo</b> au <b>⚡ Ingizo la Haraka</b>).','Fungua tabo ya <b>Ripoti ya Darasa</b> ndani ya Kituo cha Alama.','Bonyeza <b>⬇️ Pakua Word</b>, <b>⬇️ Pakua Excel</b> au <b>Chapisha</b>.'],
+ tips:[],
+ fix:['Ripoti ikiwa tupu, rudi kwenye Ingiza Matokeo, ingiza alama kisha ubonyeze <b>Kokotoa Matokeo</b>.']})
+];
+var BYID={}; FEATURES.forEach(function(f){ BYID[f.id]=f; });
+
+/* Vipengele vikuu vinavyoonyeshwa kwenye vitufe vya haraka */
+var MAIN=['mitihani','marking','andalio','azimio','kava','tathmini','ratiba','benki','hub','michoro'];
+var SHORT={mitihani:'Mitihani',marking:'Marking Scheme',andalio:'Andalio',azimio:'Azimio',kava:'Cover Designer',tathmini:'Tathmini ya Haraka',ratiba:'Ratiba',benki:'Benki ya Maswali',hub:'Kituo cha Alama',michoro:'Kuchora'};
+
+/* ====================== INJINI YA KUELEWA KISWAHILI ====================== */
+var RE={
+  thanks:/\b(asante|ahsante|shukrani|nashukuru|barikiwa|thanks|thank you|nimekupata|sawa asante)\b/,
+  bye:/\b(kwaheri|baadae|baadaye|tutaonana|nimemaliza|bye|usiku mwema)\b/,
+  greet:/^(hi|hello|hallo|hey|habari|hujambo|hamjambo|mambo|niaje|vipi|vp|sasa|poa|shikamoo|marahaba|salaam|salama|karibu|za asubuhi|za mchana|za jioni|jambo|mzima)\b/,
+  who:/(wewe ni nani|we ni nani|ni nani wewe|jina lako|sinkamba ni nani|ni nani sinkamba|unaitwa nani|unaweza kufanya nini|unafanya nini|unasaidia nini|unaweza kunisaidia nini|nisaidie nini)/,
+  list:/\b(huduma|vipengele|kipengele gani|menu|menyu|orodha|mna nini|kuna nini|zipi|mnatoa nini|mfumo huu|app hii|programu hii|msaidizi wa mwalimu ni nini)\b/,
+  help:/\b(msaada|nisaidie|naomba msaada|help|saidia|nahitaji msaada|sielewi|sijui|nimepotea)\b/,
+  nav:/\b(nipeleke|nipelekee|kwenda|nifungulie|nifikishe|nifikie|fungua|nenda|twende|nirudishe|rudi|open|go to|onyesha ukurasa|nipitishe)\b/,
+  howStrict:/(jinsi|namna|hatua|mwongozo|maelekezo|nawezaje|ninawezaje|nifanyeje|nitumiaje|natumiaje|ntumiaje|ntatumiaje|nitatumiaje|kutumia|how|steps)/,
+  elekeza:/\b(nielekeze|elekeza|nikuelekeze|tuelekeze)\b/,
+  how:/(jinsi|namna|hatua|nawezaje|ninawezaje|nifanyeje|nitumiaje|natumiaje|ntumiaje|ntatumiaje|nitatumiaje|kutumia|mwongozo|maelekezo|maelekezo|nianzeje|naanzaje|naanzia|anza|how|steps|nataka kutunga|nataka kutengeneza|nataka kuandaa|nataka kuandika|nataka kuchora|nataka kupakua|nataka kuhifadhi|naomba kutengeneza|ninataka|nahitaji|nikitaka|naweza kutengeneza|inatumikaje|inafanyaje|inafanyakaje|tengeneza|kutengeneza|kupakua|kuhifadhi|kuchapisha|kupakia)/,
+  about:/(ni nini|ninini|ni kitu gani|maana yake|inafanya nini|inasaidia nini|inatumikaje|eleza|nieleze|elezea|maelezo|kuhusu|faida|inafaa|nini hiki|hii ni nini|what is|nini maana)/,
+  problem:/(haifanyi|haifanyi kazi|haifunguki|haifungui|imegoma|inagoma|imekwama|inakwama|imeganda|hitilafu|error|tatizo|shida|changamoto|sioni|haionekani|haipakui|haipakuliwi|haitoki|haichapishi|haichapi|imekata|inachelewa|inakawia|tupu|imepotea|imefutika|nimepoteza|siwezi|sijaweza|imeshindwa|imefeli|fail|haijatokea|haiji|haisomi|haisomeki|mbovu|bug|haipo|hakuna|sipati|haipatikani|inakataa|inakata|blank|haijahifadhiwa|haihifadhi|haikubali)/,
+  account:/\b(malipo|lipa|kulipia|kulipa|bei|gharama|subscription|usajili|jisajili|kujisajili|nenosiri|password|login|kuingia|ingia|akaunti|account|email|barua pepe|toka|logout|google|facebook|messenger|instagram|ads|matangazo|namba ya msaada|wasiliana|whatsapp|support)\b/,
+  offline:/(bila intaneti|bila mtandao|offline|data ikiisha|hakuna mtandao|sina mtandao|sina intaneti|bila data)/,
+  yes:/^(ndio|ndiyo|ndio tafadhali|ndiyo tafadhali|sawa|ok|okay|yes|ndio sawa|naam|tafadhali|haya|nipeleke tu)$/,
+  more:/\b(zaidi|nyingine|mengine|tena|endelea|kingine)\b/,
+  dashboard:/\b(dashibodi|dashboard|mwanzo|nyumbani|ukurasa wa kwanza|menu kuu)\b/
+};
+
+function scoreFeatures(text){
+  var toks=text.split(' ').filter(Boolean), res=[];
+  FEATURES.forEach(function(f){
+    var phr=0, best={};                       // best[i] = uzito mkubwa kwa neno la i (visawe havihesabiwi mara mbili)
+    f.kw.forEach(function(p){
+      var k=p[0], w=p[1];
+      if(k.indexOf(' ')>-1){ if((' '+text+' ').indexOf(' '+k+' ')>-1 || text.indexOf(k)>-1) phr+=w; return; }
+      for(var i=0;i<toks.length;i++){ if(wordMatch(toks[i],k)){ if(!(best[i]>=w)) best[i]=w; } }
+    });
+    var sc=phr; Object.keys(best).forEach(function(i){ sc+=best[i]; });
+    if(sc>0) res.push({f:f,s:sc});
+  });
+  res.sort(function(a,b){ return b.s-a.s; });
+  return res;
+}
+
+/* ====================== HALI YA MAZUNGUMZO (session tu) ====================== */
+var ST={msgs:[],last:null,pending:null,seq:0};
+function loadSession(){ try{ var r=sessionStorage.getItem(SS_KEY); if(r){ var o=JSON.parse(r); if(o&&Array.isArray(o.msgs)){ ST.msgs=o.msgs.slice(-MAXMSG); ST.last=o.last||null; } } }catch(e){} }
+function saveSession(){ try{ sessionStorage.setItem(SS_KEY,JSON.stringify({msgs:ST.msgs.slice(-MAXMSG),last:ST.last})); }catch(e){} }
+function clearSession(){ ST.msgs=[]; ST.last=null; ST.pending=null; try{ sessionStorage.removeItem(SS_KEY); }catch(e){} }
+
+/* ====================== UJENZI WA MAJIBU ====================== */
+function P(s){ return '<p>'+s+'</p>'; }
+function OL(a){ return '<ol>'+a.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ol>'; }
+function UL(a){ return '<ul>'+a.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>'; }
+function NOTE(s){ return '<div class="sk-note">'+s+'</div>'; }
+function chip(t,q){ return {t:t,q:q||t}; }
+function mainChips(){ return MAIN.map(function(id){ var f=BYID[id]; return chip(f.icon+' '+SHORT[id],'Jinsi ya kutumia '+f.name); }); }
+function followChips(f){ return [chip('Nipeleke huko','Nipeleke '+f.name),chip('Nina tatizo','Nina tatizo na '+f.name),chip('Vipengele vingine','Vipengele vyote')]; }
+function timeGreet(){ var h=new Date().getHours(); return h<12?'Habari za asubuhi':(h<16?'Habari za mchana':'Habari za jioni'); }
+
+function servicesList(){
+  return UL(['<b>Kutunga Mitihani</b> na <b>Marking Scheme</b>','<b>Andalio la Somo</b> na <b>Azimio la Kazi</b> (pamoja na <b>Cover Designer</b> ya kava)','<b>Tathmini ya Haraka</b>','<b>Ratiba ya Shule</b>','<b>Benki ya Maswali</b> na <b>Zana za Kuchora</b> (zinafanya kazi bila intaneti)','<b>Kituo cha Alama</b>: ingiza matokeo, ingizo la haraka, template ya matokeo, kusoma matokeo kwa picha na ripoti ya darasa']);
+}
+function welcome(){
+  return {html:P('Karibu sana, mwalimu wangu! 🌟 Mimi ni <b>Sinkamba</b>, msaidizi wa kidijitali wa <b>Msaidizi wa Mwalimu</b>. Nina furaha kukuhudumia!')+
+    P('Hizi ndizo huduma zinazopatikana kwenye mfumo:')+servicesList()+P('<b>Ungependa nikuelekeze kipengele gani?</b>'), chips:mainChips()};
+}
+function overview(){
+  return {html:P('Mfumo wa <b>Msaidizi wa Mwalimu</b> una huduma hizi:')+servicesList()+
+    P('Dashibodi ina vitufe vya <b>Shule ya Msingi</b> na <b>Sekondari</b> juu ya kadi za huduma. Niambie unachotaka kufanya (mf. "nataka kutunga mtihani") nami nitakuelekeza hatua kwa hatua.')+P('<b>Ungependa nikuelekeze kipengele gani?</b>'), chips:mainChips()};
+}
+function guide(f,opts){
+  opts=opts||{}; var h=P('<span class="sk-h">'+f.icon+' '+esc(f.name)+'</span> — hatua kwa hatua:')+OL(f.steps);
+  if(f.tips&&f.tips.length) h+=NOTE('💡 '+f.tips.join('<br>💡 '));
+  h+=P('Ungependa nikupeleke sasa?');
+  return {html:h, navs:[f.nav], chips:followChips(f), feat:f.id};
+}
+function about(f){
+  return {html:P('<span class="sk-h">'+f.icon+' '+esc(f.name)+'</span>')+P(f.about)+P('Ungependa hatua kwa hatua, au nikupeleke moja kwa moja?'),
+    navs:[f.nav], chips:[chip('Nipe hatua','Jinsi ya kutumia '+f.name),chip('Nina tatizo','Nina tatizo na '+f.name),chip('Vipengele vingine','Vipengele vyote')], feat:f.id};
+}
+var GENERAL_FIX=['Hakikisha una <b>mtandao</b> thabiti — vipengele vinavyotumia AI (kutunga, kutengeneza, kusoma picha) vinauhitaji. Benki ya Maswali na Zana za Kuchora ndizo zinazofanya kazi bila intaneti.','Hakikisha umejaza sehemu muhimu (Darasa/Kidato, Somo, Mada) kabla ya kubonyeza kitufe cha kutengeneza.','Ukiona ujumbe wa <i>"Umefikia kikomo cha maombi"</i>, subiri kidogo kisha jaribu tena.','Kama ukurasa umekwama, hifadhi ulichonacho (kwa vitufe vya 💾) kisha pakia ukurasa upya (refresh).','Kama upakuaji hauanzi, angalia kama kivinjari kimezuia upakuaji (downloads) au madirisha ibukizi (pop-ups).'];
+function problem(f){
+  var h;
+  if(f){ h=P('Pole kwa usumbufu, mwalimu. 🙏 Kwa <b>'+esc(f.name)+'</b> jaribu haya:')+OL(f.fix.concat(['Kama bado haifanyi kazi, pitia hatua za jumla: mtandao, sehemu zote zimejazwa, kisha pakia ukurasa upya.']));
+    return {html:h+P('Nikupeleke kwenye kipengele hicho ujaribu tena?'), navs:[f.nav], chips:[chip('Nipe hatua','Jinsi ya kutumia '+f.name),chip('Vipengele vingine','Vipengele vyote')], feat:f.id};
+  }
+  h=P('Pole kwa usumbufu, mwalimu. 🙏 Jaribu haya kwanza:')+OL(GENERAL_FIX)+P('<b>Tatizo hili liko kwenye kipengele gani?</b> Nikijua, nitakupa ushauri mahususi.');
+  return {html:h, chips:mainChips()};
+}
+function accountReply(text){
+  var h=P('Mimi ni msaidizi wa <b>mwongozo wa matumizi</b> tu — siwezi kubadilisha au kuona akaunti, usajili, malipo wala nenosiri lako. 🔒');
+  var items=['<b>Kuingia / kujisajili:</b> tumia skrini ya kuingia (Google au barua pepe). <b>Toka</b> inapatikana juu kulia ukiwa umeingia.','<b>Nenosiri:</b> kwenye skrini ya kuingia kuna <b>Umesahau nenosiri?</b>.','<b>Malipo na msaada:</b> fuata skrini ya malipo ndani ya mfumo; mawasiliano ya msaada yakipatikana yanaonekana hapo.'];
+  if(/(google|facebook|messenger|instagram)/.test(text)) items.push('Ukifungua ndani ya Facebook/Messenger/Instagram, Google haikubali kuingia — fungua kwenye Chrome (⋮ → "Fungua kwenye kivinjari") au ingia kwa barua pepe.');
+  return {html:h+UL(items)+P('Kuhusu kutumia huduma za mfumo, niulize tu! 😊'), chips:mainChips()};
+}
+function offlineReply(){
+  return {html:P('Vipengele vilivyoandikwa kuwa vinafanya kazi <b>bila intaneti</b> ni <b>Benki ya Maswali (Offline)</b> na <b>Zana za Kuchora (Offline)</b>. Mitihani iliyohifadhiwa kwenye benki pia inafunguka bila intaneti.')+
+    P('Vipengele vinavyotengeneza maudhui kwa AI (mitihani, marking scheme, andalio, azimio, tathmini) na kusoma matokeo kwa picha vinahitaji mtandao.'),
+    navs:['benki','michoro'], chips:[chip('Vipengele vingine','Vipengele vyote')]};
+}
+function clarify(a,b){
+  return {html:P('Naona unaweza kuwa unamaanisha mojawapo ya haya — ni lipi?'), chips:[chip(a.icon+' '+a.name,'Jinsi ya kutumia '+a.name),chip(b.icon+' '+b.name,'Jinsi ya kutumia '+b.name)]};
+}
+function fallback(){
+  return {html:P('Samahani mwalimu, sijaelewa vizuri swali lako. 🙏 Jaribu kuliandika kwa maneno mengine, mf. <i>"nataka kutunga mtihani"</i>, <i>"azimio linatengenezwaje?"</i> au <i>"nipeleke kwenye ratiba"</i>.')+P('Au chagua kipengele hapa chini:'), chips:mainChips()};
+}
+
+/* ====================== KUCHAMBUA NA KUJIBU ====================== */
+function reply(raw){
+  var text=norm(raw), toks=text.split(' ').filter(Boolean), r;
+  if(!text) return {html:P('Naomba uandike swali lako, mwalimu. 😊'),chips:mainChips()};
+
+  var scores=scoreFeatures(text), top=scores[0], second=scores[1];
+  var hasFeat=top && top.s>=1.5;
+  var wantNav=RE.nav.test(text), wantElek=RE.elekeza.test(text), wantHow=RE.how.test(text), strictHow=RE.howStrict.test(text), wantAbout=RE.about.test(text), wantProb=RE.problem.test(text);
+  var short=toks.length<=5;
+
+  // Ndiyo/sawa baada ya kuulizwa "Nikupeleke sasa?"
+  if(RE.yes.test(text) && ST.pending){ var pf=ST.pending; ST.pending=null; var ok=goNav(NAV[pf]?pf:BYID[pf].nav);
+    return ok?{html:P('Nimekupeleka! ✅ Ukikwama popote, niite tena.'),noSetLast:true}:{html:P('Samahani, siwezi kufungua kipengele hicho sasa. Tumia kadi yake kwenye Dashibodi.')}; }
+
+  if(RE.yes.test(text) && !ST.pending) return {html:P('Sawa mwalimu! 😊 Niambie unachotaka kufanya, au chagua kipengele hapa chini.'),chips:mainChips()};
+
+  // Salamu / shukrani / kuaga (ujumbe mfupi usio na kipengele)
+  if(RE.thanks.test(text) && !hasFeat) return {html:P('Karibu sana, mwalimu! 🌟 Nipo hapa wakati wowote ukihitaji msaada zaidi.'),chips:[chip('Vipengele vyote','Vipengele vyote')]};
+  if(RE.bye.test(text) && !hasFeat) return {html:P('Kwaheri mwalimu, Mungu akubariki! 👋 Ukihitaji msaada, bonyeza Sinkamba tena.')};
+  if(RE.who.test(text)) return {html:P('Mimi ni <b>Sinkamba</b>, msaidizi wa kidijitali wa Msaidizi wa Mwalimu. 😊 Ninakuelekeza kutumia vipengele vya mfumo hatua kwa hatua, ninakueleza kila kipengele kinafanya nini, na ninakupeleka kwenye kipengele unachotaka.')+servicesList()+P('<b>Ungependa nikuelekeze kipengele gani?</b>'),chips:mainChips()};
+  if(RE.greet.test(text) && short && !hasFeat && !wantHow) return {html:P(timeGreet()+', mwalimu! 😊 Karibu. <b>Ungependa nikuelekeze kipengele gani?</b>'),chips:mainChips()};
+
+  // Akaunti / malipo / nenosiri
+  if(RE.account.test(text) && !hasFeat) return accountReply(text);
+
+  // Bila intaneti
+  if(RE.offline.test(text) && !(hasFeat&&top.f.id==='benki'&&!wantProb)) return offlineReply();
+
+  // Orodha ya vipengele / msaada wa jumla
+  if(RE.list.test(text) && !hasFeat) return overview();
+  if(RE.dashboard.test(text) && (wantNav||/rudi/.test(text))) { if(goNav('dashibodi')) return {html:P('Nimekurudisha Dashibodi. ✅ Chagua kipengele unachotaka.'),noSetLast:true}; }
+
+  // Kipengele kimegunduliwa
+  var f=null, fromCtx=false;
+  if(hasFeat){
+    f=top.f;
+    if(second && second.s>=top.s*0.85 && second.f.id!==top.f.id && (second.f.parent||second.f.id)!==(top.f.parent||top.f.id) && !wantNav){ return clarify(top.f,second.f); }
+  } else if(ST.last && BYID[ST.last] && (RE.more.test(text)||wantNav||wantHow||wantAbout||wantProb||RE.yes.test(text)||short)){
+    f=BYID[ST.last]; fromCtx=true;
+  }
+
+  if(f){
+    if(f.id==='ratiba' && /(sekondari|secondary|kidato)/.test(text) && navOk('ratiba_sek')) f=Object.assign({},f,{nav:'ratiba_sek'});
+    ST.last=f.id; ST.pending=null;
+    if(wantProb){ r=problem(f); ST.pending=null; return r; }
+    if(wantNav && !wantElek && !strictHow){
+      if(!navOk(f.nav)) return {html:P('Samahani, siwezi kufungua <b>'+esc(f.name)+'</b> sasa hivi. Tumia kadi yake kwenye Dashibodi.')+P('Hizi hapa hatua zake:')+OL(f.steps)};
+      goNav(f.nav);
+      return {html:P('Sawa mwalimu! ✅ Nimekupeleka kwenye <b>'+esc(f.name)+'</b>.')+P('Ungependa hatua kwa hatua za kuitumia? Bonyeza hapa chini, au nifungue tena kitufe cha Sinkamba.'),
+        chips:[chip('Nipe hatua','Jinsi ya kutumia '+f.name)], feat:f.id, noSetLast:true};
+    }
+    if(wantAbout && !wantHow){ r=about(f); ST.pending=f.nav; return r; }
+    r=guide(f); ST.pending=f.nav;
+    if(!fromCtx && second && second.s>=top.s*0.5 && (second.f.parent||second.f.id)!==(f.parent||f.id)){
+      r.chips=[chip('Ona pia: '+second.f.icon+' '+(SHORT[second.f.id]||second.f.name),'Jinsi ya kutumia '+second.f.name)].concat(r.chips.slice(0,2));
+    }
+    return r;
+  }
+
+  if(wantProb) return problem(null);
+  if(RE.help.test(text)) return overview();
+  if(RE.list.test(text)) return overview();
+  if(RE.thanks.test(text)) return {html:P('Karibu sana, mwalimu! 🌟')};
+  return fallback();
+}
+
+/* ====================== UI ====================== */
+var els={};
+var AV_SVG='<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 9h24a3 3 0 0 1 3 3v13a3 3 0 0 1-3 3H21l-7 6v-6H8a3 3 0 0 1-3-3V12a3 3 0 0 1 3-3z" fill="#F4EFE1"/><path d="M12 17h16M12 22h10" stroke="#1F3B32" stroke-width="2.4" stroke-linecap="round"/><circle cx="31" cy="8" r="3.2" fill="#D9932F"/></svg>';
+var SEND_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5L21 3l-6.5 18-3-7.5L3 11.5z" fill="currentColor"/></svg>';
+
+function build(){
+  if(els.panel) return;
+  var fab=document.createElement('button'); fab.id='skFab'; fab.type='button'; fab.setAttribute('aria-label','Fungua Sinkamba AI, msaidizi wa kidijitali'); fab.className='sk-pulse';
+  fab.innerHTML='<span class="sk-av">'+AV_SVG+'</span><span class="sk-lbl">Sinkamba AI</span>';
+  var pn=document.createElement('div'); pn.id='skPanel'; pn.setAttribute('role','dialog'); pn.setAttribute('aria-label','Sinkamba AI — msaidizi wa kidijitali');
+  pn.innerHTML=
+   '<div class="sk-hd"><span class="sk-av">'+AV_SVG+'</span><div class="sk-ttl"><b>Sinkamba AI</b><small><i></i>Msaidizi wa kidijitali · Kiswahili</small></div>'+
+   '<button type="button" class="sk-hb" id="skNew" title="Anza mazungumzo upya" aria-label="Anza mazungumzo upya">↺ Upya</button>'+
+   '<button type="button" class="sk-hb" id="skClose" title="Funga" aria-label="Funga Sinkamba">✕</button></div>'+
+   '<div class="sk-msgs" id="skMsgs" role="log" aria-live="polite" aria-label="Mazungumzo"></div>'+
+   '<div class="sk-quick" id="skQuick"></div>'+
+   '<div class="sk-ft"><textarea id="skIn" rows="1" maxlength="500" placeholder="Andika swali lako hapa…" aria-label="Andika swali lako" enterkeyhint="send"></textarea>'+
+   '<button type="button" class="sk-send" id="skSend" aria-label="Tuma" disabled>'+SEND_SVG+'</button></div>';
+  document.body.appendChild(fab); document.body.appendChild(pn);
+  els.fab=fab; els.panel=pn; els.msgs=pn.querySelector('#skMsgs'); els.quick=pn.querySelector('#skQuick'); els.inp=pn.querySelector('#skIn'); els.send=pn.querySelector('#skSend');
+
+  var q=[['Vipengele vyote','Vipengele vyote'],['📝 Mtihani','Jinsi ya kutumia Kutunga Mitihani'],['📘 Andalio','Jinsi ya kutumia Andalio la Somo'],['🗓️ Azimio','Jinsi ya kutumia Azimio la Kazi'],['📊 Matokeo','Jinsi ya kutumia Kituo cha Alama'],['Nina tatizo','Nina tatizo']];
+  els.quick.innerHTML=q.map(function(x){ return '<button type="button" class="sk-chip" data-q="'+esc(x[1])+'" data-t="'+esc(x[0])+'">'+esc(x[0])+'</button>'; }).join('');
+
+  fab.addEventListener('click',openPanel);
+  pn.querySelector('#skClose').addEventListener('click',closePanel);
+  pn.querySelector('#skNew').addEventListener('click',function(){ if(!ST.msgs.length||confirm('Kuanza mazungumzo upya? Mazungumzo ya sasa yatafutwa.')){ clearSession(); renderAll(); pushBot(welcome()); } });
+  els.send.addEventListener('click',submit);
+  els.inp.addEventListener('input',function(){ els.send.disabled=!els.inp.value.trim(); els.inp.style.height='auto'; els.inp.style.height=Math.min(els.inp.scrollHeight,110)+'px'; });
+  els.inp.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); submit(); } });
+  els.quick.addEventListener('click',function(e){ var b=e.target.closest('.sk-chip'); if(b) ask(b.getAttribute('data-q'),b.getAttribute('data-t')); });
+  els.msgs.addEventListener('click',function(e){
+    var c=e.target.closest('.sk-chip'); if(c){ ask(c.getAttribute('data-q'),c.getAttribute('data-t')); return; }
+    var g=e.target.closest('.sk-go'); if(g){ var k=g.getAttribute('data-nav'); if(!goNav(k)){ pushBot({html:P('Samahani, siwezi kufungua kipengele hicho sasa. Tumia kadi yake kwenye Dashibodi.')}); } }
+  });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&els.panel.classList.contains('sk-on')) closePanel(); });
+  // Mwalimu akitoka (kitufe cha Toka kilichopo), futa mazungumzo — hatugusi mantiki ya Firebase, tunasikiliza tu kubofya.
+  document.addEventListener('click',function(e){ if(e.target&&e.target.closest&&e.target.closest('#fbOut')) clearSession(); },true);
+  setTimeout(function(){ fab.classList.remove('sk-pulse'); },8000);
+}
+function openPanel(){
+  build(); if(!ST.msgs.length){ ST.msgs=[]; pushBot(welcome(),true); } else renderAll();
+  els.panel.classList.add('sk-on'); els.fab.classList.add('sk-open'); els.fab.classList.remove('sk-pulse');
+  scrollEnd();
+  if(!(window.matchMedia&&matchMedia('(pointer:coarse)').matches)) setTimeout(function(){ els.inp.focus(); },60);
+}
+function closePanel(){ if(!els.panel) return; els.panel.classList.remove('sk-on'); els.fab.classList.remove('sk-open'); try{ els.fab.focus({preventScroll:true}); }catch(e){} }
+function scrollEnd(){ setTimeout(function(){
+  var m=els.msgs; if(!m) return;
+  var rows=m.querySelectorAll('.sk-row'), last=rows[rows.length-1];
+  // Jibu refu la Sinkamba: lianze kusomwa kutoka juu; vinginevyo shuka hadi mwisho
+  if(last && last.classList.contains('sk-bot') && last.id!=='skTyp' && last.offsetHeight>m.clientHeight*0.7){
+    m.scrollTop=last.getBoundingClientRect().top-m.getBoundingClientRect().top+m.scrollTop-8;
+  } else m.scrollTop=m.scrollHeight;
+},40); }
+
+function botHtml(m){
+  var h='<div class="sk-row sk-bot"><span class="sk-av">'+AV_SVG+'</span><div class="sk-b">'+m.html;
+  var acts='';
+  (m.navs||[]).forEach(function(k){ if(navOk(k)) acts+='<button type="button" class="sk-go" data-nav="'+esc(k)+'">➜ Nipeleke: '+esc(NAV[k].label)+'</button>'; });
+  (m.chips||[]).forEach(function(c){ acts+='<button type="button" class="sk-chip" data-q="'+esc(c.q)+'" data-t="'+esc(c.t)+'">'+esc(c.t)+'</button>'; });
+  if(acts) h+='<div class="sk-acts">'+acts+'</div>';
+  return h+'</div></div>';
+}
+function userHtml(m){ return '<div class="sk-row sk-u"><div class="sk-b">'+esc(m.text)+'</div></div>'; }
+function renderAll(){ els.msgs.innerHTML=ST.msgs.map(function(m){ return m.role==='u'?userHtml(m):botHtml(m); }).join(''); scrollEnd(); }
+function addMsg(m){ ST.msgs.push(m); if(ST.msgs.length>MAXMSG) ST.msgs=ST.msgs.slice(-MAXMSG); saveSession();
+  if(els.msgs){ els.msgs.insertAdjacentHTML('beforeend',m.role==='u'?userHtml(m):botHtml(m)); scrollEnd(); } }
+function pushBot(r,noDelay){ r.role='b'; addMsg({role:'b',html:r.html,navs:r.navs||[],chips:r.chips||[]}); }
+
+var typingEl=null;
+function showTyping(){ hideTyping(); els.msgs.insertAdjacentHTML('beforeend','<div class="sk-row sk-bot" id="skTyp"><span class="sk-av">'+AV_SVG+'</span><div class="sk-b"><span class="sk-typing"><i></i><i></i><i></i></span></div></div>'); typingEl=$('skTyp'); scrollEnd(); }
+function hideTyping(){ var t=$('skTyp'); if(t) t.remove(); typingEl=null; }
+
+var busy=false;
+function ask(q,label){
+  if(!q||busy) return; build();
+  addMsg({role:'u',text:label&&label!==q?label:q});
+  respond(q);
+}
+function respond(q){
+  busy=true; showTyping();
+  var r; try{ r=reply(q); }catch(e){ console.warn('Sinkamba reply error:',e); r=fallback(); }
+  var delay=Sinkamba._fast?0:Math.min(250+String(r.html).length/6,900);
+  setTimeout(function(){ hideTyping(); pushBot(r); saveSession(); busy=false; },delay);
+}
+function submit(){
+  var v=els.inp.value.trim(); if(!v||busy) return;
+  els.inp.value=''; els.inp.style.height='auto'; els.send.disabled=true;
+  addMsg({role:'u',text:v}); respond(v);
+}
+
+/* ====================== Kadi ya Dashibodi (nyongeza tu) ====================== */
+function addDashCard(){
+  var grid=document.querySelector('#view-dashboard .card-grid');
+  if(!grid||$('sk_card')) return;
+  var c=document.createElement('div'); c.className='task-card sk-card'; c.id='sk_card'; c.setAttribute('role','button'); c.tabIndex=0;
+  c.innerHTML='<div class="icon">🧭</div><h3>Sinkamba AI — Msaidizi wa Kidijitali</h3><p>Uliza chochote kuhusu kutumia mfumo; nitakuelekeza hatua kwa hatua na kukupeleka kwenye kipengele unachotaka.</p>';
+  c.addEventListener('click',openPanel);
+  c.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPanel(); } });
+  grid.appendChild(c);
+}
+
+/* ====================== Ukaguzi wa navigation ====================== */
+function validateNav(){
+  var out={ok:[],missing:[]};
+  Object.keys(NAV).forEach(function(k){ (navOk(k)?out.ok:out.missing).push(k); });
+  if(out.missing.length) console.warn('Sinkamba: njia hizi hazikupatikana kwenye mfumo (vitufe vyake vimefichwa):',out.missing.join(', '));
+  return out;
+}
+
+window.Sinkamba={
+  open:openPanel, close:closePanel, ask:function(q){ openPanel(); ask(q); },
+  reply:reply, reset:function(){ clearSession(); if(els.msgs){ renderAll(); } },
+  features:FEATURES, nav:NAV, validateNav:validateNav, _state:ST, _fast:false
+};
+
+loadSession();
+function init(){ build(); addDashCard(); setTimeout(validateNav,800); }
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
+</script>
+
 </body>
 </html>
 
