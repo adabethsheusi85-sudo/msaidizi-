@@ -7394,7 +7394,7 @@ function downloadTextOutputAsDocx(outputId, titleFallback){
 }
 
 function downloadMarkingDocx(){ downloadTextOutputAsDocx('mk_output', 'Marking_Scheme'); }
-function downloadAzimioDocx(){
+async function downloadAzimioDocx(){
   const el = document.getElementById('az_output');
   if(!el || el.querySelector('.placeholder') || !el.textContent.trim()){ alert('Tengeneza maudhui kwanza kabla ya kupakua.'); return; }
   if(typeof docx === 'undefined'){ alert('Maktaba ya kutengeneza Word (.docx) haijapakia — hakikisha una mtandao kisha jaribu tena.'); return; }
@@ -7402,10 +7402,16 @@ function downloadAzimioDocx(){
   const paras = domToDocxParagraphs(el);
   const headEl = document.getElementById('az_headLabel');
   const title = (headEl && headEl.textContent.trim()) || 'Azimio la Kazi';
-  const doc = new Document({ sections:[{
+  /* AZIMIO COVER DESIGNER: kava likiwashwa, linakuwa ukurasa wa 1; Azimio linaanza ukurasa wa 2. Likizimwa, hakuna kinachobadilika. */
+  let coverSecs = [];
+  if(window.AZCD && AZCD.isEnabled()){
+    try{ coverSecs = await AZCD.coverSections(); }
+    catch(err){ coverSecs = []; alert('Kava haikuweza kuundwa (' + (err.message||'') + '). Azimio litapakuliwa bila kava.'); }
+  }
+  const doc = new Document({ sections:[ ...coverSecs, {
     properties:{ page:{ size:{ width:11906, height:16838, orientation:'landscape' }, margin:{ top:500, bottom:500, left:500, right:500 } } },
     children:[ new Paragraph({ text:title, heading:HeadingLevel.TITLE, alignment:AlignmentType.CENTER, spacing:{after:200} }), ...paras ]
-  }]});
+  } ]});
   Packer.toBlob(doc).then(blob=> triggerBlobDownload(blob, dlSafeName('Azimio_la_Kazi','docx')))
     .catch(err=> alert('Samahani, imeshindikana kutengeneza faili la Word. ('+(err.message||'')+')'));
 }
@@ -11352,6 +11358,391 @@ function commit(){
 /* ---- mitindo ---- */
 var st=document.createElement('style'); st.textContent='.tm-h{font-family:\'Helvetica Neue\',Arial,sans-serif;font-size:15px;margin:0 0 10px}.tm-sel{max-width:100%;padding:6px}.tm-act{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tm-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}.tm-r,.tm-chip{display:inline-block;margin:4px 12px 4px 0;font-family:\'Helvetica Neue\',Arial,sans-serif;font-size:13px}.tm-warn td{background:rgba(217,147,47,.12)}#hub-tmpl .results-table select{max-width:150px;background:transparent;color:var(--chalk)}#hub-tmpl .ph-box ul{margin:4px 0 0 18px;padding:0}.tm-ruled{border-collapse:collapse;width:100%}.tm-ruled th,.tm-ruled td{border:1px solid rgba(244,239,225,.5);padding:3px 4px}.tm-ruled thead th{text-transform:uppercase;font-size:11.5px;letter-spacing:.3px;text-align:center;white-space:nowrap}.tm-ruled thead th.tm-nm{text-align:left;min-width:170px}.tm-ruled .tm-c{text-align:center}.tm-ruled td input{border:0;background:transparent;text-align:center;padding:5px 2px;box-sizing:border-box}.tm-ruled td input[data-k="n"]{text-align:left;width:100%}.tm-ruled .tm-tot{font-weight:700;min-width:54px}.tm-ruled th.tm-x,.tm-ruled td.tm-x{border:0;background:transparent}#ph_ov.tm-names .ph-row input[data-f="alama"]{display:none}';
 document.head.appendChild(st);
+})();
+</script>
+<script id="azcdModule">
+/* ===================== AZIMIO COVER DESIGNER — kiongezeo huru =====================
+   - Haigusi Azimio, Andalio, Firebase, authentication wala Worker. Inasoma tu thamani za fomu ya Azimio (az_school, az_teacher, az_grade, az_subject, az_year).
+   - Picha zote zinatoka folder la assets/azimio-covers/ (backgrounds, teachers, decorations, complete-covers). Hakuna API ya nje wala AI.
+   - Maandishi HAYACHOMWI kwenye picha: kwenye Word huwekwa kama maandishi halisi yanayoharirika (text frames) juu ya picha ya nyuma.
+   - Kuunganishwa na DOCX: downloadAzimioDocx() inaita AZCD.coverSections() na kuweka kava kama ukurasa wa kwanza; maudhui ya Azimio yanaanza ukurasa wa pili. */
+(function(){
+'use strict';
+var BASE='assets/azimio-covers/';
+var PW=1240, PH=1754;                 // kava: A4 wima kwa 150dpi
+var TW_W=11906, TW_H=16838;           // A4 kwa twips (Word)
+
+/* ---------- Orodha ya picha (backgrounds / teachers / decorations zimetenganishwa) ---------- */
+var MANIFEST={
+  backgrounds:[
+    {id:'bg-01',name:'Bluu ya Elimu',file:'backgrounds/bg-01-bluu-elimu.jpg'},
+    {id:'bg-02',name:'Bendera ya Taifa',file:'backgrounds/bg-02-bendera-taifa.jpg'},
+    {id:'bg-03',name:'Kijani cha Shule',file:'backgrounds/bg-03-kijani-shule.jpg'},
+    {id:'bg-04',name:'Mshani Mchanganyiko',file:'backgrounds/bg-04-mshani-mchanganyiko.jpg'},
+    {id:'bg-05',name:'Zambarau na Dhahabu',file:'backgrounds/bg-05-zambarau-dhahabu.jpg'},
+    {id:'bg-06',name:'Nyeupe na Fremu',file:'backgrounds/bg-06-nyeupe-fremu.jpg'}
+  ],
+  teachers:[
+    {id:'t-ke-01',name:'Mwalimu wa kike 1',g:'ke',file:'teachers/mwalimu-ke-01.png'},
+    {id:'t-me-01',name:'Mwalimu wa kiume 1',g:'me',file:'teachers/mwalimu-me-01.png'},
+    {id:'t-me-02',name:'Mwalimu wa kiume 2',g:'me',file:'teachers/mwalimu-me-02.png'}
+  ],
+  decorations:[
+    {id:'ribbon',name:'Utepe mwekundu (kwa kichwa)',file:'decorations/ribbon-nyekundu.png',x:.06,y:.275,w:.88},
+    {id:'stars',name:'Nyota saba',file:'decorations/nyota-saba.png',x:.22,y:.215,w:.56},
+    {id:'sun',name:'Jua la elimu',file:'decorations/jua-elimu.png',x:.36,y:.172,w:.28},
+    {id:'corners',name:'Pembe za dhahabu',file:'decorations/pembe-dhahabu.png',x:0,y:0,w:1},
+    {id:'flag',name:'Utepe wa bendera (chini)',file:'decorations/utepe-bendera.png',x:0,y:.958,w:1},
+    {id:'book',name:'Kitabu wazi',file:'decorations/kitabu-wazi.png',x:.05,y:.585,w:.34}
+  ],
+  complete:[
+    {id:'c1',name:'Kava tayari 1',file:'complete-covers/kava-01-mwalimu-maktaba.png'},
+    {id:'c2',name:'Kava tayari 2',file:'complete-covers/kava-03-mwalimu-maktaba.png'},
+    {id:'c3',name:'Kava tayari 3',file:'complete-covers/kava-04-mwalimu-mwanamke-mshani.png'},
+    {id:'c4',name:'Kava tayari 4',file:'complete-covers/kava-05-kaulimbiu-mshani.png'}
+  ]
+};
+var FONTS=['Arial','Georgia','Times New Roman','Verdana','Trebuchet MS','Cambria'];
+var LAYERS=[
+  {id:'t1',label:'Mstari wa juu',def:'JAMHURI YA MUUNGANO WA TANZANIA',x:.06,y:.036,w:.88,size:38,bold:true,col:'text'},
+  {id:'t2',label:'Wizara',def:'WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA',x:.06,y:.072,w:.88,size:28,bold:false,col:'text'},
+  {id:'t3',label:'Jina la shule',def:'',x:.06,y:.113,w:.88,size:62,bold:true,col:'text',auto:'az_school'},
+  {id:'t4',label:'Kichwa kikuu',def:'AZIMIO LA KAZI',x:.1,y:.298,w:.8,size:72,bold:true,col:'title'},
+  {id:'t5',label:'Kichwa kidogo',def:'(Annual Work Plan)',x:.1,y:.352,w:.8,size:30,bold:false,col:'title'},
+  {id:'t7',label:'Kaulimbiu',def:'Pamoja Tunajenga Taifa Letu',x:.06,y:.9145,w:.88,size:38,bold:true,col:'text'}
+];
+var DETAILS=[['somo','Somo','az_subject'],['darasa','Darasa','az_grade'],['mwalimu','Mwalimu','az_teacher'],['mwaka','Mwaka','az_year']];
+var DET_BOX={x:.06,y:.742,w:.42,size:34};
+
+var KEY='azcd_state_v1';
+var S={
+  enabled:false, bg:'bg-01', baked:'', bgCustom:'',
+  teacher:'t-ke-01', teacherCustom:'', tx:.70, ty:.635, tscale:.82, tflip:false, tshape:'oval',
+  decos:{ribbon:true,flag:true}, logo:'', logoPos:'tl', logoSize:.13,
+  font:'Arial', cText:'#0b2a5b', cTitle:'#ffffff', cAccent:'#fcd116', panel:true, panelOp:.82,
+  txt:{}, show:{}, size:{}, det:{somo:'',darasa:'',mwalimu:'',mwaka:''}, edited:{}
+};
+LAYERS.forEach(function(L){ S.txt[L.id]=L.def; S.show[L.id]=true; S.size[L.id]=L.size; });
+S.show.det=true;
+
+function load(){ try{ var j=JSON.parse(localStorage.getItem(KEY)||'null'); if(!j) return;
+  Object.keys(S).forEach(function(k){ if(j[k]===undefined) return;
+    if(S[k]&&typeof S[k]==='object'&&!Array.isArray(S[k])) S[k]=Object.assign({},S[k],j[k]); else S[k]=j[k]; }); S.teacherCustom=''; S.bgCustom=''; }catch(e){} }
+function save(){ try{ var c=Object.assign({},S); delete c.teacherCustom; delete c.bgCustom; localStorage.setItem(KEY,JSON.stringify(c)); }catch(e){} }
+load();
+
+/* ---------- Picha: kupakia na kuhifadhi kwenye cache ---------- */
+var cache={}, loaded={};   // loaded: src -> Image iliyokwisha kupakiwa
+function loadImg(src){
+  if(cache[src]) return cache[src];
+  cache[src]=new Promise(function(res){
+    var done=false, im=new Image();
+    var ok=function(i){ loaded[src]=i; res(i); };
+    var plain=function(){ var i2=new Image(); i2.onload=function(){ok(i2)}; i2.onerror=function(){res(null)}; i2.src=src; };
+    if(/^data:|^blob:/.test(src)){ im.onload=function(){ok(im)}; im.onerror=function(){res(null)}; im.src=src; return; }
+    im.crossOrigin='anonymous';
+    im.onload=function(){ok(im)};
+    im.onerror=function(){ if(done) return; done=true; plain(); };
+    im.src=src;
+  });
+  return cache[src];
+}
+function find(list,id){ for(var i=0;i<list.length;i++) if(list[i].id===id) return list[i]; return null; }
+function bgSrc(){ if(S.bgCustom) return S.bgCustom; var b=find(MANIFEST.backgrounds,S.bg); return b?BASE+b.file:''; }
+function bakedSrc(){ var b=find(MANIFEST.complete,S.baked); return b?BASE+b.file:''; }
+function teacherSrc(){ if(S.teacherCustom) return S.teacherCustom; var t=find(MANIFEST.teachers,S.teacher); return t?BASE+t.file:''; }
+function neededSrcs(){
+  var a=[]; if(S.baked){ a.push(bakedSrc()); return a; }
+  a.push(bgSrc()); if(teacherSrc()) a.push(teacherSrc()); if(S.logo) a.push(S.logo);
+  MANIFEST.decorations.forEach(function(d){ if(S.decos[d.id]) a.push(BASE+d.file); });
+  return a.filter(Boolean);
+}
+function ensureImages(){ return Promise.all(neededSrcs().map(loadImg)); }
+
+/* ---------- Kuchora kava ---------- */
+function syncFromForm(){
+  LAYERS.forEach(function(L){ if(L.auto && !S.edited[L.id]){ var e=document.getElementById(L.auto); if(e&&e.value) S.txt[L.id]=e.value.trim(); } });
+  DETAILS.forEach(function(d){ if(!S.edited['d_'+d[0]]){ var e=document.getElementById(d[2]); if(e&&e.value) S.det[d[0]]=String(e.value).trim(); } });
+}
+function colorOf(L){ if(L.col==='title') return S.decos.ribbon ? S.cTitle : S.cText; return S.cText; }
+function fontStack(){ return '"'+S.font+'", Arial, sans-serif'; }
+function wrap(ctx,text,maxW){
+  var out=[]; String(text).split('\n').forEach(function(par){ var words=par.split(/\s+/), line='';
+    words.forEach(function(w){ var t=line?line+' '+w:w; if(ctx.measureText(t).width>maxW && line){ out.push(line); line=w; } else line=t; });
+    out.push(line); });
+  return out;
+}
+function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function teacherBox(im){ var w=PW*.5*S.tscale, h=w*(im.naturalHeight/im.naturalWidth); return {x:PW*S.tx-w/2,y:PH*S.ty-h/2,w:w,h:h}; }
+
+function render(cv,opt){
+  opt=opt||{}; var ctx=cv.getContext('2d'); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,PW,PH);
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,PW,PH);
+  renderSync(ctx,opt,!!S.baked);
+}
+function got(src){ return loaded[src]||null; }
+function renderSync(ctx,opt,baked){
+  var im;
+  if(baked){
+    im=got(bakedSrc()); if(!im) return;
+    if(ctx.filter!==undefined){ var s0=Math.max(PW/im.naturalWidth,PH/im.naturalHeight); ctx.save(); ctx.filter='blur(28px)'; ctx.drawImage(im,(PW-im.naturalWidth*s0)/2,(PH-im.naturalHeight*s0)/2,im.naturalWidth*s0,im.naturalHeight*s0); ctx.restore(); }
+    var s1=PW/im.naturalWidth, h1=im.naturalHeight*s1; ctx.drawImage(im,0,(PH-h1)/2,PW,h1); return;
+  }
+  im=got(bgSrc());
+  if(im){ var s=Math.max(PW/im.naturalWidth,PH/im.naturalHeight); ctx.drawImage(im,(PW-im.naturalWidth*s)/2,(PH-im.naturalHeight*s)/2,im.naturalWidth*s,im.naturalHeight*s); }
+  if(S.panel){
+    ctx.save(); ctx.globalAlpha=S.panelOp; ctx.fillStyle='#ffffff';
+    if(S.show.t1||S.show.t2||S.show.t3){ rr(ctx,PW*.04,PH*.024,PW*.92,PH*.172,28); ctx.fill(); }
+    if(S.show.det){ rr(ctx,PW*.04,PH*.728,PW*.46,PH*.178,24); ctx.fill(); }
+    if(S.show.t7&&S.txt.t7){ rr(ctx,PW*.14,PH*.908,PW*.72,PH*.043,20); ctx.fill(); }
+    ctx.restore();
+  }
+  MANIFEST.decorations.forEach(function(d){ if(!S.decos[d.id]) return; var di=got(BASE+d.file); if(!di) return;
+    var w=PW*d.w, h=w*(di.naturalHeight/di.naturalWidth); if(d.id==='corners'){ ctx.drawImage(di,0,0,PW,PH); return; } ctx.drawImage(di,PW*d.x,PH*d.y,w,h); });
+  var ts=teacherSrc(), ti=ts?got(ts):null;
+  if(ti){ var b=teacherBox(ti); ctx.save();
+    if(S.tshape==='oval'){ ctx.beginPath(); ctx.ellipse(b.x+b.w/2,b.y+b.h/2,b.w/2,b.h/2,0,0,Math.PI*2); ctx.clip(); }
+    else if(S.tshape==='circle'){ var r=b.w/2; ctx.beginPath(); ctx.arc(b.x+b.w/2,b.y+r*1.08,r,0,Math.PI*2); ctx.clip(); }
+    else if(S.tshape==='rounded'){ rr(ctx,b.x,b.y,b.w,b.h,48); ctx.clip(); }
+    if(S.tflip){ ctx.translate(b.x+b.w,b.y); ctx.scale(-1,1); ctx.drawImage(ti,0,0,b.w,b.h); } else ctx.drawImage(ti,b.x,b.y,b.w,b.h);
+    ctx.restore();
+    if(S.tshape!=='none'){ ctx.save(); ctx.lineWidth=12; ctx.strokeStyle=S.cAccent;
+      if(S.tshape==='oval'){ ctx.beginPath(); ctx.ellipse(b.x+b.w/2,b.y+b.h/2,b.w/2,b.h/2,0,0,Math.PI*2); ctx.stroke(); }
+      else if(S.tshape==='circle'){ ctx.beginPath(); ctx.arc(b.x+b.w/2,b.y+b.w/2*1.08,b.w/2,0,Math.PI*2); ctx.stroke(); }
+      else if(S.tshape==='rounded'){ rr(ctx,b.x,b.y,b.w,b.h,48); ctx.stroke(); }
+      ctx.restore(); }
+  }
+  var li=S.logo?got(S.logo):null;
+  if(li){ var lw=PW*S.logoSize, lh=lw*(li.naturalHeight/li.naturalWidth), m=PW*.06;
+    if(lh>lw*1.4){ lh=lw*1.4; lw=lh*(li.naturalWidth/li.naturalHeight); }
+    var lx=(S.logoPos==='tl'||S.logoPos==='bl')?m:PW-m-lw, ly=(S.logoPos==='tl'||S.logoPos==='tr')?PH*.03:PH-PH*.115-lh;
+    ctx.drawImage(li,lx,ly,lw,lh); }
+  if(opt.text!==false) drawText(ctx);
+}
+function drawText(ctx){
+  ctx.textBaseline='top';
+  LAYERS.forEach(function(L){ if(!S.show[L.id]||!S.txt[L.id]) return; var sz=S.size[L.id];
+    ctx.font=(L.bold?'700 ':'400 ')+sz+'px '+fontStack(); ctx.fillStyle=colorOf(L); ctx.textAlign='center';
+    var lines=wrap(ctx,S.txt[L.id],PW*L.w), y=PH*L.y; lines.forEach(function(t){ ctx.fillText(t,PW*(L.x+L.w/2),y); y+=sz*1.2; }); });
+  if(S.show.det){ var lines=detLines(); ctx.font='400 '+DET_BOX.size+'px '+fontStack(); ctx.fillStyle=S.cText; ctx.textAlign='left';
+    var y=PH*DET_BOX.y; lines.forEach(function(t){ ctx.fillText(t,PW*DET_BOX.x,y); y+=DET_BOX.size*1.5; }); }
+}
+function detLines(){ var a=[]; DETAILS.forEach(function(d){ if(S.det[d[0]]) a.push(d[1]+' : '+S.det[d[0]]); }); return a; }
+
+/* ---------- Preview ---------- */
+var ov=null, cv=null, raf=0;
+function redraw(){ if(raf) return; raf=requestAnimationFrame(function(){ raf=0; if(!cv) return; ensureImages().then(function(){ render(cv,{text:true}); }); }); }
+function status(msg){ var e=document.getElementById('azcd_status'); if(e) e.textContent=msg||''; }
+
+/* ---------- UI ---------- */
+function injectCss(){
+  if(document.getElementById('azcd-css')) return; var st=document.createElement('style'); st.id='azcd-css';
+  st.textContent=
+  '#azcdOv{position:fixed;inset:0;z-index:9150;background:var(--chalk,#F4EFE1);display:none;flex-direction:column;font-family:"Helvetica Neue",Arial,sans-serif;color:var(--ink,#26301F)}'+
+  '#azcdOv.on{display:flex}'+
+  '#azcdOv .azh{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--board,#1F3B32);color:#F4EFE1;padding:10px 14px}'+
+  '#azcdOv .azh b{font-size:15px}#azcdOv .azh button{background:#B65C4A;color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:700}'+
+  '#azcdOv .azb{flex:1;min-height:0;display:flex;flex-direction:column}'+
+  '#azcdOv .azp{flex:0 0 auto;height:42vh;background:#d9d4c3;display:flex;align-items:center;justify-content:center;padding:6px;position:relative}'+
+  '#azcdOv canvas{height:100%;width:auto;max-width:100%;box-shadow:0 3px 14px rgba(0,0,0,.35);background:#fff;touch-action:none;cursor:grab}'+
+  '#azcdOv .azp small{position:absolute;left:8px;bottom:6px;background:rgba(0,0,0,.55);color:#fff;border-radius:6px;padding:2px 7px;font-size:11px}'+
+  '#azcdOv .azc{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--paper,#FBF7EC)}'+
+  '#azcdOv .azt{display:flex;overflow-x:auto;border-bottom:2px solid var(--paper-line,#E3D9BE)}'+
+  '#azcdOv .azt button{flex:0 0 auto;border:0;background:none;padding:10px 12px;font-weight:700;font-size:13px;color:var(--muted,#6B6353);border-bottom:3px solid transparent}'+
+  '#azcdOv .azt button.on{color:var(--board,#1F3B32);border-bottom-color:var(--amber,#D9932F)}'+
+  '#azcdOv .azs{flex:1;overflow:auto;padding:12px 14px}'+
+  '#azcdOv .tab{display:none}#azcdOv .tab.on{display:block}'+
+  '#azcdOv .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin:6px 0 10px}'+
+  '#azcdOv .it{border:2px solid var(--paper-line,#E3D9BE);border-radius:10px;background:#fff;padding:4px;text-align:center;font-size:11px;cursor:pointer}'+
+  '#azcdOv .it.on{border-color:var(--amber,#D9932F);box-shadow:0 0 0 2px rgba(217,147,47,.35)}'+
+  '#azcdOv .it img{width:100%;height:84px;object-fit:cover;border-radius:6px;display:block;margin-bottom:3px;background:#eee}'+
+  '#azcdOv .it.dec img{object-fit:contain;background:repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0 0/14px 14px}'+
+  '#azcdOv label{display:block;font-size:12px;font-weight:700;margin:8px 0 3px}'+
+  '#azcdOv input[type=text],#azcdOv select{width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--paper-line,#E3D9BE);border-radius:8px;font-size:14px;background:#fff}'+
+  '#azcdOv input[type=range]{width:100%}'+
+  '#azcdOv .r2{display:grid;grid-template-columns:1fr 1fr;gap:8px}'+
+  '#azcdOv .btn{border:0;border-radius:8px;padding:9px 12px;font-weight:700;font-size:13px;background:var(--board,#1F3B32);color:#fff}'+
+  '#azcdOv .btn.alt{background:var(--amber,#D9932F)}#azcdOv .btn.gr{background:#6B6353}'+
+  '#azcdOv .ck{display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;margin:6px 0}'+
+  '#azcdOv .hint{font-size:12px;color:var(--muted,#6B6353);margin:4px 0 8px;line-height:1.4}'+
+  '#azcdOv .azf{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 14px;border-top:2px solid var(--paper-line,#E3D9BE);background:#fff}'+
+  '#azcdOv .azf .st{flex:1 1 100%;font-size:12px;color:var(--muted,#6B6353)}'+
+  '#azcdOv .ln{border:1px solid var(--paper-line,#E3D9BE);border-radius:10px;padding:8px;margin-bottom:8px;background:#fff}'+
+  '@media(min-width:900px){#azcdOv .azb{flex-direction:row}#azcdOv .azp{flex:0 0 46%;height:auto}#azcdOv .azc{flex:1}}'+
+  '.azcd-chip{display:inline-block;margin-left:8px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:12px;background:#e8efe6;color:#1F3B32;vertical-align:middle}'+
+  '.azcd-chip.off{background:#eee;color:#6B6353}';
+  document.head.appendChild(st);
+}
+function thumb(kind,list,sel){
+  return list.map(function(x){ return '<div class="it'+(kind==='dec'?' dec':'')+(sel(x)?' on':'')+'" data-pick="'+kind+'" data-id="'+x.id+'"><img loading="lazy" src="'+BASE+x.file+'" alt=""><span>'+x.name+'</span></div>'; }).join('');
+}
+function build(){
+  injectCss(); ov=document.createElement('div'); ov.id='azcdOv';
+  var layerRows=LAYERS.map(function(L){ return '<div class="ln"><label class="ck"><input type="checkbox" data-show="'+L.id+'"> '+L.label+'</label><input type="text" data-txt="'+L.id+'"><div class="r2" style="margin-top:4px"><span class="hint" style="margin:0">Ukubwa wa herufi</span><input type="range" min="16" max="110" data-size="'+L.id+'"></div></div>'; }).join('');
+  var detRows=DETAILS.map(function(d){ return '<label>'+d[1]+'</label><input type="text" data-det="'+d[0]+'">'; }).join('');
+  var decRows=MANIFEST.decorations.map(function(d){ return '<label class="ck"><input type="checkbox" data-deco="'+d.id+'"> '+d.name+'</label>'; }).join('');
+  ov.innerHTML=
+  '<div class="azh"><b>🎨 AZIMIO COVER DESIGNER</b><button type="button" data-act="close">Funga</button></div>'+
+  '<div class="azb"><div class="azp"><canvas id="azcdCv" width="'+PW+'" height="'+PH+'"></canvas><small>PREVIEW — ukurasa wa 1 · buruta picha ya mwalimu</small></div>'+
+  '<div class="azc"><div class="azt">'+
+    '<button type="button" class="on" data-tab="bg">Background</button><button type="button" data-tab="tc">Mwalimu</button><button type="button" data-tab="tx">Maandishi</button><button type="button" data-tab="cl">Rangi na Mapambo</button><button type="button" data-tab="lg">Nembo</button></div>'+
+  '<div class="azs">'+
+   '<div class="tab on" id="azcd_tab_bg"><div class="hint">Chagua background ya kava (picha zinatoka folder la <b>assets/azimio-covers/backgrounds/</b>).</div><div class="g">'+thumb('bg',MANIFEST.backgrounds,function(x){return !S.baked&&!S.bgCustom&&S.bg===x.id;})+'</div>'+
+     '<button type="button" class="btn gr" data-act="upbg">📁 Pakia background yangu</button><input type="file" id="azcd_f_bg" accept="image/*" style="display:none">'+
+     '<div class="hint" style="margin-top:12px"><b>Kava kamili tayari</b> — maandishi yamo ndani ya picha, <u>hayahaririki</u>. Chagua tu kama hutaki kuhariri maandishi.</div><div class="g">'+thumb('baked',MANIFEST.complete,function(x){return S.baked===x.id;})+'</div></div>'+
+   '<div class="tab" id="azcd_tab_tc"><div class="hint">Chagua picha ya mwalimu (folder la <b>teachers/</b>) au pakia picha yako. Picha yenye mandharinyuma wazi (PNG) inapendeza zaidi.</div>'+
+     '<div class="r2"><button type="button" class="btn" data-act="tf" data-g="all">Wote</button><button type="button" class="btn gr" data-act="tf" data-g="ke">Wa kike</button><button type="button" class="btn gr" data-act="tf" data-g="me">Wa kiume</button><button type="button" class="btn gr" data-act="tnone">Bila picha</button></div>'+
+     '<div class="g" id="azcd_tgrid"></div>'+
+     '<button type="button" class="btn alt" data-act="upt">📷 Pakia picha yangu</button><input type="file" id="azcd_f_t" accept="image/*" style="display:none">'+
+     '<label>Ukubwa wa picha</label><input type="range" min="20" max="250" data-k="tscale100">'+
+     '<label>Nafasi ya kulia/kushoto</label><input type="range" min="0" max="100" data-k="tx100">'+
+     '<label>Nafasi ya juu/chini</label><input type="range" min="0" max="100" data-k="ty100">'+
+     '<label>Umbo la fremu ya picha</label><select data-k="tshape"><option value="oval">Mviringo (oval)</option><option value="circle">Duara</option><option value="rounded">Mstatili wa pembe laini</option><option value="none">Hakuna fremu (PNG wazi)</option></select>'+
+     '<label class="ck"><input type="checkbox" data-k="tflip"> Geuza picha (kushoto ↔ kulia)</label></div>'+
+   '<div class="tab" id="azcd_tab_tx"><div class="hint">Maandishi yote ni <b>editable</b> — hayachomwi kwenye picha. Kwenye Word yatakuwa maandishi halisi unayoweza kuyabadilisha. Taarifa za shule/mwalimu huchukuliwa kutoka fomu ya Azimio; ukiandika hapa zinabaki zako.</div>'+
+     '<label>Aina ya herufi (font)</label><select data-k="font">'+FONTS.map(function(f){return '<option>'+f+'</option>';}).join('')+'</select>'+layerRows+
+     '<div class="ln"><label class="ck"><input type="checkbox" data-show="det"> Sehemu ya taarifa (Somo, Darasa, Mwalimu, Mwaka)</label>'+detRows+'</div>'+
+     '<button type="button" class="btn gr" data-act="resync">↻ Jaza upya kutoka fomu ya Azimio</button></div>'+
+   '<div class="tab" id="azcd_tab_cl"><label>Rangi ya maandishi</label><input type="color" data-k="cText"><label>Rangi ya kichwa (AZIMIO LA KAZI)</label><input type="color" data-k="cTitle"><label>Rangi ya mapambo/fremu</label><input type="color" data-k="cAccent">'+
+     '<label class="ck"><input type="checkbox" data-k="panel"> Paneli nyeupe nyuma ya maandishi (inasaidia kusomeka)</label><label>Uwazi wa paneli</label><input type="range" min="0" max="100" data-k="panelOp100">'+
+     '<div class="hint" style="margin-top:10px">Mapambo (folder la <b>decorations/</b>):</div>'+decRows+'</div>'+
+   '<div class="tab" id="azcd_tab_lg"><div class="hint">Weka nembo ya shule yako (PNG/JPG). Itawekwa kwenye kona uliyochagua.</div>'+
+     '<button type="button" class="btn alt" data-act="uplogo">🏫 Pakia nembo ya shule</button> <button type="button" class="btn gr" data-act="rmlogo">Ondoa nembo</button><input type="file" id="azcd_f_l" accept="image/*" style="display:none">'+
+     '<label>Mahali pa nembo</label><select data-k="logoPos"><option value="tl">Juu kushoto</option><option value="tr">Juu kulia</option><option value="bl">Chini kushoto</option><option value="br">Chini kulia</option></select>'+
+     '<label>Ukubwa wa nembo</label><input type="range" min="6" max="30" data-k="logoSize100"></div>'+
+  '</div>'+
+  '<div class="azf"><button type="button" class="btn alt" data-act="use">✅ Tumia kava hii kwenye Word</button><button type="button" class="btn" data-act="word">⬇️ Pakua Word (kava + Azimio)</button><button type="button" class="btn gr" data-act="png">🖼️ Pakua PNG ya kava</button><div class="st" id="azcd_status"></div></div>'+
+  '</div></div>';
+  document.body.appendChild(ov); cv=document.getElementById('azcdCv'); wire(); fillControls(); renderTeachers('all');
+}
+var tgender='all';
+function renderTeachers(g){ tgender=g||tgender; var list=MANIFEST.teachers.filter(function(t){return tgender==='all'||t.g===tgender;});
+  document.getElementById('azcd_tgrid').innerHTML=thumb('tc',list,function(x){return !S.teacherCustom&&S.teacher===x.id;}); }
+function fillControls(){
+  ov.querySelectorAll('[data-k]').forEach(function(e){ var k=e.getAttribute('data-k'), v;
+    if(k==='tscale100') v=Math.round(S.tscale*100); else if(k==='tx100') v=Math.round(S.tx*100); else if(k==='ty100') v=Math.round(S.ty*100);
+    else if(k==='panelOp100') v=Math.round(S.panelOp*100); else if(k==='logoSize100') v=Math.round(S.logoSize*100); else v=S[k];
+    if(e.type==='checkbox') e.checked=!!v; else e.value=v; });
+  ov.querySelectorAll('[data-show]').forEach(function(e){ e.checked=!!S.show[e.getAttribute('data-show')]; });
+  ov.querySelectorAll('[data-txt]').forEach(function(e){ e.value=S.txt[e.getAttribute('data-txt')]||''; });
+  ov.querySelectorAll('[data-size]').forEach(function(e){ e.value=S.size[e.getAttribute('data-size')]; });
+  ov.querySelectorAll('[data-det]').forEach(function(e){ e.value=S.det[e.getAttribute('data-det')]||''; });
+  ov.querySelectorAll('[data-deco]').forEach(function(e){ e.checked=!!S.decos[e.getAttribute('data-deco')]; });
+}
+function refreshPicks(){
+  ov.querySelectorAll('[data-pick="bg"]').forEach(function(e){ e.classList.toggle('on',!S.baked&&!S.bgCustom&&S.bg===e.getAttribute('data-id')); });
+  ov.querySelectorAll('[data-pick="baked"]').forEach(function(e){ e.classList.toggle('on',S.baked===e.getAttribute('data-id')); });
+  renderTeachers();
+}
+function readFile(file,maxPx){ return new Promise(function(res,rej){ var fr=new FileReader(); fr.onerror=rej; fr.onload=function(){ var im=new Image(); im.onerror=rej;
+  im.onload=function(){ var s=Math.min(1,maxPx/Math.max(im.naturalWidth,im.naturalHeight)); var c=document.createElement('canvas'); c.width=Math.round(im.naturalWidth*s); c.height=Math.round(im.naturalHeight*s);
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height); var png=/png|webp|gif/i.test(file.type); res(c.toDataURL(png?'image/png':'image/jpeg',.92)); };
+  im.src=fr.result; }; fr.readAsDataURL(file); }); }
+function wire(){
+  ov.addEventListener('click',function(ev){
+    var t=ev.target.closest('[data-tab],[data-pick],[data-act]'); if(!t) return;
+    if(t.hasAttribute('data-tab')){ ov.querySelectorAll('.azt button').forEach(function(b){b.classList.toggle('on',b===t);}); ov.querySelectorAll('.tab').forEach(function(p){p.classList.toggle('on',p.id==='azcd_tab_'+t.getAttribute('data-tab'));}); return; }
+    if(t.hasAttribute('data-pick')){ var k=t.getAttribute('data-pick'), id=t.getAttribute('data-id');
+      if(k==='bg'){ S.bg=id; S.baked=''; S.bgCustom=''; } else if(k==='baked'){ S.baked=id; } else if(k==='tc'){ S.teacher=id; S.teacherCustom=''; }
+      refreshPicks(); save(); redraw(); return; }
+    var a=t.getAttribute('data-act');
+    if(a==='close') closeIt();
+    else if(a==='tf') renderTeachers(t.getAttribute('data-g'));
+    else if(a==='tnone'){ S.teacher=''; S.teacherCustom=''; refreshPicks(); save(); redraw(); }
+    else if(a==='upbg') document.getElementById('azcd_f_bg').click();
+    else if(a==='upt') document.getElementById('azcd_f_t').click();
+    else if(a==='uplogo') document.getElementById('azcd_f_l').click();
+    else if(a==='rmlogo'){ S.logo=''; save(); redraw(); }
+    else if(a==='resync'){ S.edited={}; syncFromForm(); fillControls(); save(); redraw(); status('Taarifa zimejazwa upya kutoka fomu ya Azimio.'); }
+    else if(a==='use'){ S.enabled=!S.enabled; save(); chip(); status(S.enabled?'Kava IMEWASHWA — itakuwa ukurasa wa 1 kwenye Word; Azimio linaanza ukurasa wa 2.':'Kava IMEZIMWA — Word itapakuliwa kama kawaida.'); t.textContent=S.enabled?'🚫 Zima kava':'✅ Tumia kava hii kwenye Word'; }
+    else if(a==='word'){ S.enabled=true; save(); chip(); var u=ov.querySelector('[data-act="use"]'); if(u) u.textContent='🚫 Zima kava'; if(typeof downloadAzimioDocx==='function') downloadAzimioDocx(); }
+    else if(a==='png') pngDownload();
+  });
+  ov.addEventListener('input',function(ev){
+    var e=ev.target, k;
+    if((k=e.getAttribute('data-k'))){ var v=(e.type==='checkbox')?e.checked:e.value;
+      if(k==='tscale100') S.tscale=v/100; else if(k==='tx100') S.tx=v/100; else if(k==='ty100') S.ty=v/100; else if(k==='panelOp100') S.panelOp=v/100; else if(k==='logoSize100') S.logoSize=v/100; else S[k]=v; }
+    else if((k=e.getAttribute('data-show'))) S.show[k]=e.checked;
+    else if((k=e.getAttribute('data-txt'))){ S.txt[k]=e.value; S.edited[k]=true; }
+    else if((k=e.getAttribute('data-size'))) S.size[k]=+e.value;
+    else if((k=e.getAttribute('data-det'))){ S.det[k]=e.value; S.edited['d_'+k]=true; }
+    else if((k=e.getAttribute('data-deco'))) S.decos[k]=e.checked;
+    else return;
+    save(); redraw();
+  });
+  var fileDo=function(id,max,fn){ document.getElementById(id).addEventListener('change',function(){ var f=this.files&&this.files[0]; if(!f) return;
+    readFile(f,max).then(function(d){ fn(d); refreshPicks(); redraw(); }).catch(function(){ status('Imeshindwa kusoma picha hiyo — jaribu PNG au JPG nyingine.'); }); this.value=''; }); };
+  fileDo('azcd_f_bg',2400,function(d){ S.bgCustom=d; S.baked=''; });
+  fileDo('azcd_f_t',1600,function(d){ S.teacherCustom=d; });
+  fileDo('azcd_f_l',500,function(d){ S.logo=d; save(); });
+  /* kuburuta picha ya mwalimu kwenye preview */
+  var drag=null;
+  cv.addEventListener('pointerdown',function(ev){ var ts=teacherSrc(), im=ts&&got(ts); if(!im) return; var r=cv.getBoundingClientRect(), px=(ev.clientX-r.left)/r.width*PW, py=(ev.clientY-r.top)/r.height*PH, b=teacherBox(im);
+    if(px>=b.x&&px<=b.x+b.w&&py>=b.y&&py<=b.y+b.h){ drag={dx:px-PW*S.tx,dy:py-PH*S.ty}; cv.setPointerCapture(ev.pointerId); cv.style.cursor='grabbing'; } });
+  cv.addEventListener('pointermove',function(ev){ if(!drag) return; var r=cv.getBoundingClientRect(), px=(ev.clientX-r.left)/r.width*PW, py=(ev.clientY-r.top)/r.height*PH;
+    S.tx=Math.min(1.2,Math.max(-.2,(px-drag.dx)/PW)); S.ty=Math.min(1.2,Math.max(-.2,(py-drag.dy)/PH)); fillControls(); redraw(); });
+  var end=function(){ if(drag){ drag=null; cv.style.cursor='grab'; save(); } };
+  cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
+}
+function chip(){ var c=document.getElementById('azcd_chip'); if(!c) return; c.textContent=S.enabled?'Kava: IMEWASHWA':'Kava: imezimwa'; c.className='azcd-chip'+(S.enabled?'':' off'); }
+function openIt(){
+  if(!ov) build(); syncFromForm(); fillControls(); refreshPicks(); ov.classList.add('on');
+  var u=ov.querySelector('[data-act="use"]'); if(u) u.textContent=S.enabled?'🚫 Zima kava':'✅ Tumia kava hii kwenye Word';
+  var has=(document.getElementById('az_output')||{}).textContent; var ok=has&&!document.querySelector('#az_output .placeholder');
+  status(ok?'Azimio lipo — litaanza ukurasa wa 2 kwenye Word.':'Tengeneza Azimio la Kazi kwanza ili uweze kupakua Word; PNG ya kava inapatikana wakati wowote.');
+  ensureImages().then(function(list){ var miss=neededSrcs().filter(function(s){return !loaded[s];}); if(miss.length) status('Picha haikupatikana: '+miss[0].slice(0,70)+' — hakikisha folder la assets/azimio-covers/ lipo kando ya index.html'); redraw(); });
+}
+function closeIt(){ if(ov) ov.classList.remove('on'); save(); chip(); }
+
+/* ---------- Pakua PNG ya kava (na maandishi) ---------- */
+function pngDownload(){
+  ensureImages().then(function(){
+    var c=document.createElement('canvas'); c.width=PW; c.height=PH; render(c,{text:true});
+    try{ c.toBlob(function(b){ if(!b){ status('Imeshindwa kutengeneza PNG.'); return; } var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='Kava_ya_Azimio.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(a.href)},1500); },'image/png'); }
+    catch(e){ status('Kivinjari kimezuia kuhifadhi picha (fungua mfumo kupitia tovuti yake, si kama faili la ndani ya simu).'); }
+  });
+}
+
+/* ---------- Kuunganisha na DOCX generator: sehemu ya kwanza (kava) ---------- */
+function coverSections(){
+  var D=window.docx; if(!D) return Promise.resolve([]);
+  syncFromForm();
+  return ensureImages().then(function(){
+    var c=document.createElement('canvas'); c.width=PW; c.height=PH; render(c,{text:false});
+    return new Promise(function(res,rej){ try{ c.toBlob(function(b){ b?res(b):rej(new Error('picha ya kava haikutengenezwa')); },'image/jpeg',.92); }catch(e){ rej(e); } });
+  }).then(function(blob){ return blob.arrayBuffer(); }).then(function(buf){
+    var Paragraph=D.Paragraph, TextRun=D.TextRun, ImageRun=D.ImageRun, AlignmentType=D.AlignmentType;
+    var kids=[ new Paragraph({ spacing:{before:0,after:0}, children:[ new ImageRun({
+      type:'jpg', data:new Uint8Array(buf), transformation:{ width:794, height:1123 },
+      floating:{ horizontalPosition:{ relative:D.HorizontalPositionRelativeFrom.PAGE, offset:0 }, verticalPosition:{ relative:D.VerticalPositionRelativeFrom.PAGE, offset:0 },
+                 behindDocument:true, allowOverlap:true, lockAnchor:true, wrap:{ type:D.TextWrappingType.NONE } } }) ] }) ];
+    var px2tw=1440/150, hp=function(px){ return Math.round(px*0.96); };
+    var frame=function(x,y,w,h){ return { type:'absolute', position:{ x:Math.round(x*TW_W), y:Math.round(y*TW_H) }, width:Math.round(w*TW_W), height:Math.round(h), anchor:{ horizontal:D.FrameAnchorType.PAGE, vertical:D.FrameAnchorType.PAGE }, rule:D.HeightRule.AT_LEAST }; };
+    var hex=function(c){ return String(c).replace('#','').toUpperCase(); };
+    if(!S.baked){
+      var m=document.createElement('canvas').getContext('2d');
+      LAYERS.forEach(function(L){ if(!S.show[L.id]||!S.txt[L.id]) return; var sz=S.size[L.id];
+        m.font=(L.bold?'700 ':'400 ')+sz+'px '+fontStack(); var n=wrap(m,S.txt[L.id],PW*L.w).length;
+        kids.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:{before:0,after:0}, frame:frame(L.x,L.y,L.w,n*sz*1.25*px2tw),
+          children:[ new TextRun({ text:S.txt[L.id], bold:!!L.bold, size:hp(sz), font:S.font, color:hex(colorOf(L)) }) ] })); });
+      var dl=detLines(); if(S.show.det && dl.length){
+        kids.push(new Paragraph({ alignment:AlignmentType.LEFT, spacing:{before:0,after:0}, frame:frame(DET_BOX.x,DET_BOX.y,DET_BOX.w,dl.length*DET_BOX.size*1.55*px2tw),
+          children:dl.map(function(t,i){ return new TextRun({ text:t, size:hp(DET_BOX.size), font:S.font, color:hex(S.cText), break:i?1:0 }); }) })); }
+    }
+    return [{ properties:{ page:{ size:{ width:TW_W, height:TW_H }, margin:{ top:0, bottom:0, left:0, right:0, header:0, footer:0 } } }, children:kids }];
+  });
+}
+
+/* ---------- Mlango wa kuingia kwenye mfumo wa Azimio ---------- */
+function addEntry(){
+  var btn=document.getElementById('az_btn'); if(!btn||document.getElementById('azcd_open')) return;
+  injectCss(); var b=document.createElement('button'); b.type='button'; b.id='azcd_open'; b.className='generate'; b.style.cssText='margin-top:8px;background:var(--amber,#D9932F)';
+  b.textContent='🎨 AZIMIO COVER DESIGNER'; b.addEventListener('click',openIt);
+  var chp=document.createElement('div'); chp.style.cssText='margin-top:6px'; chp.innerHTML='<span id="azcd_chip" class="azcd-chip off">Kava: imezimwa</span>';
+  btn.insertAdjacentElement('afterend',chp); btn.insertAdjacentElement('afterend',b); chip();
+}
+window.AZCD={ open:openIt, close:closeIt, isEnabled:function(){ return !!S.enabled; }, coverSections:coverSections, _state:S, _render:function(c,o){ return render(c,o); }, _ensure:ensureImages, _manifest:MANIFEST };
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',addEntry); else addEntry();
 })();
 </script>
 </body>
