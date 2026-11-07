@@ -1,0 +1,25 @@
+{
+  "id": "https://adabethsheusi85-sudo.github.io/msaidizi-/",
+  "name": "Msaidizi wa Mwalimu",
+  "short_name": "Msaidizi",
+  "description": "Teknolojia kwa Walimu, Elimu Bora kwa Wote",
+  "lang": "sw-TZ",
+  "start_url": "/msaidizi-/",
+  "scope": "/msaidizi-/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#087a35",
+  "icons": [
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
