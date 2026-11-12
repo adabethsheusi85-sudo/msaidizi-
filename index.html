@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -495,6 +494,20 @@ html.fb-locked body>.wrap{visibility:hidden}
 /* Kinga ya kuganda: kama script ya login haijaanza ndani ya sekunde 8, onyesha sababu. App INABAKI imefungwa. */
 window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');if(g&&g.classList.contains('fbwait')){g.classList.remove('fbwait');var m=document.getElementById('fbMsg');if(m){m.className='err';m.textContent='Login inachelewa kuanza. Mtandao ni polepole au Firebase haipatikani. Angalia intaneti kisha pakia ukurasa upya (refresh).';}}},35000);
 </script>
+<style id="azGuardCss">
+/* ULINZI WA AZIMIO: watermark ya Preview, kuzuia Print bila leseni, hali ya kusoma tu (leseni imeisha) */
+#az_output.az-wm{position:relative;-webkit-user-select:none;user-select:none}
+.az-wm-ov{position:absolute;top:0;left:0;pointer-events:none;z-index:6;background-repeat:repeat}
+@media print{
+  body:not(.msLic) #az_output > *{display:none!important}
+  body:not(.msLic) #az_output::before{content:"PREVIEW \2014  Kuchapisha Azimio kunahitaji leseni ya malipo ya Msaidizi wa Mwalimu.";display:block;font:700 18px Arial,sans-serif;padding:40px;text-align:center}
+}
+body.msRO{padding-bottom:70px}
+body.msRO #backBtn,body.msRO #skFab,body.msRO #skPanel{display:none!important}
+body.msRO #view-azimio .az-cal-card,body.msRO #view-azimio .layout>.panel:first-child{display:none!important}
+#msRoBar{position:fixed;left:0;right:0;bottom:0;z-index:8400;display:none;align-items:center;justify-content:space-between;gap:10px;background:#b3261e;color:#fff;padding:10px 14px;font:14px/1.4 'Helvetica Neue',Arial,sans-serif}
+#msRoBar button{background:#fff;color:#b3261e;border:0;border-radius:6px;padding:9px 14px;font-weight:700;cursor:pointer}
+</style>
 </head>
 <body translate="no">
 <div id="fbGate" class="fbwait"><p id="fbLoad">Inapakia...</p><div class="fbc">
@@ -765,7 +778,7 @@ window.__fbTimer=setTimeout(function(){var g=document.getElementById('fbGate');i
       </div>
       <div class="output-panel">
         <div class="output-head"><span id="az_headLabel">AZIMIO LA KAZI</span>
-          <div><button id="az_saveBtn" class="hidden" onclick="azSaveCurrent()">💾 Hifadhi Azimio</button><button id="az_copyBtn" class="hidden" onclick="copyText('az_output','az_copyBtn')">Nakili</button><button id="az_docxBtn" class="hidden" onclick="downloadAzimioDocx()">⬇️ Pakua Word</button><button id="az_printBtn" class="hidden" onclick="azimioPrint()">Chapisha</button></div>
+          <div><button id="az_saveBtn" class="hidden" onclick="azSaveCurrent()">💾 Hifadhi Azimio</button><button id="az_copyBtn" class="hidden" onclick="azCopy()">Nakili</button><button id="az_docxBtn" class="hidden" onclick="downloadAzimioDocx()">⬇️ Pakua Word</button><button id="az_printBtn" class="hidden" onclick="azimioPrint()">Chapisha</button></div>
         </div>
         <div class="output-body" id="az_output"><p class="placeholder">Azimio la kazi litaonekana hapa.</p></div>
       </div>
@@ -1275,6 +1288,7 @@ function showView(view){
   if(view !== 'dashboard' && view !== 'hub') refreshSubjectsFor(view);
   if(view === 'andalio') syncAndalioHeader();
   if(view === 'benki') benkiRefreshDropdowns();
+  if(view === 'azimio' && typeof azLoadIdentity === 'function') azLoadIdentity();
 }
 function goHome(){ showView('dashboard'); }
 
@@ -5770,6 +5784,109 @@ function azHtmlTable(headers, rows, cls){
   return h + '</tbody></table>';
 }
 
+/* ===== ULINZI WA AZIMIO: utambulisho uliofungwa, ukaguzi wa export (Backend), watermark ya Preview =====
+   Uamuzi wa mwisho unafanywa na Worker (/azimio, action: identity_get | identity_set | export).
+   Kitufe/CSS vya hapa ni kiolesura tu; haviwezi kutoa ruhusa peke yake. */
+var azIdState = { loaded:false, locked:false, admin:false };
+const AZ_LOCK_TITLE = 'Imefungwa kwa akaunti yako. Kubadilisha kunafanywa na Admin pekee.';
+async function azSrv(body){
+  if(typeof PH_PROXY_URL === 'undefined' || !PH_PROXY_URL) throw new Error('Anwani ya seva (PH_PROXY_URL) haijawekwa kwenye faili.');
+  let token;
+  try{ token = await firebase.auth().currentUser.getIdToken(); }
+  catch(e){ throw new Error('Hujaingia. Toka (log out) kisha ingia tena.'); }
+  const post = (tk)=> fetch(PH_PROXY_URL + '/azimio', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + tk }, body: JSON.stringify(body) });
+  let r;
+  try{
+    r = await post(token);
+    if(r.status === 401){ token = await firebase.auth().currentUser.getIdToken(true); r = await post(token); }
+  }catch(e){ throw new Error('Imeshindwa kuunganisha na seva. Angalia mtandao wako kisha jaribu tena.'); }
+  let j = null; try{ j = await r.json(); }catch(e){}
+  return { ok: r.ok, status: r.status, j: j, msg: (j && j.error && j.error.message) || '', code: (j && j.error && j.error.code) || '' };
+}
+function azApplyIdentityLock(id){
+  const s = document.getElementById('az_school'), t = document.getElementById('az_teacher');
+  if(!id) return;
+  if(s){ s.value = id.school || ''; s.readOnly = true; s.title = AZ_LOCK_TITLE; }
+  if(t){ t.value = id.teacher || ''; t.readOnly = true; t.title = AZ_LOCK_TITLE; }
+  azIdState.loaded = true; azIdState.locked = true;
+}
+async function azLoadIdentity(){
+  if(azIdState.loaded) return;
+  try{ if(!firebase.auth().currentUser) return; }catch(e){ return; }
+  try{
+    const r = await azSrv({ action:'identity_get' });
+    if(!r.ok || !r.j) return;
+    azIdState.loaded = true;
+    if(r.j.admin){ azIdState.admin = true; return; }
+    if(r.j.locked) azApplyIdentityLock({ school: r.j.school, teacher: r.j.teacher });
+  }catch(e){}
+}
+async function azEnsureIdentity(){
+  const status = document.getElementById('az_status');
+  await azLoadIdentity();
+  if(azIdState.admin || azIdState.locked) return true;
+  const sv = document.getElementById('az_school').value.trim(), tv = document.getElementById('az_teacher').value.trim();
+  if(!sv || !tv){ if(status) status.textContent = 'Andika Jina la Shule na Jina la Mwalimu kabla ya kutengeneza Azimio.'; return false; }
+  if(!confirm('THIBITISHA TAARIFA ZAKO\n\nJina la Mwalimu: ' + tv + '\nShule: ' + sv + '\n\nTaarifa hizi zitafungwa kwenye akaunti yako. Kila Azimio litatengenezwa kwa jina na shule hii tu; kubadilisha kunafanywa na Admin pekee.\n\nJe, taarifa ni sahihi?')){
+    if(status) status.textContent = 'Haijathibitishwa. Hakiki jina na shule kisha jaribu tena.';
+    return false;
+  }
+  let r;
+  try{ r = await azSrv({ action:'identity_set', school: sv, teacher: tv }); }
+  catch(e){ if(status) status.textContent = 'Hitilafu: ' + e.message; return false; }
+  if(!r.ok){ if(status) status.textContent = r.msg || 'Imeshindwa kuhifadhi utambulisho.'; return false; }
+  if(r.j && r.j.admin){ azIdState.admin = true; return true; }
+  azApplyIdentityLock({ school: r.j.school, teacher: r.j.teacher });
+  return true;
+}
+/* Ukaguzi wa Backend kabla ya Print / Word / Nakili. Ikishindikana kuhakiki (mfano hakuna mtandao), hairuhusiwi. */
+async function azExportAllowed(kind){
+  const meta = azLastMeta;
+  if(!meta){ alert('Tengeneza azimio kwanza.'); return false; }
+  let r;
+  try{ r = await azSrv({ action:'export', kind: kind, school: meta.school, teacher: meta.teacher }); }
+  catch(e){ alert(e.message); return false; }
+  if(r.ok && r.j && r.j.allowed) return true;
+  alert(r.msg || ('Imeshindwa kuhakiki leseni. Jaribu tena. [' + r.status + ']'));
+  return false;
+}
+async function azCopy(){
+  if(!(await azExportAllowed('copy'))) return;
+  copyText('az_output', 'az_copyBtn');
+}
+function azCleanHtml(el){
+  const c = el.cloneNode(true);
+  c.querySelectorAll('.az-wm-ov').forEach(n=> n.remove());
+  return c.innerHTML;
+}
+function azRemoveWatermark(){
+  const el = document.getElementById('az_output'); if(!el) return;
+  el.querySelectorAll('.az-wm-ov').forEach(n=> n.remove());
+  el.classList.remove('az-wm');
+}
+/* Watermark ya "PREVIEW — Msaidizi wa Mwalimu" + jina la mwalimu, shule na tarehe: kwa wasio na leseni tu */
+function azApplyWatermark(){
+  const el = document.getElementById('az_output'); if(!el) return;
+  azRemoveWatermark();
+  let lic = false; try{ lic = !!(window.__msLic && window.__msLic().licensed); }catch(e){}
+  if(lic || !azLastMeta || el.querySelector('.placeholder') || !el.textContent.trim()) return;
+  const clean = (s)=> /^[\s.]*$/.test(String(s || '')) ? '' : String(s);
+  const esc = (s)=> String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  let d = ''; try{ d = new Date(parseInt(azLastMeta.id, 10) || Date.now()).toLocaleDateString('sw-TZ'); }catch(e){}
+  let l2 = [clean(azLastMeta.teacher), clean(azLastMeta.school), d].filter(Boolean).join(' \u00B7 ');
+  if(l2.length > 62) l2 = l2.slice(0, 61) + '\u2026';
+  const w = 540, h = 300;
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><g transform="rotate(-24 ' + (w/2) + ' ' + (h/2) + ')" fill="rgba(90,90,90,0.26)" font-family="Arial,Helvetica,sans-serif" text-anchor="middle">' +
+    '<text x="' + (w/2) + '" y="' + (h/2 - 6) + '" font-size="23" font-weight="700">' + esc('PREVIEW \u2014 Msaidizi wa Mwalimu') + '</text>' +
+    '<text x="' + (w/2) + '" y="' + (h/2 + 19) + '" font-size="13">' + esc(l2) + '</text></g></svg>';
+  const sw = el.scrollWidth, sh = el.scrollHeight;
+  const ov = document.createElement('div'); ov.className = 'az-wm-ov';
+  ov.style.backgroundImage = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+  el.classList.add('az-wm'); el.appendChild(ov);
+  ov.style.width = sw + 'px'; ov.style.height = sh + 'px';
+}
+window.addEventListener('resize', function(){ try{ azApplyWatermark(); }catch(e){} });
+
 /* ---- Kuhifadhi maazimio (kwenye kivinjari) ---- */
 const AZ_SAVED_KEY = 'msaidizi_azimio_saved_v1';
 const AZ_SAVED_MAX = 30;
@@ -5780,7 +5897,7 @@ function azSaveCurrent(){
   const out = document.getElementById('az_output'), status = document.getElementById('az_status');
   if(!azLastMeta || !out || out.querySelector('.placeholder') || !out.textContent.trim()){ alert('Tengeneza azimio kwanza kabla ya kuhifadhi.'); return; }
   const list = azSavedGet();
-  const rec = Object.assign({}, azLastMeta, { savedAt: new Date().toISOString(), html: out.innerHTML, text: lastTextByOutput['az_output'] || '' });
+  const rec = Object.assign({}, azLastMeta, { savedAt: new Date().toISOString(), html: azCleanHtml(out), text: lastTextByOutput['az_output'] || '' });
   const i = list.findIndex(x=> x.id === rec.id);
   if(i >= 0) list[i] = rec; else list.unshift(rec);
   if(list.length > AZ_SAVED_MAX) list.length = AZ_SAVED_MAX;
@@ -5799,7 +5916,8 @@ function azSavedOpen(id){
   const h = document.getElementById('az_headLabel'); if(h) h.textContent = `AZIMIO LA KAZI — ${String(rec.subject || '').toUpperCase()}`;
   ['az_copyBtn','az_printBtn','az_docxBtn','az_saveBtn'].forEach(b=>{ const e = document.getElementById(b); if(e) e.classList.remove('hidden'); });
   const sb = document.getElementById('az_saveBtn'); if(sb) sb.textContent = '✓ Imehifadhiwa';
-  azLastMeta = { id: rec.id, title: rec.title, grade: rec.grade, subject: rec.subject, school: rec.school, teacher: rec.teacher, year: rec.year, scope: rec.scope };
+  azLastMeta = { id: rec.id, title: rec.title, grade: rec.grade, subject: rec.subject, school: rec.school, teacher: rec.teacher, year: rec.year, scope: rec.scope, docId: rec.docId || '' };
+  azApplyWatermark();
   const st = document.getElementById('az_status'); if(st) st.textContent = 'Azimio lililohifadhiwa limefunguliwa.';
   try{ document.getElementById('az_output').scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){}
 }
@@ -6135,12 +6253,15 @@ async function generateAzimio(){
   const grade = document.getElementById('az_grade').value;
   const subject = document.getElementById('az_subject').value;
   const term = document.getElementById('az_term').value;
-  const school = document.getElementById('az_school').value.trim() || '................................';
-  const teacher = document.getElementById('az_teacher').value.trim() || '................................';
+  let school = document.getElementById('az_school').value.trim() || '................................';
+  let teacher = document.getElementById('az_teacher').value.trim() || '................................';
   const weeksInput = parseInt(document.getElementById('az_weeks').value,10) || 13;
   const status = document.getElementById('az_status');
   const btn = document.getElementById('az_btn');
 
+  if(!(await azEnsureIdentity())) return;
+  school = document.getElementById('az_school').value.trim() || school;
+  teacher = document.getElementById('az_teacher').value.trim() || teacher;
   if(status) status.textContent = 'Inatengeneza Azimio la Kazi...';
   if(btn) btn.disabled = true;
 
@@ -6194,9 +6315,12 @@ async function generateAzimio(){
       try{ ej = await resp.json(); em = (ej && ej.error && ej.error.message) || ''; }catch(e){}
       try{ console.warn('azimio: jibu la seva', resp.status, ej); }catch(e){}
       if(!em && resp.status === 401) em = 'Hujaingia au kikao kimeisha. Toka (log out) kisha ingia tena.';
-      throw new Error((em || 'Hitilafu ya seva') + ' [' + resp.status + (ej && ej.error && ej.error.code ? '/' + ej.error.code : '') + ']');
+      const ecode = (ej && ej.error && ej.error.code) || '';
+      if(ecode === 'identity_mismatch' || ecode === 'identity_blank' || ecode === 'identity_locked'){ const ae = new Error(em); ae.az = true; throw ae; }
+      throw new Error((em || 'Hitilafu ya seva') + ' [' + resp.status + (ecode ? '/' + ecode : '') + ']');
     }
     const az = await resp.json();
+    if(az && az.ident){ school = az.ident.school; teacher = az.ident.teacher; azApplyIdentityLock(az.ident); }
     const data = az.hasData ? { weekly: az.weekly, seq: { length: az.seqLen } } : null;
 
     // Kinga: seva ikirudisha safu chache kuliko wiki, usipoteze jedwali zima — jaza safu tupu na toa onyo
@@ -6255,7 +6379,7 @@ async function generateAzimio(){
 
     // ----- Jedwali la kalenda (linaonekana juu ya azimio) -----
 
-    let html = `<div class="az-info"><p><strong>Jina la Shule:</strong> ${escapeHtml(school)}</p><p><strong>Jina la Mwalimu:</strong> ${escapeHtml(teacher)}</p>` +
+    let html = `<div class="az-info"><p><strong>Jina la Shule:</strong> ${escapeHtml(school)}</p><p><strong>Jina la Mwalimu:</strong> ${escapeHtml(teacher)}</p>${az && az.docId ? '<p><strong>Document ID:</strong> ' + escapeHtml(az.docId) + '</p>' : ''}` +
       `<p><strong>Darasa:</strong> ${escapeHtml(grade)} &nbsp; <strong>Somo:</strong> ${escapeHtml(subject)} &nbsp; <strong>Kipindi:</strong> ${escapeHtml(scopeLabel)} &nbsp; <strong>Mwaka:</strong> ${escapeHtml(year)}</p></div>`;
     html += `<h3>Azimio la Kazi (Scheme of Work) — ${escapeHtml(scopeLabel)}</h3>` + azHtmlTable(AZ_HEADERS, rows, 'az-table');
     let note = '';
@@ -6287,20 +6411,22 @@ async function generateAzimio(){
 
     // ----- Toleo la maandishi (kwa kitufe cha Nakili) -----
     const flat = rows.map(r=> r.brk ? [r.left, r.right].concat(Array(AZ_HEADERS.length-2).fill('')) : r);
-    let out = `AZIMIO LA KAZI — ${subject.toUpperCase()}\n\nJina la Shule: ${school}\nJina la Mwalimu: ${teacher}\nDarasa: ${grade}    Somo: ${subject}    Kipindi: ${scopeLabel}    Mwaka: ${year}\n\n`;
+    let out = `AZIMIO LA KAZI — ${subject.toUpperCase()}\n\nJina la Shule: ${school}\nJina la Mwalimu: ${teacher}${az && az.docId ? '\nDocument ID: ' + az.docId : ''}\nDarasa: ${grade}    Somo: ${subject}    Kipindi: ${scopeLabel}    Mwaka: ${year}\n\n`;
     out += mdTable(AZ_HEADERS, flat) + '\n' + note;
 
     const outEl = document.getElementById('az_output');
     outEl.innerHTML = html;
     lastTextByOutput['az_output'] = out;
-    azLastMeta = { id: String(Date.now()), title: `${subject} — ${grade}`, grade, subject, school, teacher, year, scope: scopeLabel };
+    azLastMeta = { id: String(Date.now()), title: `${subject} — ${grade}`, grade, subject, school, teacher, year, scope: scopeLabel, docId: (az && az.docId) || '' };
+    azApplyWatermark();
     ['az_copyBtn','az_printBtn','az_docxBtn','az_saveBtn'].forEach(id=>{ const b=document.getElementById(id); if(b) b.classList.remove('hidden'); });
     const sb = document.getElementById('az_saveBtn'); if(sb){ sb.textContent = '💾 Hifadhi Azimio'; sb.disabled = false; }
     if(status) status.textContent = plan
       ? `Azimio limetengenezwa kufuata kalenda (wiki ${allSlots.length}${lay.breaks.some(b=>b.type==='mid') ? ', Mid-term imeingizwa' : ''}, wiki za mtihani na kufunga zimewekwa${lay.junior ? ', hadi ' + lay.cap.name + ' wiki ya 2' : ', mihula yote kwa pamoja'}).`
       : 'Azimio limetengenezwa (kalenda haijakamilika — wiki zimetumia idadi uliyoandika).';
   }catch(e){
-    if(status) status.textContent = 'Hitilafu: ' + e.message;
+    if(status) status.textContent = (e && e.az ? '' : 'Hitilafu: ') + e.message;
+    if(e && e.az){ try{ alert(e.message); }catch(x){} }
   }finally{
     if(btn) btn.disabled = false;
   }
@@ -7520,9 +7646,12 @@ function downloadMarkingDocx(){ downloadTextOutputAsDocx('mk_output', 'Marking_S
 async function downloadAzimioDocx(){
   const el = document.getElementById('az_output');
   if(!el || el.querySelector('.placeholder') || !el.textContent.trim()){ alert('Tengeneza maudhui kwanza kabla ya kupakua.'); return; }
+  if(!(await azExportAllowed('docx'))) return;
   if(typeof docx === 'undefined'){ alert('Maktaba ya kutengeneza Word (.docx) haijapakia — hakikisha una mtandao kisha jaribu tena.'); return; }
   const { Document, Packer, Paragraph, HeadingLevel, AlignmentType } = docx;
+  azRemoveWatermark();
   const paras = domToDocxParagraphs(el);
+  azApplyWatermark();
   const headEl = document.getElementById('az_headLabel');
   const title = (headEl && headEl.textContent.trim()) || 'Azimio la Kazi';
   /* AZIMIO COVER DESIGNER: kava likiwashwa, linakuwa ukurasa wa 1; Azimio linaanza ukurasa wa 2. Likizimwa, hakuna kinachobadilika. */
@@ -7538,7 +7667,8 @@ async function downloadAzimioDocx(){
   Packer.toBlob(doc).then(blob=> triggerBlobDownload(blob, dlSafeName('Azimio_la_Kazi','docx')))
     .catch(err=> alert('Samahani, imeshindikana kutengeneza faili la Word. ('+(err.message||'')+')'));
 }
-function azimioPrint(){
+async function azimioPrint(){
+  if(!(await azExportAllowed('print'))) return;
   let pg = document.getElementById('az_printPage');
   if(!pg){ pg = document.createElement('style'); pg.id = 'az_printPage'; document.head.appendChild(pg); }
   pg.textContent = '@media print{@page{size:A4 landscape;margin:8mm;}}';
@@ -10223,11 +10353,23 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
     m.addEventListener('click',function(e){if(e.target===m)m.style.display='none'});
   }
   function modal(t,h,kind){$('msmT').textContent=t;$('msmB').innerHTML=h;modalKind=kind||'';$('msModal').style.display='flex'}
+  var _svMs=window.showView;
+  if(typeof _svMs==='function'){window.showView=function(v){if(window.__msRO&&v!=='azimio')return;return _svMs.apply(this,arguments);};}
+  window.__msLic=function(){var c=myCalc();return {base:c.base,licensed:!!(isAdmin||c.base==='ACTIVE'),admin:!!isAdmin};};
+  function roBar(on){
+    var b=$('msRoBar');
+    if(on&&!b){b=document.createElement('div');b.id='msRoBar';b.innerHTML='<span>Usajili umeisha \u2014 unaona Maazimio yako kwa kusoma tu.</span><button type="button" id="msRoPay">Lipia</button>';document.body.appendChild(b);$('msRoPay').onclick=function(){window.__msRO=false;render();};}
+    if(b)b.style.display=on?'flex':'none';
+    document.body.classList.toggle('msRO',!!on);
+  }
   function myCalc(){var c=user&&user.metadata&&user.metadata.creationTime?new Date(user.metadata.creationTime):null;return calc(myDoc||{},c)}
   function render(){
     if(!user||!db)return;
     ensureUI();
     var badge=$('msBadge'),pay=$('msPay'),c=myCalc();
+    document.body.classList.toggle('msLic',!!(isAdmin||c.base==='ACTIVE'));
+    try{if(typeof azApplyWatermark==='function')azApplyWatermark();}catch(x){}
+    pay.onclick=function(e){var tg=e.target;if(tg&&tg.id==='msRoBtn'){window.__msRO=true;render();try{window.showView('azimio');if(typeof azSavedRender==='function')azSavedRender();}catch(x){}}};
     $('msAdmBtn').style.display=isAdmin?'inline-block':'none';
     if(c.status==='UNKNOWN'){badge.style.display='none';$('msPayBtn').style.display='none';pay.style.display='none';return;}
     badge.style.display='inline-block';$('msPayBtn').style.display='inline-block';
@@ -10235,10 +10377,14 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
     badge.textContent=c.status+(c.base==='EXPIRED'?'':' • siku '+c.days);
     /* Kufunga app kunategemea hali ya msingi (EXPIRED) — PAYMENT_PENDING haifungui wala kufungua; Admin pekee ndiye anayewasha */
     if(c.base==='EXPIRED'&&!isAdmin){
-      pay.innerHTML='<div class="msc"><h2>'+(c.paid?'Usajili wako umeisha':'Muda wa majaribio umeisha')+'</h2>'
-        +'<p>Ili kuendelea kutumia Msaidizi wa Mwalimu, tafadhali lipia usajili.</p>'+payBlock(c)+'</div>';
-      pay.style.display='flex';
-    }else pay.style.display='none';
+      if(window.__msRO){pay.style.display='none';roBar(true);}
+      else{
+        pay.innerHTML='<div class="msc"><h2>'+(c.paid?'Usajili wako umeisha':'Muda wa majaribio umeisha')+'</h2>'
+          +'<p>Ili kuendelea kutumia Msaidizi wa Mwalimu, tafadhali lipia usajili.</p>'+payBlock(c)
+          +'<p style="margin-top:12px"><button type="button" class="msbtn" id="msRoBtn">Tazama Maazimio Yangu (kusoma tu)</button></p></div>';
+        pay.style.display='flex';roBar(false);
+      }
+    }else{pay.style.display='none';window.__msRO=false;roBar(false);}
   }
   function showMyInfo(keep){
     var c=myCalc();
@@ -10339,7 +10485,7 @@ window.__mh = { dbAll, dbGet, dbPut, buildRecord, standalone, svgFrom, clean, sa
   function onUser(u){
     user=u;isAdmin=false;myDoc=null;lastFetch=Date.now();
     ensureUI();
-    if(!u){stopBeat();$('msBadge').style.display='none';$('msAdmBtn').style.display='none';$('msPay').style.display='none';$('msAdm')&&($('msAdm').style.display='none');return;}
+    if(!u){document.body.classList.remove('msLic');window.__msRO=false;document.body.classList.remove('msRO');stopBeat();$('msBadge').style.display='none';$('msAdmBtn').style.display='none';$('msPay').style.display='none';$('msAdm')&&($('msAdm').style.display='none');return;}
     ensureUserDoc(u).catch(function(e){console.warn('Usajili: imeshindwa kusoma/kuunda hati ya mtumiaji',e);})
       .then(function(){return checkAdmin(u)}).then(function(a){isAdmin=a;if(checkBlocked())return;render();startBeat();});
   }
@@ -10998,11 +11144,11 @@ function phBar(){
       panel=document.createElement('div'); panel.id='azMon';
       panel.innerHTML='<div class="azm-in"><div class="azm-h"><h2>AZIMIO ACTIVITY MONITORING</h2><button type="button" class="azm-btn red" id="azmClose">Funga</button></div>'
         +'<input id="azmSearch" type="search" placeholder="Tafuta kwa email, UID, shule, mwalimu au somo..." autocomplete="off">'
-        +'<button type="button" class="azm-btn" id="azmRef">Onyesha upya</button><button type="button" class="azm-btn" id="azmMore" style="display:none">Pakia zaidi</button><button type="button" class="azm-btn" id="azmCsv">Pakua CSV</button>'
-        +'<label style="font-size:13px;margin-left:6px"><input type="checkbox" id="azmLimOnly" style="width:auto;margin:0 4px 0 0">Waliokataliwa (kikomo) tu</label>'
-        +'<div class="azm-msg" id="azmMsg"></div><div class="azm-cards" id="azmCards"></div>'
+        +'<button type="button" class="azm-btn" id="azmRef">Onyesha upya</button><button type="button" class="azm-btn" id="azmMore" style="display:none">Pakia zaidi</button><button type="button" class="azm-btn" id="azmCsv">Pakua CSV</button><button type="button" class="azm-btn" id="azmId">Utambulisho wa Walimu</button>'
+        +'<label style="font-size:13px;margin-left:6px"><input type="checkbox" id="azmLimOnly" style="width:auto;margin:0 4px 0 0">Waliokataliwa / tahadhari tu</label>'
+        +'<div class="azm-msg" id="azmMsg"></div><div id="azmIdBox" style="display:none"></div><div class="azm-cards" id="azmCards"></div>'
         +'<h3>Akaunti</h3><div class="azm-wrap"><table><thead><tr><th>Akaunti</th><th>Aina</th><th>Yaliyofanikiwa</th><th>Yaliyokataliwa</th><th>Shule</th><th>Walimu</th><th>Mara ya mwisho</th><th>Tahadhari</th></tr></thead><tbody id="azmAcc"></tbody></table></div>'
-        +'<h3>Matukio ya hivi karibuni</h3><div class="azm-wrap"><table><thead><tr><th>Muda</th><th>Akaunti</th><th>Aina</th><th>Darasa</th><th>Somo</th><th>Shule</th><th>Mwalimu</th><th>Matokeo</th></tr></thead><tbody id="azmEv"></tbody></table></div></div>';
+        +'<h3>Matukio ya hivi karibuni</h3><div class="azm-wrap"><table><thead><tr><th>Muda</th><th>Akaunti</th><th>Aina</th><th>Darasa</th><th>Somo</th><th>Shule</th><th>Mwalimu</th><th>Matokeo</th><th>Document ID</th></tr></thead><tbody id="azmEv"></tbody></table></div></div>';
       document.body.appendChild(panel);
       $('azmClose').onclick=function(){panel.style.display='none';};
       $('azmRef').onclick=function(){load(false);};
@@ -11010,6 +11156,7 @@ function phBar(){
       $('azmSearch').addEventListener('input',draw);
       $('azmLimOnly').addEventListener('change',draw);
       $('azmCsv').onclick=exportCsv;
+      $('azmId').onclick=loadIdent;
     }
     panel.style.display='block';
     load(false);
@@ -11029,12 +11176,40 @@ function phBar(){
     loading=false; if(rb) rb.disabled=false; if(mb){mb.disabled=false; mb.style.display=cursor?'inline-block':'none';}
   }
 
+  function resText(e){var m={ok:'Imefanikiwa',limit:'Imekataliwa (kikomo)',identity_mismatch:'Utambulisho haulingani',export_denied:'Kupakua bila leseni',identity_locked:'Utambulisho umefungwa',identity_admin:'Admin amebadilisha utambulisho'};return m[e.r]||'Imekataliwa (kikomo)';}
+  function resHtml(e){var cl=(e.r==='ok'||e.r==='identity_locked')?'azm-ok':(e.r==='export_denied'?'azm-warn':'azm-bad');return '<span class="'+cl+'">'+esc(resText(e))+'</span>';}
+
+  async function loadIdent(){
+    var box=$('azmIdBox'); box.style.display='block'; box.innerHTML='<h3>Utambulisho wa walimu</h3><div class="azm-msg">Inapakia...</div>';
+    try{
+      var j=await call('/azimio-admin/identity',{action:'list',limit:500});
+      var items=j.items||[];
+      box.innerHTML='<h3>Utambulisho wa walimu (uliofungwa): '+items.length+'</h3><div class="azm-wrap"><table><thead><tr><th>Akaunti</th><th>Mwalimu</th><th>Shule</th><th>Umefungwa</th><th>Kitendo</th></tr></thead><tbody>'
+        +(items.map(function(it,i){return '<tr><td>'+esc(it.em||it.uid)+'</td><td>'+esc(it.tch||'')+'</td><td>'+esc(it.sch||'')+'</td><td>'+esc(fmt(it.t))+(it.by==='admin'?' (Admin)':'')+'</td><td><button type="button" class="azm-btn" data-i="'+i+'" data-a="set">Badilisha</button><button type="button" class="azm-btn red" data-i="'+i+'" data-a="clear">Futa</button></td></tr>';}).join('')||'<tr><td colspan="5">Hakuna bado.</td></tr>')
+        +'</tbody></table></div>';
+      box.onclick=async function(ev){
+        var tg=ev.target; if(!tg||!tg.getAttribute||!tg.getAttribute('data-a')) return;
+        var it=items[+tg.getAttribute('data-i')]; if(!it) return;
+        try{
+          if(tg.getAttribute('data-a')==='clear'){
+            if(!confirm('Futa utambulisho wa '+(it.em||it.uid)+'? Atafungwa upya kwa jina na shule la Azimio lake linalofuata.')) return;
+            await call('/azimio-admin/identity',{action:'clear',uid:it.uid});
+          }else{
+            var sc=prompt('Jina jipya la shule:',it.sch||''); if(sc===null) return;
+            var tc=prompt('Jina jipya la mwalimu:',it.tch||''); if(tc===null) return;
+            await call('/azimio-admin/identity',{action:'set',uid:it.uid,school:sc,teacher:tc});
+          }
+          loadIdent();
+        }catch(e){ msg(e.message,true); }
+      };
+    }catch(e){ box.innerHTML='<div class="azm-msg" style="color:#b3261e">'+esc(e.message)+'</div>'; }
+  }
   function label(e){return esc(e.em||e.uid||'');}
   function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
   function exportCsv(){
     if(!visible.length){ msg('Hakuna matukio ya kupakua.',true); return; }
-    var rows=[['Muda','Akaunti','UID','Aina','Darasa','Somo','Shule','Mwalimu','Matokeo']];
-    visible.forEach(function(e){ rows.push([fmt(e.t),e.em||'',e.uid||'',PLAN[e.plan]||e.plan||'',e.g||'',e.s||'',e.sch||'',e.tch||'',e.r==='ok'?'Imefanikiwa':'Imekataliwa (kikomo)']); });
+    var rows=[['Muda','Akaunti','UID','Aina','Darasa','Somo','Shule','Mwalimu','Matokeo','Document ID']];
+    visible.forEach(function(e){ rows.push([fmt(e.t),e.em||'',e.uid||'',PLAN[e.plan]||e.plan||'',e.g||'',e.s||'',e.sch||'',e.tch||'',resText(e),e.doc||'']); });
     var csv='\ufeff'+rows.map(function(r){return r.map(csvCell).join(',');}).join('\n');
     var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}), a=document.createElement('a');
     a.href=URL.createObjectURL(blob); a.download='azimio-monitor-'+dayKey(Date.now())+'.csv';
@@ -11045,15 +11220,19 @@ function phBar(){
     var q=(($('azmSearch')||{}).value||'').trim().toLowerCase();
     var limOnly=!!(($('azmLimOnly')||{}).checked);
     var list=events.filter(function(e){
-      if(limOnly && e.r==='ok') return false;
+      if(limOnly && (e.r==='ok'||e.r==='identity_locked'||e.r==='identity_admin')) return false;
       if(!q) return true;
-      return [e.em,e.uid,e.sch,e.tch,e.s,e.g].join(' ').toLowerCase().indexOf(q)>-1;
+      return [e.em,e.uid,e.sch,e.tch,e.s,e.g,e.doc,e.isch,e.itch].join(' ').toLowerCase().indexOf(q)>-1;
     });
     visible=list;
-    var agg={}, today=dayKey(Date.now()), okAll=0, limAll=0, todayOk=0, weekOk=0, weekAgo=Date.now()-7*86400000;
+    var agg={}, today=dayKey(Date.now()), okAll=0, limAll=0, todayOk=0, weekOk=0, weekAgo=Date.now()-7*86400000, idnAll=0, expAll=0;
     list.forEach(function(e){
-      var a=agg[e.uid]||(agg[e.uid]={uid:e.uid,em:e.em||'',plan:e.plan,ok:0,lim:0,last:0,sch:{},tch:{}});
-      if(e.r==='ok'){a.ok++; okAll++; if(dayKey(e.t)===today) todayOk++; if(e.t>=weekAgo) weekOk++;} else {a.lim++; limAll++;}
+      var a=agg[e.uid]||(agg[e.uid]={uid:e.uid,em:e.em||'',plan:e.plan,ok:0,lim:0,idn:0,exp:0,last:0,sch:{},tch:{}});
+      if(e.r==='ok'){a.ok++; okAll++; if(dayKey(e.t)===today) todayOk++; if(e.t>=weekAgo) weekOk++;}
+      else if(e.r==='identity_mismatch'){a.idn++; idnAll++;}
+      else if(e.r==='export_denied'){a.exp++; expAll++;}
+      else if(e.r==='identity_locked'||e.r==='identity_admin'){}
+      else {a.lim++; limAll++;}
       if(e.t>a.last) a.last=e.t;
       if(e.sch) a.sch[e.sch.toLowerCase()]=e.sch;
       if(e.tch) a.tch[e.tch.toLowerCase()]=e.tch;
@@ -11064,16 +11243,21 @@ function phBar(){
       +'<div class="azm-card"><b>'+todayOk+'</b><span>Leo</span></div>'
       +'<div class="azm-card"><b>'+weekOk+'</b><span>Siku 7 zilizopita</span></div>'
       +'<div class="azm-card"><b>'+limAll+'</b><span>Yaliyokataliwa (kikomo)</span></div>'
+      +'<div class="azm-card"><b>'+idnAll+'</b><span>Utambulisho haulingani</span></div>'
+      +'<div class="azm-card"><b>'+expAll+'</b><span>Kupakua bila leseni</span></div>'
       +'<div class="azm-card"><b>'+accs.length+'</b><span>Akaunti</span></div>';
     $('azmAcc').innerHTML=accs.map(function(a){
       var ns=Object.keys(a.sch).length, nt=Object.keys(a.tch).length, flags=[];
       if(a.lim>0) flags.push('<span class="azm-bad">Amefikia kikomo</span>');
-      if(a.plan!=='admin' && (ns>=3||nt>=3)) flags.push('<span class="azm-warn">Shule/walimu wengi</span>');
+      if(a.idn>0) flags.push('<span class="azm-bad">Utambulisho haulingani ('+a.idn+')</span>');
+      if(a.exp>0) flags.push('<span class="azm-warn">Alijaribu kupakua bila leseni ('+a.exp+')</span>');
+      if(a.plan!=='admin' && (ns>=2||nt>=2)) flags.push('<span class="azm-warn">Shule/walimu tofauti</span>');
+      if(a.plan!=='admin' && (a.idn>=3||a.exp>=5||ns>=3||nt>=3)) flags.push('<span class="azm-bad">PELEKA UKAGUZI</span>');
       return '<tr><td>'+label(a)+'</td><td>'+esc(PLAN[a.plan]||a.plan||'')+'</td><td>'+a.ok+'</td><td>'+a.lim+'</td><td>'+ns+'</td><td>'+nt+'</td><td>'+esc(fmt(a.last))+'</td><td>'+(flags.join('<br>')||'<span class="azm-ok">—</span>')+'</td></tr>';
     }).join('')||'<tr><td colspan="8">Hakuna matukio bado.</td></tr>';
     $('azmEv').innerHTML=list.map(function(e){
       var ok=e.r==='ok';
-      return '<tr><td>'+esc(fmt(e.t))+'</td><td>'+label(e)+'</td><td>'+esc(PLAN[e.plan]||e.plan||'')+'</td><td>'+esc(e.g||'')+'</td><td>'+esc(e.s||'')+'</td><td>'+esc(e.sch||'')+'</td><td>'+esc(e.tch||'')+'</td><td>'+(ok?'<span class="azm-ok">Imefanikiwa</span>':'<span class="azm-bad">Imekataliwa (kikomo)</span>')+'</td></tr>';
+      return '<tr><td>'+esc(fmt(e.t))+'</td><td>'+label(e)+'</td><td>'+esc(PLAN[e.plan]||e.plan||'')+'</td><td>'+esc(e.g||'')+'</td><td>'+esc(e.s||'')+'</td><td>'+esc(e.sch||'')+'</td><td>'+esc(e.tch||'')+'</td><td>'+resHtml(e)+'</td><td>'+esc(e.doc||'')+'</td></tr>';
     }).join('')||'<tr><td colspan="8">Hakuna matukio bado.</td></tr>';
   }
 
@@ -12460,3 +12644,4 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 
 </body>
 </html>
+
