@@ -391,6 +391,12 @@ body.mc-lock{overflow:hidden}
 .mh-ctl{display:flex;flex-wrap:wrap;gap:3px;align-items:center;max-width:150px}
 .mh-ctl select{font-size:11.5px;padding:2px 3px;max-width:100%;border-radius:4px;color:var(--ink);background:#fff;border:1px solid var(--paper-line)}
 @media print{.mh-ctl,.mh-qfig>button,.mh-examfig b{display:none!important}.mh-attached.mh-big .mh-thumb.sm{width:300px}}
+
+  /* ===== LUGHA YA SEKONDARI (Awamu 1) ===== */
+  .seclang-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:-8px 0 18px;}
+  .seclang-lbl{font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;color:var(--chalk);opacity:.8;margin-right:2px;}
+  .seclang-btn{padding:8px 16px;border-radius:8px;border:1px solid rgba(244,239,225,0.3);background:var(--board-dark);color:var(--chalk);font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;cursor:pointer;}
+  .seclang-btn.active{background:var(--amber);color:#2A1D07;border-color:var(--amber);font-weight:700;}
 </style>
 <style>
   /* ===== Majedwali ya markdown (Azimio la Kazi n.k) — kiongezeo kipya ===== */
@@ -542,6 +548,11 @@ body.msRO #view-azimio .az-cal-card,body.msRO #view-azimio .layout>.panel:first-
     <div class="ngazi-row">
       <button class="ngazi-btn active" id="ngaziMsingi" onclick="setNgazi('msingi')">Shule ya Msingi</button>
       <button class="ngazi-btn" id="ngaziSekondari" onclick="setNgazi('sekondari')">Sekondari</button>
+    </div>
+    <div class="seclang-row hidden" id="secLangRow">
+      <span class="seclang-lbl">Lugha / Language:</span>
+      <button type="button" class="seclang-btn active" id="secLangSw" aria-pressed="true" onclick="setSecLang('sw')">Kiswahili</button>
+      <button type="button" class="seclang-btn" id="secLangEn" aria-pressed="false" onclick="setSecLang('en')">English</button>
     </div>
     <div class="card-grid">
       <div class="task-card" onclick="showView('mitihani')">
@@ -12647,6 +12658,142 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 })();
 </script>
 
+
+<script>
+/* ===================================================================
+   LUGHA YA SEKONDARI (Kiswahili / English) — Awamu 1
+   - Inafanya kazi TU ngazi ikiwa Sekondari na lugha ikiwa English. Msingi haiguswi.
+   - Haibadilishi thamani (value) za madarasa/masomo wala logic ya Azimio/Andalio/mtaala:
+     ni maandishi ya kuonyeshwa tu. Asili ya kila maandishi inahifadhiwa na kurudishwa.
+   - Awamu 1: dashibodi, menyu, vichwa vya kurasa, majina ya Kidato (Form I–VI).
+   =================================================================== */
+(function(){
+  var KEY='mw_sec_lang';
+  var SCOPE='#view-dashboard, #pageTitle, #backBtn, #fbBar, .topbar .eyebrow';
+  var DICT={
+    'Shule ya Msingi':'Primary School',
+    'Sekondari':'Secondary',
+    'Dashibodi':'Dashboard',
+    '← Rudi Dashibodi':'← Back to Dashboard',
+    'Toka':'Log out',
+    'Kutunga Mitihani':'Exam Setting',
+    'Marking Scheme':'Marking Scheme',
+    'Andalio la Somo':'Lesson Plan',
+    'Azimio la Kazi':'Scheme of Work',
+    'Tathmini ya Haraka':'Quick Assessment',
+    'Ratiba ya Shule':'School Timetable',
+    'Kituo cha Alama':'Assessment Hub',
+    'Benki ya Maswali':'Question Bank',
+    'Tengeneza mtihani kamili wenye sehemu na muundo sahihi kwa somo na darasa/kidato ulichochagua.':'Generate a complete exam with sections and the correct format for the subject and form you selected.',
+    'Tengeneza mwongozo wa majibu na mgawanyo wa alama kwa mtihani au mazoezi.':'Generate an answer guide and mark allocation for an exam or exercise.',
+    'Andalio kamili la somo moja: malengo, hatua za ufundishaji, tathmini, kazi ya ziada.':'A complete plan for one lesson: objectives, teaching steps, assessment and extra work.',
+    'Mpango wa muhula mzima: mada kwa kila wiki, umahiri unaotarajiwa, idadi ya vipindi.':'A full-term plan: topics for each week, expected competences and number of periods.',
+    'Kazi fupi za darasani/homework za kupima uelewa wa mada moja papo hapo.':'Short classwork/homework tasks to check understanding of one topic on the spot.',
+    'Weka taarifa za muda wa vipindi na mapumziko kwa shule ya msingi na sekondari — kila ngazi na mpangilio wake.':'Set period times and breaks for primary and secondary schools — each level with its own arrangement.',
+    'Benki ya Maswali (Offline)':'Question Bank (Offline)',
+    'Hifadhi maswali yako mwenyewe na uyachanganye kiotomatiki kutengeneza mtihani — bila intaneti, bila AI.':'Save your own questions and mix them automatically to build an exam — no internet, no AI.',
+    'Zana za Kuchora (Offline)':'Drawing Tools (Offline)',
+    'Chora maumbo, ramani rahisi, michoro ya sayansi na chati, au ingiza picha kutoka Gallery — bila intaneti. Hifadhi na utumie kwenye maswali na mitihani.':'Draw shapes, simple maps, science diagrams and charts, or insert pictures from the Gallery — no internet. Save and use them in questions and exams.',
+    'Kituo cha Alama (Assessment Hub)':'Assessment Hub',
+    'Ingiza alama za wanafunzi, ona uchambuzi wa ufaulu, na tengeneza ripoti ya darasa.':'Enter students\u2019 marks, view performance analysis and generate a class report.'
+  };
+  var ROMAN={'1':'I','2':'II','3':'III','4':'IV','5':'V','6':'VI'};
+  var lang='sw';
+  try{ var v=localStorage.getItem(KEY); if(v==='en'||v==='sw') lang=v; }catch(e){}
+
+  var txt=new Map();   // textNode -> {o:original, t:translated}
+  var opt=new Map();   // option -> original text
+  var obs=null;
+
+  function active(){ return (typeof currentNgazi!=='undefined') && currentNgazi==='sekondari' && lang==='en'; }
+  function norm(x){ return x.replace(/\s+/g,' ').trim(); }
+
+  function doText(n){
+    var par=n.parentElement; if(!par || !par.closest(SCOPE)) return;
+    var cur=n.nodeValue, rec=txt.get(n);
+    if(rec && cur!==rec.t){ rec=null; txt.delete(n); }          // maandishi yamebadilishwa na programu: chukua kama asili mpya
+    var key=rec?norm(rec.o):norm(cur);
+    var tr=DICT[key];
+    if(!tr) return;
+    if(!rec){ txt.set(n,{o:cur,t:tr}); }
+    n.nodeValue=tr;
+  }
+  function doOption(o){
+    var rec=opt.has(o)?opt.get(o):null;
+    var base=rec!==null?rec:o.text;
+    var m=/^Kidato ([1-6])$/.exec(norm(base));
+    if(!m) return;
+    if(rec===null){
+      if(!o.hasAttribute('value')) o.setAttribute('value',base);   // thamani ibaki ya asili
+      opt.set(o,base);
+    }
+    o.text='Form '+ROMAN[m[1]];
+  }
+  function walk(root){
+    if(root.nodeType===3){ doText(root); return; }
+    if(root.nodeType!==1) return;
+    if(root.tagName==='OPTION'){ doOption(root); return; }
+    var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null),n;
+    while((n=w.nextNode())) doText(n);
+    var os=root.querySelectorAll?root.querySelectorAll('option'):[];
+    for(var i=0;i<os.length;i++) doOption(os[i]);
+  }
+  function restore(){
+    txt.forEach(function(rec,n){ if(n.isConnected){ if(n.nodeValue===rec.t) n.nodeValue=rec.o; } });
+    txt.clear();
+    opt.forEach(function(base,o){ if(o.isConnected) o.text=base; });
+    opt.clear();
+  }
+  function observe(){ if(obs) obs.observe(document.body,{childList:true,subtree:true,characterData:true}); }
+  function apply(){
+    if(obs) obs.disconnect();
+    try{
+      if(active()) walk(document.body); else restore();
+      document.documentElement.setAttribute('lang',active()?'en':'sw');
+    }finally{ observe(); }
+  }
+  function syncUI(){
+    var row=document.getElementById('secLangRow');
+    if(row) row.classList.toggle('hidden',!(typeof currentNgazi!=='undefined' && currentNgazi==='sekondari'));
+    var a=document.getElementById('secLangSw'), b=document.getElementById('secLangEn');
+    if(a){ a.classList.toggle('active',lang==='sw'); a.setAttribute('aria-pressed',lang==='sw'?'true':'false'); }
+    if(b){ b.classList.toggle('active',lang==='en'); b.setAttribute('aria-pressed',lang==='en'?'true':'false'); }
+  }
+  function onMut(list){
+    if(!active()) return;
+    obs.disconnect();
+    try{
+      for(var i=0;i<list.length;i++){
+        var r=list[i];
+        if(r.type==='characterData'){ doText(r.target); }
+        else { for(var j=0;j<r.addedNodes.length;j++) walk(r.addedNodes[j]); }
+      }
+    }finally{ observe(); }
+  }
+
+  window.setSecLang=function(l){
+    if(l!=='sw' && l!=='en') return;
+    lang=l;
+    try{ localStorage.setItem(KEY,l); }catch(e){}
+    syncUI(); apply();
+  };
+  window.getSecLang=function(){ return lang; };
+  window.secLangActive=active;
+
+  var _setNgazi=window.setNgazi;
+  window.setNgazi=function(n){
+    var r=_setNgazi.apply(this,arguments);
+    syncUI(); apply();
+    return r;
+  };
+
+  function init(){
+    obs=new MutationObserver(onMut);
+    syncUI(); apply();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
+</script>
 </body>
 </html>
 
