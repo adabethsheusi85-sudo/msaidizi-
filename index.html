@@ -2620,7 +2620,7 @@ let mtWarning = '';
 // Kichwa cha sehemu: sec.heading (ikiwepo) au "LABEL NAMBA — kichwa" (chaguo-msingi SEHEMU, kama awali)
 function secHeading(sec){
   if(sec && sec.heading) return String(sec.heading);
-  return (sec.label || 'SEHEMU') + ' ' + sec.number + (sec.title ? ' — ' + sec.title : '');
+  return (sec.label || secT('SEHEMU','SECTION')) + ' ' + sec.number + (sec.title ? ' — ' + sec.title : '');
 }
 
 // Ondoa mistari mipya/tabs zilizo ndani ya maandishi ya JSON (hufanya JSON.parse ishindwe)
@@ -4869,7 +4869,7 @@ MUHIMU SANA: (1) Kila swali LAZIMA lihusiane moja kwa moja na mada "${topics}" n
     }
     mtApplySchoolHeader(examData, school, version);
     if(window.MT_AI_USED) mtRecentSave(grade, subject, examData);
-    document.getElementById('mt_headLabel').textContent = examData.examTitle || `${subject.toUpperCase()} — ${grade.toUpperCase()}`;
+    document.getElementById('mt_headLabel').textContent = examData.examTitle || `${secSubj(subject).toUpperCase()} — ${secGrade(grade).toUpperCase()}`;
     renderExamEditor();
     mtShowWarning();
     copyBtn.classList.remove('hidden'); printBtn.classList.remove('hidden'); docxBtn.classList.remove('hidden');
@@ -4887,7 +4887,7 @@ function renderExamHeaderHtml(h){
   let out = '<div class="exam-header">';
   (h.lines||[]).forEach((l,i)=>{ out += `<div class="exam-header-line${i===0?' exam-header-main':''}">${escapeHtml(l)}</div>`; });
   if(h.instructions && h.instructions.length){
-    out += '<div class="exam-instructions"><strong>Maelekezo</strong><ol>';
+    out += '<div class="exam-instructions"><strong>' + secT('Maelekezo','Instructions') + '</strong><ol>';
     h.instructions.forEach(ins=> out += `<li>${escapeHtml(ins)}</li>`);
     out += '</ol></div>';
   }
@@ -4916,12 +4916,12 @@ function renderExamEditor(){
       html += renderQuestionRow(si, qi, q);
     });
     html += `</div>
-      <button class="addq-btn" onclick="addQuestion(${si})">+ Ongeza Swali la Mkono</button>
+      <button class="addq-btn" onclick="addQuestion(${si})">${secT('+ Ongeza Swali la Mkono','+ Add Question Manually')}</button>
     </div>`;
   });
 
   if(examData.endMark) html += `<div class="exam-end">${escapeHtml(examData.endMark)}</div>`;
-  html += `<div class="answerkey-block"><h3>MWONGOZO WA MAJIBU</h3>
+  html += `<div class="answerkey-block"><h3>${secT('MWONGOZO WA MAJIBU','ANSWER KEY')}</h3>
     <div class="answerkey-text" contenteditable="true" id="answerkey-text" onblur="updateAnswerKey()">${escapeHtml(examData.answerKey||"")}</div>
   </div>`;
 
@@ -4933,8 +4933,8 @@ function renderQuestionRow(si, qi, q){
     <div class="q-num">${q.roman==='' ? '' : escapeHtml(q.roman||romanFromIndex(qi)) + '.'}</div>
     <div class="q-text" contenteditable="true" onblur="updateQuestionText(${si},${qi},this)">${escapeHtml(q.text||"")}</div>
     ${(examData && examData.workTable && q.roman !== '') ? '<div class="q-work"></div><div class="q-work q-ans"></div>' : ''}
-    <input type="number" class="q-marks" value="${q.marks!=null?q.marks:1}" min="0" onchange="updateQuestionMarks(${si},${qi},this.value)" title="Alama">
-    <button class="q-del" onclick="deleteQuestion(${si},${qi})" title="Futa swali">🗑</button>
+    <input type="number" class="q-marks" value="${q.marks!=null?q.marks:1}" min="0" onchange="updateQuestionMarks(${si},${qi},this.value)" title="${secT('Alama','Marks')}">
+    <button class="q-del" onclick="deleteQuestion(${si},${qi})" title="${secT('Futa swali','Delete question')}">🗑</button>
   </div>`;
 }
 
@@ -4952,14 +4952,14 @@ function updateAnswerKey(){
 }
 function deleteQuestion(si, qi){
   if(!examData) return;
-  if(!confirm("Una uhakika unataka kufuta swali hili?")) return;
+  if(!confirm(secT("Una uhakika unataka kufuta swali hili?","Are you sure you want to delete this question?"))) return;
   examData.sections[si].questions.splice(qi, 1);
   renderExamEditor();
 }
 function addQuestion(si){
   if(!examData) return;
   const qs = examData.sections[si].questions;
-  const newQ = { roman: romanFromIndex(qs.filter(x => x.roman !== '').length), text: "Andika swali jipya hapa...", marks: 1 };
+  const newQ = { roman: romanFromIndex(qs.filter(x => x.roman !== '').length), text: secT("Andika swali jipya hapa...","Type the new question here..."), marks: 1 };
   qs.push(newQ);
   renderExamEditor();
   // focus the newly added question text for immediate editing
@@ -4990,12 +4990,12 @@ function examToText(){
   examData.sections.forEach(sec=>{
     out += `${secHeading(sec)} (${sec.note||""})\n`;
     (sec.questions||[]).forEach(q=>{
-      out += `${q.roman===''?'':q.roman+'. '}${q.text}  [Alama: ${q.marks}]\n`;
+      out += `${q.roman===''?'':q.roman+'. '}${q.text}  [${secT('Alama','Marks')}: ${q.marks}]\n`;
     });
     out += "\n";
   });
   if(examData.endMark) out += examData.endMark + "\n\n";
-  out += "MWONGOZO WA MAJIBU\n" + (examData.answerKey||"");
+  out += secT("MWONGOZO WA MAJIBU","ANSWER KEY") + "\n" + (examData.answerKey||"");
   return out;
 }
 
@@ -5014,7 +5014,7 @@ function generateMarking(){
     btnId:'mk_btn', outputId:'mk_output', headLabelId:'mk_headLabel', copyBtnId:'mk_copyBtn', printBtnId:'mk_printBtn', extraBtnId:'mk_docxBtn',
     maxTokens:2500,
     validate: ()=> document.getElementById('mk_topic').value.trim() ? null : "Tafadhali jaza mada.",
-    headLabel: ()=> `MARKING SCHEME — ${document.getElementById('mk_subject').value.toUpperCase()}`,
+    headLabel: ()=> `MARKING SCHEME — ${secSubj(document.getElementById('mk_subject').value).toUpperCase()}`,
     buildPrompt: ()=>{
       const grade = document.getElementById('mk_grade').value;
       const subject = document.getElementById('mk_subject').value;
@@ -6449,7 +6449,7 @@ function generateTathmini(){
     btnId:'ta_btn', outputId:'ta_output', headLabelId:'ta_headLabel', copyBtnId:'ta_copyBtn', printBtnId:'ta_printBtn', extraBtnId:'ta_xlsxBtn',
     maxTokens:1500,
     validate: ()=> document.getElementById('ta_topic').value.trim() ? null : "Tafadhali jaza mada.",
-    headLabel: ()=> `TATHMINI — ${document.getElementById('ta_topic').value.toUpperCase()}`,
+    headLabel: ()=> `${secT('TATHMINI','ASSESSMENT')} — ${document.getElementById('ta_topic').value.toUpperCase()}`,
     buildPrompt: ()=>{
       const grade = document.getElementById('ta_grade').value;
       const subject = document.getElementById('ta_subject').value;
@@ -7705,15 +7705,15 @@ function downloadExamDocx(){
         if(idx>0) runs.push(new TextRun({ text:'', break:1 }));
         runs.push(new TextRun(ln));
       });
-      runs.push(new TextRun({ text: `   [Alama: ${q.marks!=null?q.marks:''}]`, italics:true }));
+      runs.push(new TextRun({ text: `   [${secT('Alama','Marks')}: ${q.marks!=null?q.marks:''}]`, italics:true }));
       paras.push(new Paragraph({ children: runs, spacing:{after:130} }));
     });
   });
-  paras.push(new Paragraph({ text:'MWONGOZO WA MAJIBU', heading: HeadingLevel.HEADING_2, spacing:{before:240,after:110} }));
+  paras.push(new Paragraph({ text:secT('MWONGOZO WA MAJIBU','ANSWER KEY'), heading: HeadingLevel.HEADING_2, spacing:{before:240,after:110} }));
   (examData.answerKey||'').split('\n').forEach(line=>{
     if(line.trim()) paras.push(new Paragraph({ text: line.trim(), spacing:{after:90} }));
   });
-  downloadDocxParagraphs(paras, examData.examTitle || 'Mtihani', examData.examTitle || 'MTIHANI');
+  downloadDocxParagraphs(paras, examData.examTitle || secT('Mtihani','Exam'), examData.examTitle || secT('MTIHANI','EXAM'));
 }
 
 /* ---- Excel (.xlsx) helpers ---- */
@@ -7783,8 +7783,8 @@ function downloadTathminiXlsx(){
   }
   const rows = domToAoaRows(el);
   const headEl = document.getElementById('ta_headLabel');
-  const title = (headEl && headEl.textContent.trim()) || 'Tathmini_ya_Haraka';
-  downloadXlsxRows(rows, title, 'Tathmini');
+  const title = (headEl && headEl.textContent.trim()) || secT('Tathmini_ya_Haraka','Quick_Assessment');
+  downloadXlsxRows(rows, title, secT('Tathmini','Assessment'));
 }
 
 function downloadReportXlsx(){
@@ -10032,9 +10032,9 @@ window.downloadExamDocx = async function(){
       for(const i of grp('after')) paras.push(await figPara(i,fo[i]));
     }
   }
-  paras.push(new Paragraph({ text:'MWONGOZO WA MAJIBU', heading: HeadingLevel.HEADING_2, spacing:{before:240,after:110} }));
+  paras.push(new Paragraph({ text:secT('MWONGOZO WA MAJIBU','ANSWER KEY'), heading: HeadingLevel.HEADING_2, spacing:{before:240,after:110} }));
   (examData.answerKey||'').split('\n').forEach(line=>{ if(line.trim()) paras.push(new Paragraph({ text: line.trim(), spacing:{after:90} })); });
-  downloadDocxParagraphs(paras, examData.examTitle || 'Mtihani', examData.examTitle || 'MTIHANI');
+  downloadDocxParagraphs(paras, examData.examTitle || secT('Mtihani','Exam'), examData.examTitle || secT('MTIHANI','EXAM'));
 };
 
 /* ============================ 9. KUUNGANISHA NA MFUMO (showView, vitufe) ============================ */
@@ -12661,90 +12661,139 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 
 <script>
 /* ===================================================================
-   LUGHA YA SEKONDARI (Kiswahili / English) — Awamu 1
+   LUGHA YA SEKONDARI (Kiswahili / English) — Awamu 1 + 2
    - Inafanya kazi TU ngazi ikiwa Sekondari na lugha ikiwa English. Msingi haiguswi.
    - Haibadilishi thamani (value) za madarasa/masomo wala logic ya Azimio/Andalio/mtaala:
      ni maandishi ya kuonyeshwa tu. Asili ya kila maandishi inahifadhiwa na kurudishwa.
    - Awamu 1: dashibodi, menyu, vichwa vya kurasa, majina ya Kidato (Form I–VI).
+   - Awamu 2: fomu, vitufe, maelekezo, placeholder na ujumbe (alert/hali) wa Mitihani, Marking,
+     Andalio (upande wa fomu), Azimio, Tathmini, Ratiba, Kituo cha Alama, Benki ya Maswali.
+   - Hati zilizotengenezwa (.output-body na #an_paper) HAZIGUSWI na kitafsiri cha DOM, ili hati isichanganye lugha.
+   - Awamu 3A: Mitihani, Marking na Tathmini zinaomba AI iandike kwa English (callClaude wrapper) na vichwa/lebo za
+     hati zao (Word/Excel/nakala/hariri) vinafuata lugha kupitia secT(sw,en). Azimio na Andalio hazibadilishwi.
    =================================================================== */
 (function(){
   var KEY='mw_sec_lang';
-  var SCOPE='#view-dashboard, #pageTitle, #backBtn, #fbBar, .topbar .eyebrow';
-  var DICT={
-    'Shule ya Msingi':'Primary School',
-    'Sekondari':'Secondary',
-    'Dashibodi':'Dashboard',
-    '← Rudi Dashibodi':'← Back to Dashboard',
-    'Toka':'Log out',
-    'Kutunga Mitihani':'Exam Setting',
-    'Marking Scheme':'Marking Scheme',
-    'Andalio la Somo':'Lesson Plan',
-    'Azimio la Kazi':'Scheme of Work',
-    'Tathmini ya Haraka':'Quick Assessment',
-    'Ratiba ya Shule':'School Timetable',
-    'Kituo cha Alama':'Assessment Hub',
-    'Benki ya Maswali':'Question Bank',
-    'Tengeneza mtihani kamili wenye sehemu na muundo sahihi kwa somo na darasa/kidato ulichochagua.':'Generate a complete exam with sections and the correct format for the subject and form you selected.',
-    'Tengeneza mwongozo wa majibu na mgawanyo wa alama kwa mtihani au mazoezi.':'Generate an answer guide and mark allocation for an exam or exercise.',
-    'Andalio kamili la somo moja: malengo, hatua za ufundishaji, tathmini, kazi ya ziada.':'A complete plan for one lesson: objectives, teaching steps, assessment and extra work.',
-    'Mpango wa muhula mzima: mada kwa kila wiki, umahiri unaotarajiwa, idadi ya vipindi.':'A full-term plan: topics for each week, expected competences and number of periods.',
-    'Kazi fupi za darasani/homework za kupima uelewa wa mada moja papo hapo.':'Short classwork/homework tasks to check understanding of one topic on the spot.',
-    'Weka taarifa za muda wa vipindi na mapumziko kwa shule ya msingi na sekondari — kila ngazi na mpangilio wake.':'Set period times and breaks for primary and secondary schools — each level with its own arrangement.',
-    'Benki ya Maswali (Offline)':'Question Bank (Offline)',
-    'Hifadhi maswali yako mwenyewe na uyachanganye kiotomatiki kutengeneza mtihani — bila intaneti, bila AI.':'Save your own questions and mix them automatically to build an exam — no internet, no AI.',
-    'Zana za Kuchora (Offline)':'Drawing Tools (Offline)',
-    'Chora maumbo, ramani rahisi, michoro ya sayansi na chati, au ingiza picha kutoka Gallery — bila intaneti. Hifadhi na utumie kwenye maswali na mitihani.':'Draw shapes, simple maps, science diagrams and charts, or insert pictures from the Gallery — no internet. Save and use them in questions and exams.',
-    'Kituo cha Alama (Assessment Hub)':'Assessment Hub',
-    'Ingiza alama za wanafunzi, ona uchambuzi wa ufaulu, na tengeneza ripoti ya darasa.':'Enter students\u2019 marks, view performance analysis and generate a class report.'
-  };
+  var SCOPE='#view-dashboard, #pageTitle, #backBtn, #fbBar, .topbar .eyebrow, #view-mitihani, #view-marking, #view-andalio, #view-azimio, #view-tathmini, #view-ratiba, #view-hub, #view-benki';
+  var SKIP='#an_paper, .output-body';
+  var OUTUI='.placeholder, .loading, .error-box, .mt-warn';   /* sehemu za UI ndani ya output (si maudhui ya hati) */
+  var DICT={"Shule ya Msingi": "Primary School", "Sekondari": "Secondary", "Dashibodi": "Dashboard", "← Rudi Dashibodi": "← Back to Dashboard", "Toka": "Log out", "Kutunga Mitihani": "Exam Setting", "Marking Scheme": "Marking Scheme", "Andalio la Somo": "Lesson Plan", "Azimio la Kazi": "Scheme of Work", "Tathmini ya Haraka": "Quick Assessment", "Ratiba ya Shule": "School Timetable", "Kituo cha Alama": "Assessment Hub", "Benki ya Maswali": "Question Bank", "Tengeneza mtihani kamili wenye sehemu na muundo sahihi kwa somo na darasa/kidato ulichochagua.": "Generate a complete exam with sections and the correct format for the subject and form you selected.", "Tengeneza mwongozo wa majibu na mgawanyo wa alama kwa mtihani au mazoezi.": "Generate an answer guide and mark allocation for an exam or exercise.", "Andalio kamili la somo moja: malengo, hatua za ufundishaji, tathmini, kazi ya ziada.": "A complete plan for one lesson: objectives, teaching steps, assessment and extra work.", "Mpango wa muhula mzima: mada kwa kila wiki, umahiri unaotarajiwa, idadi ya vipindi.": "A full-term plan: topics for each week, expected competences and number of periods.", "Kazi fupi za darasani/homework za kupima uelewa wa mada moja papo hapo.": "Short classwork/homework tasks to check understanding of one topic on the spot.", "Weka taarifa za muda wa vipindi na mapumziko kwa shule ya msingi na sekondari — kila ngazi na mpangilio wake.": "Set period times and breaks for primary and secondary schools — each level with its own arrangement.", "Benki ya Maswali (Offline)": "Question Bank (Offline)", "Hifadhi maswali yako mwenyewe na uyachanganye kiotomatiki kutengeneza mtihani — bila intaneti, bila AI.": "Save your own questions and mix them automatically to build an exam — no internet, no AI.", "Zana za Kuchora (Offline)": "Drawing Tools (Offline)", "Chora maumbo, ramani rahisi, michoro ya sayansi na chati, au ingiza picha kutoka Gallery — bila intaneti. Hifadhi na utumie kwenye maswali na mitihani.": "Draw shapes, simple maps, science diagrams and charts, or insert pictures from the Gallery — no internet. Save and use them in questions and exams.", "Kituo cha Alama (Assessment Hub)": "Assessment Hub", "Ingiza alama za wanafunzi, ona uchambuzi wa ufaulu, na tengeneza ripoti ya darasa.": "Enter students’ marks, view performance analysis and generate a class report.", "Darasa/Kidato": "Form", "Darasa / Kidato": "Class / Form", "Kidato": "Form", "Darasa": "Class", "Somo": "Subject", "Mada": "Topic", "Nakili": "Copy", "⬇️ Pakua Word": "⬇️ Download Word", "⬇️ Pakua Excel": "⬇️ Download Excel", "Chapisha": "Print", "Jumla": "Total", "Mada/vipengele vilivyofundishwa": "Topics/items taught", "Jina la shule (hiari)": "School name (optional)", "Toleo (hiari)": "Version (optional)", "— Bila toleo —": "— No version —", "Toleo A": "Version A", "Toleo B": "Version B", "Toleo C": "Version C", "Tengeneza Mtihani": "Generate Exam", "MTIHANI": "EXAM", "💾 Hifadhi kwenye Benki": "💾 Save to Bank", "Mtihani wako utaonekana hapa.": "Your exam will appear here.", "mfano: Ukoloni Tanganyika, harakati za uhuru, viongozi wa TANU": "e.g. Colonialism in Tanganyika, independence movements, TANU leaders", "mfano: Shule ya Msingi Mlimani": "e.g. Mlimani Secondary School", "Bandika maswali (hiari — kama huna, mfumo utatengeneza yake mwenyewe)": "Paste questions (optional — if you have none, the system will create its own)", "Tengeneza Marking Scheme": "Generate Marking Scheme", "Mwongozo utakuwa na majibu sahihi na mgawanyo wa alama kwa kila swali.": "The guide will contain the correct answers and mark allocation for each question.", "Mwongozo wa majibu utaonekana hapa.": "The answer guide will appear here.", "mfano: Vita vya Kwanza vya Dunia": "e.g. The First World War", "Bandika maswali ya mtihani wako hapa, au acha wazi": "Paste your exam questions here, or leave blank", "Muda wa somo": "Lesson duration", "Dakika 35": "35 minutes", "Dakika 40": "40 minutes", "Dakika 45": "45 minutes", "Dakika 80 (double)": "80 minutes (double)", "Mada ndogo": "Sub-topic", "KIPENGELE MAHUSUSI CHA KUFUNDISHA KATIKA KIPINDI HIKI": "SPECIFIC ITEM TO TEACH IN THIS PERIOD", "Maelezo ya ziada (hiari)": "Additional notes (optional)", "Tengeneza Andalio": "Generate Lesson Plan", "⚡ Tengeneza": "⚡ Generate", "🔒 Funga Kuhariri": "🔒 Lock Editing", "✏️ Hariri": "✏️ Edit", "💾 Hifadhi": "💾 Save", "📋 Nakili": "📋 Copy", "🖨️ Chapisha": "🖨️ Print", "mfano: Vyombo vya kutoa haki": "e.g. Justice institutions", "mfano: Mahakama": "e.g. The Courts", "mfano: wanafunzi tayari wanajua matukio ya ukoloni": "e.g. students already know the events of colonialism", "Fungua": "Open", "Futa": "Delete", "📅 Kalenda ya Mihula ya Masomo": "📅 Term Calendar", "Mihula": "Terms", "Kufungua": "Opening", "Likizo Fupi": "Short Holiday", "Kufunga": "Closing", "Idadi ya siku za masomo": "Number of school days", "Muhula 1": "Term 1", "Muhula 2": "Term 2", "Jina la Shule": "School Name", "Jina la Mwalimu": "Teacher's Name", "Kipindi cha azimio (huamuliwa na darasa)": "Scheme period (determined by form)", "Muhula wa Kwanza": "First Term", "Muhula wa Pili": "Second Term", "Mwaka": "Year", "Idadi ya wiki za muhula (hujazwa kutoka kalenda; hutumika pekee kalenda ikikosa tarehe)": "Number of term weeks (filled from the calendar; used only when the calendar lacks dates)", "Mada kuu zitakazofundishwa (moja kwa mstari, hiari)": "Main topics to be taught (one per line, optional)", "Tengeneza Azimio la Kazi": "Generate Scheme of Work", "🎨 AZIMIO COVER DESIGNER": "🎨 SCHEME OF WORK COVER DESIGNER", "Kava: imezimwa": "Cover: off", "AZIMIO LA KAZI": "SCHEME OF WORK", "💾 Hifadhi Azimio": "💾 Save Scheme of Work", "Azimio la kazi litaonekana hapa.": "The scheme of work will appear here.", "🗂️ Maazimio Yaliyohifadhiwa": "🗂️ Saved Schemes of Work", "mfano: Shule ya Msingi Kilimani": "e.g. Kilimani Secondary School", "Jina lako": "Your name", "mfano: 2027": "e.g. 2027", "mfano: Ukoloni Harakati za Uhuru Uongozi baada ya Uhuru": "e.g. Colonialism\nIndependence Movements\nLeadership after Independence", "Aina ya tathmini": "Type of assessment", "Kazi ya darasani": "Classwork", "Tathmini ya kuingia darasani (dakika 5-10)": "Entry assessment (5-10 minutes)", "Tengeneza Tathmini": "Generate Assessment", "Utapata maswali machache ya haraka pamoja na rubric fupi ya kutolea alama.": "You will get a few quick questions together with a short marking rubric.", "TATHMINI": "ASSESSMENT", "Tathmini yako itaonekana hapa.": "Your assessment will appear here.", "mfano: Mzunguko wa maji": "e.g. The water cycle", "Muda wa Vipindi na Mapumziko — Shule ya Msingi": "Period Times and Breaks — Primary School", "Muda wa Kuanza Shule": "School Start Time", "Idadi ya Vipindi kwa Siku": "Number of Periods per Day", "Muda wa Kipindi Kimoja (dakika)": "Length of One Period (minutes)", "Siku za Shule": "School Days", "Jumatatu": "Monday", "Jumanne": "Tuesday", "Jumatano": "Wednesday", "Alhamisi": "Thursday", "Ijumaa": "Friday", "Jumamosi": "Saturday", "Mapumziko — Msingi": "Breaks — Primary", "Jina la Mapumziko": "Break Name", "Baada ya Kipindi Na.": "After Period No.", "Dakika": "Minutes", "+ Ongeza Mapumziko": "+ Add Break", "Muda Halisi wa Kila Kipindi — Msingi": "Actual Time of Each Period — Primary", "Kipindi": "Period", "Kuanza": "Start", "Kumaliza": "End", "↺ Rudisha Muda wa Kawaida": "↺ Reset to Default Times", "Masomo na Vipindi kwa Wiki — Msingi": "Subjects and Periods per Week — Primary", "Mwalimu": "Teacher", "Vipindi/Wiki": "Periods/Week", "Shughuli Nyingine (Baada ya Vipindi vya Masomo)": "Other Activities (After Lessons)", "Muda wa Shughuli Nyingine (dakika)": "Length of Other Activities (minutes)", "Siku": "Day", "Shughuli Nyingine": "Other Activity", "Tengeneza Ratiba Kamili — Msingi": "Generate Full Timetable — Primary", "⚡ Tengeneza Ratiba Kamili": "⚡ Generate Full Timetable", "⬇️ Pakua Excel (.xlsx)": "⬇️ Download Excel (.xlsx)", "⬇️ Pakua Word (.docx)": "⬇️ Download Word (.docx)", "Ratiba ya Somo Moja — Msingi": "Single-Subject Timetable — Primary", "Onyesha Ratiba ya Somo": "Show Subject Timetable", "Muda wa Vipindi na Mapumziko — Sekondari": "Period Times and Breaks — Secondary", "Mapumziko — Sekondari": "Breaks — Secondary", "Muda Halisi wa Kila Kipindi — Sekondari": "Actual Time of Each Period — Secondary", "Masomo na Vipindi kwa Wiki — Sekondari": "Subjects and Periods per Week — Secondary", "Tengeneza Ratiba Kamili — Sekondari": "Generate Full Timetable — Secondary", "Ratiba ya Somo Moja — Sekondari": "Single-Subject Timetable — Secondary", "Hifadhi Taarifa za Ratiba": "Save Timetable Information", "mfano Mapumziko Mafupi": "e.g. Short Break", "Futa mapumziko haya": "Delete this break", "mfano A.S": "e.g. A.S", "mfano Usafi / Michezo": "e.g. Cleaning / Sports", "Ingiza Matokeo": "Enter Results", "⚡ Ingizo la Haraka": "⚡ Quick Entry", "📋 Template ya Matokeo": "📋 Results Template", "Tathmini Mtandaoni (Mfano)": "Online Assessment (Demo)", "Ripoti ya Darasa": "Class Report", "Jina la Mtihani/Mazoezi": "Exam/Exercise Name", "Alama za Ufaulu (kiwango cha chini)": "Pass Mark (minimum)", "Jina la Mwanafunzi": "Student Name", "Alama (0-100)": "Marks (0-100)", "Ondoa": "Remove", "+ Ongeza Mwanafunzi": "+ Add Student", "Kokotoa Matokeo": "Calculate Results", "Uchambuzi wa Ufaulu wa Darasa": "Class Performance Analysis", "Aina ya Assessment": "Type of Assessment", "Jaribio": "Test", "Mtihani": "Exam", "Mtihani wa Mwezi": "Monthly Exam", "Mtihani wa Muhula": "Term Exam", "Mtihani wa Mwisho wa Mwaka": "End-of-Year Exam", "Mtihani wa Majaribio (Mock)": "Mock Exam", "Jina / Mada ya Assessment (si lazima)": "Assessment Name / Topic (optional)", "Alama za Juu kwa kila somo": "Maximum Marks per Subject", "Ingiza alama kwa mpangilio wowote — mstari mmoja kwa kila alama:": "Enter marks in any order — one line per mark:", "Chambua": "Analyse", "Weka Mfano": "Insert Sample", "Futa Maandishi": "Clear Text", "📷 SOMA MATOKEO KWA PICHA": "📷 READ RESULTS FROM A PICTURE", "Assessment Zilizohifadhiwa": "Saved Assessments", "Bado hakuna assessment iliyohifadhiwa.": "No assessment has been saved yet.", "Swali 1 la 10": "Question 1 of 10", "Kiongozi aliyeasisi chama cha TANU mwaka 1954 alikuwa nani?": "Who was the leader who founded the TANU party in 1954?", "Tuma Jibu (alama huhesabiwa kiotomatiki)": "Submit Answer (marks are calculated automatically)", "RIPOTI YA DARASA": "CLASS REPORT", "mfano: Mtihani wa Mtaa - Maarifa ya Jamii": "e.g. Street Test - Social Studies", "Jina la mwanafunzi": "Student name", "mfano: Muhula wa 2, Wiki ya 3": "e.g. Term 2, Week 3", "Maandishi yamebadilika tangu uchambuzi wa mwisho. Bonyeza \"Chambua\" tena kabla ya kuhifadhi.": "The text has changed since the last analysis. Press \"Analyse\" again before saving.", "🗂️ Mitihani Mizima Iliyohifadhiwa (inafunguka bila intaneti)": "🗂️ Saved Full Exams (opens offline)", "Tafuta kichwa/mada": "Search title/topic", "Tarehe: kuanzia — hadi": "Date: from — to", "⬇️ Nakala rudufu ya mitihani na michoro (.json)": "⬇️ Backup of exams and drawings (.json)", "⬆️ Rejesha (.json)": "⬆️ Restore (.json)", "➕ Ongeza Swali kwenye Benki Yako": "➕ Add a Question to Your Bank", "Mada (hiari)": "Topic (optional)", "Swali": "Question", "Chaguo A": "Option A", "Chaguo B": "Option B", "Chaguo C": "Option C", "Chaguo D": "Option D", "Chaguo E (hiari)": "Option E (optional)", "Jibu Sahihi": "Correct Answer", "💾 Hifadhi Swali": "💾 Save Question", "🎲 Tengeneza Mtihani kutoka Benki": "🎲 Generate Exam from Bank", "Mada (hiari — acha wazi kutumia zote)": "Topic (optional — leave blank to use all)", "Idadi ya maswali": "Number of questions", "Badilisha majina/visawe ili maswali yasifanane kila mara (visawe tu — namba za Hisabati haziguswi)": "Change names/synonyms so questions do not look the same every time (synonyms only — Mathematics numbers are not touched)", "🎲 Changanya na Tengeneza": "🎲 Shuffle and Generate", "Hii hufanya kazi bila intaneti kabisa — inatumia maswali uliyohifadhi tu.": "This works completely offline — it uses only the questions you saved.", "📦 Hifadhi/Rejesha Benki Nzima": "📦 Backup/Restore Entire Bank", "⬇️ Pakua Benki (.json)": "⬇️ Download Bank (.json)", "⬆️ Pandisha Benki (.json)": "⬆️ Upload Bank (.json)", "BENKI YA MASWALI": "QUESTION BANK", "Mtihani uliotengenezwa kutoka benki yako utaonekana hapa.": "The exam generated from your bank will appear here.", "Maswali Yaliyohifadhiwa (Darasa/Somo lililochaguliwa juu)": "Saved Questions (selected Class/Subject above)", "mf. Ukoloni": "e.g. Colonialism", "mfano: Ukoloni, Milinganyo sahili": "e.g. Colonialism, Simple equations", "Andika swali hapa...": "Type the question here...", "Inatengeneza...": "Generating...", "Imenakiliwa!": "Copied!", "Inapakia onyesho...": "Loading preview...", "Inatayarisha Word...": "Preparing Word...", "Inatengeneza Azimio la Kazi...": "Generating Scheme of Work...", "Taarifa za ratiba zimehifadhiwa ✓": "Timetable information saved ✓", "Imehifadhiwa kwa kikao hiki tu — kivinjari hakiruhusu uhifadhi wa kudumu.": "Saved for this session only — the browser does not allow permanent storage.", "Tafadhali andika kipengele mahususi cha kufundisha katika kipindi hiki kwanza.": "Please first write the specific item to teach in this period.", "Andika kipengele mahususi cha kipindi na utengeneze andalio kabla ya kuhifadhi.": "Write the specific item for the period and generate the lesson plan before saving.", "Tengeneza andalio kwanza kisha ubonyeze Hifadhi.": "Generate the lesson plan first, then press Save.", "Imeshindikana kuhifadhi (hifadhi ya kivinjari huenda imejaa). Tumia \"Pakua Word\" kuhifadhi nakala.": "Saving failed (browser storage may be full). Use \"Download Word\" to keep a copy.", "Andika Jina la Shule na Jina la Mwalimu kabla ya kutengeneza Azimio.": "Enter the School Name and Teacher's Name before generating the Scheme of Work.", "Haijathibitishwa. Hakiki jina na shule kisha jaribu tena.": "Not verified. Check the name and school, then try again.", "Imeshindwa kuhifadhi — nafasi ya kivinjari imejaa au imezuiwa. Futa azimio la zamani au tumia \"Pakua Word\".": "Saving failed — browser storage is full or blocked. Delete an old scheme of work or use \"Download Word\".", "✓ Imehifadhiwa": "✓ Saved", "Azimio limehifadhiwa kwenye kivinjari hiki ✓ (linapatikana chini ya ukurasa kwenye \"Maazimio Yaliyohifadhiwa\").": "The scheme of work has been saved in this browser ✓ (available at the bottom of the page under \"Saved Schemes of Work\").", "Azimio lililohifadhiwa limefunguliwa.": "The saved scheme of work has been opened.", "Andika au bandika alama kwenye sehemu ya kuingiza kwanza.": "Type or paste marks in the input area first.", "Hakuna rekodi sahihi za kuhifadhi.": "There are no valid records to save.", "Jaza angalau Swali na Chaguo A-D kabla ya kuhifadhi.": "Fill in at least the Question and Options A-D before saving.", "Hakuna maswali kwenye benki kwa Darasa/Somo/Mada uliyochagua. Ongeza maswali kwanza hapo juu.": "There are no questions in the bank for the Class/Subject/Topic you selected. Add questions above first.", "📚 Chagua mada kutoka mtaala rasmi (TIE 2023) — si lazima": "📚 Choose a topic from the official curriculum (TIE 2023) — optional", "📚 Chagua mada kuu na mada ndogo kutoka mtaala rasmi (TIE 2023) — si lazima": "📚 Choose a main topic and sub-topic from the official curriculum (TIE 2023) — optional", "Mada Kuu": "Main Topic", "— Chagua mada kuu —": "— Choose main topic —", "Futa uchaguzi": "Clear selection", "Bado hakuna mtihani mzima uliohifadhiwa. Tengeneza mtihani kwa AI kisha bonyeza \"💾 Hifadhi kwenye Benki\".": "No full exam has been saved yet. Generate an exam with AI then press \"💾 Save to Bank\".", "Hakuna maswali yaliyohifadhiwa bado kwa uchaguzi huu.": "No questions have been saved yet for this selection.", "Andalio limetengenezwa kutoka mtaala wa TIE (bila AI wala mtandao). Bonyeza \"Hariri\" kufanya marekebisho, kisha \"Chapisha\" au \"Pakua Word\".": "The lesson plan has been generated from the TIE curriculum (without AI or internet). Press \"Edit\" to make changes, then \"Print\" or \"Download Word\".", "Andalio limetengenezwa kwa mada uliyoandika (mada haikupatikana kwenye mtaala wa TIE wa darasa/somo hili, hivyo umahiri umeandikwa kwa ujumla). Hakiki na urekebishe kabla ya kutumia.": "The lesson plan has been generated for the topic you typed (the topic was not found in the TIE curriculum for this class/subject, so the competence is written in general terms). Review and adjust before using.", "Madarasa yote": "All classes", "Masomo yote": "All subjects", "+ Template Mpya": "+ New Template", "📂 Pakia Template Yangu": "📂 Upload My Template", "Tengeneza Template ya Mfumo": "Generate System Template", "Jina la Template": "Template Name", "Darasa (kupendekeza masomo)": "Class (to suggest subjects)", "Aina ya Template": "Template Type", "Majina pekee": "Names only", "Majina + masomo": "Names + subjects", "Majina + masomo + nafasi za alama": "Names + subjects + mark spaces", "Weka namba ya mwanafunzi / usajili (S/N)": "Include student number / registration (S/N)", "Masomo (kwa aina zenye masomo)": "Subjects (for types with subjects)", "Chagua zote": "Select all", "Alama za juu kwa kila somo": "Maximum marks per subject", "📷 Soma Majina kwa Picha": "📷 Read Names from a Picture", "Piga picha ya orodha ya majina — yataongezwa kwenye kisanduku hiki, wewe utakagua kabla ya kutengeneza template.": "Take a picture of the list of names — they will be added to this box, and you will review before generating the template.", "Tengeneza Template": "Generate Template", "mfano: Darasa la 6A — Muhula wa 2": "e.g. Form 2A — Term 2", "Somo jingine (tenganisha kwa koma)": "Other subject (separate with commas)", "Tafadhali jaza mada zilizofundishwa.": "Please fill in the topics taught.", "Tafadhali jaza mada.": "Please fill in the topic.", "Inatengeneza mtihani": "Generating exam", "Inatengeneza": "Generating", "Hitilafu ya kuonyesha mtihani.": "Error displaying the exam.", "⚠️ Jibu la AI lilikatika na lilirekebishwa kiotomatiki — baadhi ya maswali au mwongozo wa majibu vinaweza kukosekana. Hakikisha, kisha bonyeza \"Tengeneza Mtihani\" tena kama inahitajika.": "⚠️ The AI response was cut off and was repaired automatically — some questions or parts of the answer key may be missing. Check it, then press \"Generate Exam\" again if needed.", "⚠️ AI ilifika kikomo cha maneno — hakikisha maswali yote yapo; ikiwa yamepungua bonyeza \"Tengeneza Mtihani\" tena.": "⚠️ The AI reached its word limit — make sure all questions are present; if some are missing press \"Generate Exam\" again.", "Tafadhali ruhusu dirisha ibukizi (pop-up) kwenye kivinjari ili kuchapisha.": "Please allow pop-ups in your browser in order to print.", "Maktaba ya kutengeneza Word (.docx) haijapakia — hakikisha una mtandao kisha upakie ukurasa upya, au jaribu tena.": "The Word (.docx) library has not loaded — make sure you have internet, then reload the page or try again.", "Maktaba ya kutengeneza Word (.docx) haijapakia — hakikisha una mtandao kisha jaribu tena.": "The Word (.docx) library has not loaded — make sure you have internet, then try again.", "Maktaba ya kutengeneza Excel (.xlsx) haijapakia — hakikisha una mtandao kisha jaribu tena.": "The Excel (.xlsx) library has not loaded — make sure you have internet, then try again.", "Tengeneza azimio kwanza.": "Generate the scheme of work first.", "Tengeneza azimio kwanza kabla ya kuhifadhi.": "Generate the scheme of work first before saving.", "Jina la mwanafunzi haliwezi kuwa tupu.": "The student name cannot be empty.", "Tengeneza maudhui kwanza kabla ya kupakua.": "Generate the content first before downloading.", "Tengeneza mtihani kwanza.": "Generate the exam first.", "Hakuna data ya kupakua.": "There is no data to download.", "Tengeneza tathmini kwanza kabla ya kupakua.": "Generate the assessment first before downloading.", "Ingiza matokeo na ubonyeze \"Kokotoa Matokeo\" kabla ya kupakua ripoti.": "Enter results and press \"Calculate Results\" before downloading the report.", "Tengeneza ratiba kamili kwanza kwa kubonyeza \"⚡ Tengeneza Ratiba Kamili\".": "Generate the full timetable first by pressing \"⚡ Generate Full Timetable\".", "Imeshindikana kuhifadhi (huenda hifadhi ya kivinjari imejaa). Jaribu kupakua nakala ya zamani kwanza.": "Saving failed (browser storage may be full). Try downloading an old copy first.", "Benki yako bado haina maswali.": "Your bank has no questions yet.", "Tengeneza mtihani kwanza kabla ya kupakua.": "Generate the exam first before downloading.", "Tengeneza mtihani kwanza kabla ya kuhifadhi kwenye benki.": "Generate the exam first before saving to the bank.", "Tiki angalau swali moja kwanza.": "Tick at least one question first.", "Hakuna kitu cha kuhifadhi nakala bado.": "There is nothing to back up yet.", "📚 Orodha ya mada za mtaala rasmi (TIE 2023) bado haijaingizwa kwa \"— — —\". Andika mada mwenyewe kama kawaida.": "📚 The list of official curriculum topics (TIE 2023) has not yet been added for \"— — —\". Type the topics yourself as usual.", "Shule na toleo likiwa lilelile, mtihani wa Hisabati hutoka uleule; shule au toleo tofauti hutoa mtihani tofauti. Masomo mengine hupata mwelekeo tofauti na hayarudii maswali ya mitihani ya karibuni uliyotengeneza kwenye kifaa hiki.": "With the same school and version, the Mathematics exam comes out the same; a different school or version gives a different exam. Other subjects get a different direction and do not repeat questions from the exams you recently generated on this device.", "Muundo: Sehemu 1-7 (namba za kawaida), maswali ndani ya kila sehemu kwa Kirumi (i, ii, iii...), ikifuata mtindo wa NECTA.": "Format: Sections 1-7 (regular numbers), questions within each section in Roman numerals (i, ii, iii...), following the NECTA style.", "Andika kipengele kimoja tu utakachofundisha katika kipindi hiki (mfano: Mahakama). Kipengele kingine (mfano: Polisi au Magereza) andika kipindi kingine, kisha utengeneze andalio lake tofauti.": "Write only one item you will teach in this period (e.g. The Courts). Write another item (e.g. The Police or Prisons) in another period, then generate its own separate lesson plan.", "Andalio linatengenezwa ndani ya programu hii bila AI wala mtandao: mada ndogo ukiichagua kutoka mtaala wa TIE, umahiri unachukuliwa moja kwa moja kutoka mtaala; andalio linaandaliwa kwa kipengele kimoja ulichoandika kwenye kisanduku cha kipengele mahususi pekee. Muda wa hatua unagawanywa kulingana na muda wa somo. Hakiki na urekebishe kabla ya kutumia darasani.": "The lesson plan is generated inside this app without AI or internet: when you choose a sub-topic from the TIE curriculum, the competences are taken directly from the curriculum; the plan is prepared only for the one item you typed in the specific-item box. Stage times are divided according to the lesson duration. Review and adjust before using in class.", "Jaza taarifa upande wa kushoto kisha bonyeza \"Tengeneza\" — fomu hapa chini itajazwa kiotomatiki. Sehemu zote pia zinaweza kuandikwa/kuhaririwa moja kwa moja.": "Fill in the details on the left then press \"Generate\" — the form below will be filled in automatically. All sections can also be typed in/edited directly.", "Jaza tarehe kulingana na kalenda ya mwaka husika (Kufungua, Likizo fupi/Mid-term, Kufunga na idadi ya siku za masomo). Azimio litapangwa wiki kwa wiki kufuata kalenda hii, na jedwali hili litaonekana juu ya Azimio. Thamani za mwanzo ni kalenda ya 2027 ya mwalimu — zibadilishe kila mwaka.": "Fill in the dates according to the calendar of the relevant year (Opening, Short holiday/Mid-term, Closing and number of school days). The scheme of work will be arranged week by week following this calendar, and this table will appear above the Scheme of Work. The initial values are the teacher's 2027 calendar — change them every year.", "Muhula wa 1 + wa 2 kwa pamoja (azimio moja linaloendelea) · wiki 41 (kufundisha 33, pamoja na wiki za mtihani na kufunga)": "Term 1 + Term 2 together (one continuous scheme) · 41 weeks (33 teaching, including exam and closing weeks)", "Jaza taarifa hapo juu kisha bonyeza \"Tengeneza\" — jedwali moja litatengenezwa moja kwa moja kutoka mtaala rasmi wa TIE (haihitaji intaneti).": "Fill in the details above then press \"Generate\" — a single table will be generated directly from the official TIE curriculum (no internet needed).", "Muundo unafuata fomu rasmi ya Azimio la Kazi yenye vipengele 12: Umahiri Mkuu, Umahiri Mahususi, Shughuli za Ufundishaji, Shughuli za Ujifunzaji, Mwezi, Wiki, Vipindi, Mbinu, Zana za Kufundishia, Zana za Upimaji, Rejea na Maoni. Wiki hupangwa kufuata kalenda ya mihula (Mid-term huingizwa yenyewe). Darasa la 6 na la 7 linaishia Agosti wiki ya 2, Darasa la 4 Septemba wiki ya 2 (kisha maandalizi ya mtihani wa taifa). Kila muhula: wiki moja kabla ya kufunga ni ya Mtihani (mwalimu hujaza tarehe), na wiki ya mwisho ni ya Kufunga. Pia, wiki moja kabla ya kufunga nusu muhula (Machi na Septemba) ni ya Mtihani wa Nusu Muhula, na wiki ya mwisho kabla ya likizo fupi ni ya Kufunga tu (hakuna mada wala shughuli nyingine).": "The format follows the official Scheme of Work form with 12 elements: Main Competence, Specific Competence, Teaching Activities, Learning Activities, Month, Week, Periods, Methods, Teaching Resources, Assessment Tools, References and Remarks. Weeks are arranged following the term calendar (Mid-term is inserted automatically). Standard 6 and 7 end in the 2nd week of August, Standard 4 in the 2nd week of September (then preparation for the national exam). In each term: the week before closing is an Exam week (the teacher fills in the dates), and the last week is Closing. Also, the week before the half-term closing (March and September) is Half-term Exam week, and the last week before the short holiday is Closing only (no topics or other activities).", "Yanahifadhiwa kwenye kivinjari cha kifaa hiki tu. Ukifuta data ya kivinjari au ukibadili simu yatapotea — pakua Word kama nakala ya ziada.": "They are saved only in this device's browser. If you clear browser data or change phones they will be lost — download Word as an extra copy.", "Ongeza, badilisha au futa mapumziko kadri shule yako inavyohitaji — hakuna idadi wala nafasi maalum iliyowekwa. Mfano: mapumziko baada ya kipindi cha 3, mengine baada ya kipindi cha 6, n.k.": "Add, change or delete breaks as your school needs — no specific number or position is fixed.", "Muda hapa chini unahesabiwa kiotomatiki kutoka mipangilio hapo juu. Kama shule yako ina muda tofauti kwa kipindi fulani, badilisha moja kwa moja hapa — vipindi vinavyofuata vitasogea kulingana na mabadiliko yako.": "The times below are calculated automatically from the settings above. If your school has a different time for a particular period, change it directly here — the following periods will shift according to your change.", "Rekebisha idadi ya vipindi vya wiki kwa kila somo la darasa hili. Kwa Darasa la 3–7, andika jina la mwalimu (kamili au herufi za mwanzo) — mfumo utatengeneza herufi za mwanzo (mfano \"Asha Salum\" → A.S) kiotomatiki kwenye jedwali la ratiba.": "Adjust the number of periods per week for each subject of this class. For Standard 3–7, enter the teacher's name (full or initials) — the system will automatically create the initials (e.g. \"Asha Salum\" → A.S) in the timetable.", "Andika shughuli ya siku hiyo (mfano: Usafi, Michezo, Elimu ya Kujitegemea, Klabu za Masomo). Kama shughuli inabadilika kwa juma (mfano Juma la 3 na 4 ni Usafi, Juma la 5 ni Michezo), andika hivyo hivyo kwenye kisanduku husika — ratiba bado haijapangi mzunguko huu kiotomatiki.": "Write the activity for that day (e.g. Cleaning, Sports, Self-Reliance Education, Subject Clubs). If the activity changes by week (e.g. Weeks 3 and 4 are Cleaning, Week 5 is Sports), write it exactly like that in the relevant box — the timetable does not yet arrange this rotation automatically.", "Mfumo utapanga vipindi kwa kuzingatia: masomo magumu (Hisabati, English/Kiingereza, Sayansi) asubuhi inapowezekana, kuepuka kurudia somo moja mfululizo bila sababu, kusambaza vipindi vya kila somo katika siku tofauti za wiki, kisha kuhakiki mgongano wa mwalimu/darasa/kipindi.": "The system will arrange periods by taking into account: difficult subjects (Mathematics, English, Science) in the morning where possible, avoiding repeating the same subject consecutively without reason, spreading each subject's periods across different days of the week, then checking for teacher/class/period clashes.", "Baada ya kubofya \"Tengeneza Ratiba Kamili\" hapo juu, chagua somo ili kuona ratiba yake pekee kwa madarasa yote.": "After clicking \"Generate Full Timetable\" above, choose a subject to see only its timetable for all classes.", "Ongeza, badilisha au futa mapumziko kadri shule yako inavyohitaji — hakuna idadi wala nafasi maalum iliyowekwa.": "Add, change or delete breaks as your school needs — no specific number or position is fixed.", "Muda hapa chini unahesabiwa kiotomatiki kutoka mipangilio hapo juu. Kama shule yako ina muda tofauti kwa kipindi fulani, badilisha moja kwa moja hapa.": "The times below are calculated automatically from the settings above. If your school has a different time for a particular period, change it directly here.", "Rekebisha idadi ya vipindi vya wiki kwa kila somo la kidato hiki, na andika jina la mwalimu (kamili au herufi za mwanzo) — mfumo utatengeneza herufi za mwanzo (mfano \"Asha Salum\" → A.S) kiotomatiki kwenye jedwali la ratiba.": "Adjust the number of periods per week for each subject of this form, and enter the teacher's name (full or initials) — the system will automatically create the initials (e.g. \"Asha Salum\" → A.S) in the timetable.", "Andika shughuli ya siku hiyo (mfano: Usafi, Michezo, Klabu za Masomo, Mafunzo). Kama shughuli inabadilika kwa juma, andika hivyo hivyo kwenye kisanduku husika — ratiba bado haijapangi mzunguko huu kiotomatiki.": "Write the activity for that day (e.g. Cleaning, Sports, Subject Clubs, Training). If the activity changes by week, write it exactly like that in the relevant box — the timetable does not yet arrange this rotation automatically.", "Mfumo utapanga vipindi kwa kuzingatia: masomo magumu asubuhi inapowezekana, kuepuka kurudia somo moja mfululizo bila sababu, kusambaza vipindi vya kila somo katika siku tofauti za wiki, kisha kuhakiki mgongano wa somo/kipindi.": "The system will arrange periods by taking into account: difficult subjects in the morning where possible, avoiding repeating the same subject consecutively without reason, spreading each subject's periods across different days of the week, then checking for subject/period clashes.", "Baada ya kubofya \"Tengeneza Ratiba Kamili\" hapo juu, chagua somo ili kuona ratiba yake pekee kwa madarasa/vidato vyote.": "After clicking \"Generate Full Timetable\" above, choose a subject to see only its timetable for all classes/forms.", "Kitufe hiki kinahifadhi tu mpangilio wa muda na masomo. Bofya \"Tengeneza Ratiba Kamili\" kwenye kichupo cha Msingi au Sekondari hapo juu ili kutengeneza ratiba yenyewe.": "This button only saves the time arrangement and subjects. Click \"Generate Full Timetable\" on the Primary or Secondary tab above to generate the timetable itself.", "🔧 Huu ni mfano wa muonekano (UI mockup) kwa ajili ya kipengele kinachokuja mbeleni — bado hakifanyi kazi kikamilifu. Upakuaji wa Excel (.xlsx) utaongezwa hapa mara kipengele hiki kitakapokamilika na kuwa na data halisi ya kupakua.": "🔧 This is a UI mockup for a feature coming later — it does not fully work yet. Excel (.xlsx) download will be added here once this feature is complete and has real data to download.", "Ingiza matokeo kwenye kichupo cha \"Ingiza Matokeo\" kisha ubonyeze \"Kokotoa Matokeo\" ili ripoti ionekane hapa.": "Enter results in the \"Enter Results\" tab then press \"Calculate Results\" for the report to appear here.", "Maswali yanahifadhiwa kwenye kivinjari chako pekee (hakuna intaneti, hakuna AI) — kama JSON. Unaweza kupakua nakala (backup) wakati wowote.": "Questions are saved only in your browser (no internet, no AI) — as JSON. You can download a backup at any time.", "Weka maswali yako mwenyewe, ya shule au wilaya — si ya kunakili kutoka tovuti nyingine (haki miliki). Chaguo E si lazima; acha wazi kama swali lina A-D tu.": "Enter your own questions, from your school or district — not copied from other websites (copyright). Option E is optional; leave it blank if the question has A-D only."};
+  var PATS=[["^Samahani, imeshindikana\\. Jaribu tena\\. \\((.*)\\)$", "Sorry, it failed. Please try again. ($1)"], ["^Samahani, imeshindikana kutengeneza mtihani \\((.*)\\)\\. Jaribu tena\\.$", "Sorry, the exam could not be generated ($1). Please try again."], ["^Chanzo: (.*) — (.*), (.*) \\(vipindi (.*) kwa wiki\\)\\. Kuchagua hapa kunajaza kisanduku cha mada chini yake; unaweza kukihariri baadaye\\.$", "Source: $1 — $2, $3 ($4 periods per week). Selecting here fills the topic box below; you can edit it later."], ["^(\\d+) kati ya (\\d+)$", "$1 of $2"], ["^Kipindi (\\d+)$", "Period $1"], ["^Samahani, imeshindikana kutengeneza andalio\\. \\((.*)\\)$", "Sorry, the lesson plan could not be generated. ($1)"], ["^Andalio la \"(.*)\" limehifadhiwa kama kazi yake peke yake\\. Linapatikana chini ya \"Maandalio yaliyohifadhiwa\"\\.$", "Lesson plan \"$1\" has been saved as its own work. It is available under \"Saved lesson plans\"."], ["^Andalio la \"(.*)\" limefunguliwa\\. Unaweza kulihariri, kulichapisha au kupakua Word\\.$", "Lesson plan \"$1\" has been opened. You can edit it, print it or download Word."], ["^📁 Maandalio yaliyohifadhiwa \\((\\d+)\\)$", "📁 Saved lesson plans ($1)"], ["^Hitilafu: (.*)$", "Error: $1"], ["^Jibu sahihi ulilochagua \\((.*)\\) halina maandishi kwenye chaguo husika\\.$", "The correct answer you selected ($1) has no text in the corresponding option."], ["^✓ Swali limehifadhiwa\\. Jumla kwenye benki: (\\d+)\\.$", "✓ Question saved. Total in bank: $1."], ["^✓ Mtihani wa maswali (\\d+) umetengenezwa \\(kutoka (\\d+) yaliyopo\\), moja kwa moja kwenye kivinjari chako, bila intaneti\\.(?: Ulitaka (\\d+) lakini benki ina (\\d+) tu kwa uchaguzi huu\\.)?$", "✓ An exam of $1 questions has been generated (from $2 available), directly in your browser, without internet.@@ You wanted $3 but the bank has only $4 for this selection."], ["^Imeshindwa kufungua: (.*)$", "Failed to open: $1"], ["^Faili halisomeki: (.*)$", "The file cannot be read: $1"], ["^✓ Mitihani (\\d+) imerejeshwa(?:, (\\d+) imeruka \\(ipo tayari au si sahihi\\))?(?:, michoro (\\d+))?\\.$", "✓ $1 exams restored@@, $2 skipped (already exist or invalid)@@@@, $3 drawings@@."], ["^Kadirio la kurasa: (.*) \\((.*), Mlalo\\)$", "Estimated pages: $1 ($2, Landscape)"], ["^Kadirio la kurasa: (.*) \\((.*), Wima\\)$", "Estimated pages: $1 ($2, Portrait)"], ["^— mwisho wa ukurasa (\\d+) —$", "— end of page $1 —"], ["^Alama ya (.*) si namba sahihi\\.$", "The mark for $1 is not a valid number."], ["^Alama ya (.*) lazima iwe kati ya 0 na (.*)\\.$", "The mark for $1 must be between 0 and $2."], ["^Zimeongezwa maswali (\\d+) kwenye benki yako\\.$", "$1 questions have been added to your bank."], ["^Samahani, imeshindikana kutengeneza faili la Word\\. \\((.*)\\)$", "Sorry, the Word file could not be generated. ($1)"], ["^Samahani, imeshindikana kutengeneza faili la Excel\\. \\((.*)\\)$", "Sorry, the Excel file could not be generated. ($1)"], ["^Kava haikuweza kuundwa \\((.*)\\)\\. Azimio litapakuliwa bila kava\\.$", "The cover could not be created ($1). The scheme of work will be downloaded without a cover."], ["^Imeshindwa kuhifadhi mtihani: (.*)\\n\\(Huenda hifadhi ya kifaa imejaa\\. Pakua nakala ya benki kisha futa mitihani isiyohitajika\\.\\)$", "Failed to save the exam: $1\n(Device storage may be full. Download a copy of the bank, then delete exams you do not need.)"], ["^✓ Maswali (\\d+) yameongezwa kama SEHEMU (.*) kwenye mtihani unaoandaliwa\\. Mtihani uliohifadhiwa haujaguswa\\.$", "✓ $1 questions have been added as SECTION $2 to the exam being prepared. The saved exam was not touched."], ["^Kuchapisha kumeshindikana: (.*)\\. Tumia \"⬇️ HTML \\(offline\\)\" kisha ufungue na uchapishe\\.$", "Printing failed: $1. Use \"⬇️ HTML (offline)\" then open and print it."], ["^Haiwezekani: mwalimu (.*) tayari anafundisha darasa la (.*) siku ya (.*), Kipindi (.*)\\. Chagua somo au mwalimu mwingine\\.$", "Not possible: teacher $1 already teaches class $2 on $3, Period $4. Choose another subject or teacher."]].map(function(p){ return [new RegExp(p[0]),p[1]]; });
+  var OPTSUBJ={'Hisabati':'Mathematics','Historia ya Tanzania na Maadili':'Tanzanian History and Ethics'};
   var ROMAN={'1':'I','2':'II','3':'III','4':'IV','5':'V','6':'VI'};
+  var ATTRS=['placeholder','title'];
   var lang='sw';
   try{ var v=localStorage.getItem(KEY); if(v==='en'||v==='sw') lang=v; }catch(e){}
 
-  var txt=new Map();   // textNode -> {o:original, t:translated}
-  var opt=new Map();   // option -> original text
-  var obs=null;
-
+  var txt=new Map(), opt=new Map(), atr=new Map(), obs=null;
+  function has(o,k){ return Object.prototype.hasOwnProperty.call(o,k); }
   function active(){ return (typeof currentNgazi!=='undefined') && currentNgazi==='sekondari' && lang==='en'; }
-  function norm(x){ return x.replace(/\s+/g,' ').trim(); }
+  function norm(x){ return String(x).replace(/\s+/g,' ').trim(); }
 
-  function doText(n){
-    var par=n.parentElement; if(!par || !par.closest(SCOPE)) return;
-    var cur=n.nodeValue, rec=txt.get(n);
-    if(rec && cur!==rec.t){ rec=null; txt.delete(n); }          // maandishi yamebadilishwa na programu: chukua kama asili mpya
-    var key=rec?norm(rec.o):norm(cur);
-    var tr=DICT[key];
-    if(!tr) return;
-    if(!rec){ txt.set(n,{o:cur,t:tr}); }
-    n.nodeValue=tr;
+  function sub(x){   /* tafsiri ya vipande vya data ya mtaala ndani ya ujumbe */
+    return String(x).replace(/Muhtasari wa TIE 2023/g,'TIE 2023 Summary').replace(/vipindi vya dakika (\d+)/g,'$1-minute periods')
+      .replace(/Kidato ([IVX1-6]+)/g,'Form $1').replace(/\bHisabati\b/g,'Mathematics').replace(/Historia ya Tanzania na Maadili/g,'Tanzanian History and Ethics');
+  }
+  function fill(tpl,m){
+    var segs=tpl.split('@@'), out='';
+    for(var i=0;i<segs.length;i++){
+      var s=segs[i], refs=s.match(/\$(\d)/g), ok=true;
+      if(i>0 && refs){ for(var j=0;j<refs.length;j++){ if(m[+refs[j].charAt(1)]===undefined){ ok=false; break; } } }
+      if(ok) out+=s.replace(/\$(\d)/g,function(_,n){ return m[+n]===undefined?'':sub(m[+n]); });
+    }
+    return out;
+  }
+  function trStr(raw){
+    var k=norm(raw);
+    if(!k) return null;
+    if(has(DICT,k)) return DICT[k];
+    for(var i=0;i<PATS.length;i++){ var m=PATS[i][0].exec(String(raw).trim()); if(m) return fill(PATS[i][1],m); }
+    return null;
+  }
+  function inScope(el){
+    if(!el || !el.closest) return false;
+    if(!el.closest(SCOPE)) return false;
+    if(el.closest(SKIP) && !el.closest(OUTUI)) return false;
+    return true;
+  }
+  function optLabel(base){
+    var k=norm(base), m;
+    if((m=/^Kidato ([1-6])$/.exec(k))) return 'Form '+ROMAN[m[1]];
+    if((m=/^Darasa la ([1-7])$/.exec(k))) return 'Standard '+m[1];
+    if(k==='Darasa la Awali') return 'Pre-Primary';
+    if(has(OPTSUBJ,k)) return OPTSUBJ[k];
+    if(has(DICT,k)) return DICT[k];
+    return null;
   }
   function doOption(o){
     var rec=opt.has(o)?opt.get(o):null;
     var base=rec!==null?rec:o.text;
-    var m=/^Kidato ([1-6])$/.exec(norm(base));
-    if(!m) return;
+    var lab=optLabel(base);
+    if(lab===null) return;
     if(rec===null){
-      if(!o.hasAttribute('value')) o.setAttribute('value',base);   // thamani ibaki ya asili
+      if(!o.hasAttribute('value')) o.setAttribute('value',norm(base));   // thamani ibaki ya asili
       opt.set(o,base);
     }
-    o.text='Form '+ROMAN[m[1]];
+    o.text=lab;
+  }
+  function doText(n,inWalk){
+    var par=n.parentElement; if(!par) return;
+    var tag=par.tagName;
+    if(tag==='OPTION'){ if(!inWalk && (inScope(par.parentElement)||inScope(par))) doOption(par); return; }  /* options hushughulikiwa tofauti (kubadilisha o.text hubadilisha node) */
+    if(tag==='SCRIPT'||tag==='STYLE'||tag==='TEXTAREA') return;
+    if(!inScope(par)) return;
+    var cur=n.nodeValue, rec=txt.get(n);
+    if(rec && cur!==rec.t){ rec=null; txt.delete(n); }
+    var tr=trStr(rec?rec.o:cur);
+    if(tr===null) return;
+    if(!rec) txt.set(n,{o:cur,t:tr});
+    n.nodeValue=tr;
+  }
+  function doAttr(el){
+    if(!inScope(el)) return;
+    var cur=atr.get(el)||{};
+    for(var i=0;i<ATTRS.length;i++){
+      var a=ATTRS[i]; if(!el.hasAttribute(a)) continue;
+      var val=el.getAttribute(a), rec=cur[a];
+      if(rec && val!==rec.t){ rec=null; delete cur[a]; }
+      var tr=trStr(rec?rec.o:val);
+      if(tr===null) continue;
+      if(!rec) cur[a]={o:val,t:tr};
+      el.setAttribute(a,tr);
+    }
+    if(el.tagName==='OPTGROUP' && el.hasAttribute('label')){
+      var lv=el.getAttribute('label'), r2=cur.label;
+      if(r2 && lv!==r2.t){ r2=null; delete cur.label; }
+      var t2=trStr(r2?r2.o:lv);
+      if(t2!==null){ if(!r2) cur.label={o:lv,t:t2}; el.setAttribute('label',t2); }
+    }
+    for(var k in cur){ if(has(cur,k)){ atr.set(el,cur); break; } }
   }
   function walk(root){
     if(root.nodeType===3){ doText(root); return; }
     if(root.nodeType!==1) return;
+    if(root.closest && root.closest(SKIP) && !root.closest(OUTUI)) return;
     if(root.tagName==='OPTION'){ doOption(root); return; }
     var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null),n;
-    while((n=w.nextNode())) doText(n);
-    var os=root.querySelectorAll?root.querySelectorAll('option'):[];
-    for(var i=0;i<os.length;i++) doOption(os[i]);
+    while((n=w.nextNode())) doText(n,true);
+    var os=root.querySelectorAll('option');
+    for(var i=0;i<os.length;i++) if(inScope(os[i].parentElement)) doOption(os[i]);
+    var es=root.querySelectorAll('[placeholder],[title],optgroup[label]');
+    for(var j=0;j<es.length;j++) doAttr(es[j]);
+    if(root.hasAttribute && (root.hasAttribute('placeholder')||root.hasAttribute('title'))) doAttr(root);
   }
   function restore(){
-    txt.forEach(function(rec,n){ if(n.isConnected){ if(n.nodeValue===rec.t) n.nodeValue=rec.o; } });
+    txt.forEach(function(rec,n){ if(n.isConnected && n.nodeValue===rec.t) n.nodeValue=rec.o; });
     txt.clear();
     opt.forEach(function(base,o){ if(o.isConnected) o.text=base; });
     opt.clear();
+    atr.forEach(function(cur,el){
+      if(!el.isConnected) return;
+      for(var a in cur){ if(has(cur,a) && el.getAttribute(a)===cur[a].t) el.setAttribute(a,cur[a].o); }
+    });
+    atr.clear();
   }
-  function observe(){ if(obs) obs.observe(document.body,{childList:true,subtree:true,characterData:true}); }
+  function observe(){ if(obs) obs.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['placeholder','title']}); }
   function apply(){
     if(obs) obs.disconnect();
     try{
@@ -12766,9 +12815,54 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
       for(var i=0;i<list.length;i++){
         var r=list[i];
         if(r.type==='characterData'){ doText(r.target); }
+        else if(r.type==='attributes'){ doAttr(r.target); }
         else { for(var j=0;j<r.addedNodes.length;j++) walk(r.addedNodes[j]); }
       }
     }finally{ observe(); }
+  }
+
+  /* Ujumbe wa alert(): hutafsiriwa tu Sekondari + English */
+  var _alert=window.alert;
+  window.alert=function(m){
+    try{ if(active() && typeof m==='string'){ var t=trStr(m); if(t!==null) m=t; } }catch(e){}
+    return _alert.call(window,m);
+  };
+
+
+  /* ===== Awamu 3A: lugha ya maudhui ya AI (Mitihani, Marking, Tathmini) + lebo za hati ===== */
+  window.secT=function(sw,en){ try{ return active()?en:sw; }catch(e){ return sw; } };
+  var DIR_EN='\n\n[LANGUAGE OVERRIDE — HIGHEST PRIORITY] The teacher is working in English. Write ALL of your output in clear English: every question, instruction, option, heading, note, rubric, marking guide and the complete answer key — even if the instructions above are written in Kiswahili or ask for Kiswahili. Keep the required JSON keys, JSON structure and markdown structure exactly as specified; only the human-readable text values and headings must be in English (for example use "SECTION" instead of "SEHEMU", "Marks" instead of "Alama", "ANSWER KEY" instead of "MWONGOZO WA MAJIBU", and write the class as "Form I/II/III/IV" instead of "Kidato"). Do not mix languages inside the document.';
+  function aiNeedsEn(){
+    if(!active()) return false;
+    var v=(typeof currentView!=='undefined')?currentView:'';
+    var id={mitihani:'mt_subject',marking:'mk_subject',tathmini:'ta_subject'}[v];
+    if(!id) return false;
+    var el=document.getElementById(id);
+    return !(el && el.value==='Kiswahili');      /* somo la Kiswahili hubaki Kiswahili */
+  }
+  window.secSubj=function(v){ try{ return (active() && has(OPTSUBJ,v))?OPTSUBJ[v]:v; }catch(e){ return v; } };
+  window.secGrade=function(g){ try{ var m=active() && /^Kidato ([1-6])$/.exec(norm(g)); return m?('Form '+ROMAN[m[1]]):g; }catch(e){ return g; } };
+  function dirFor(){
+    var v=(typeof currentView!=='undefined')?currentView:'';
+    var ids={mitihani:['mt_grade','mt_subject'],marking:['mk_grade','mk_subject'],tathmini:['ta_grade','ta_subject']}[v];
+    var extra='';
+    if(ids){
+      var g=document.getElementById(ids[0]), s=document.getElementById(ids[1]);
+      if(g&&s) extra=' The subject in English is "'+window.secSubj(s.value)+'" and the class is "'+window.secGrade(g.value)+'": use exactly these names in titles and headings, in the form "SUBJECT — FORM" (never "SOMO:", "KIDATO" or "DARASA").';
+    }
+    return DIR_EN+extra;
+  }
+  var _cc=window.callClaude;
+  if(typeof _cc==='function'){
+    window.callClaude=async function(prompt,maxTokens,extra){
+      var en=false; try{ en=aiNeedsEn(); }catch(e){}
+      if(!en) return _cc.call(this,prompt,maxTokens,extra);
+      var DIR=dirFor();
+      var oldNote=window.MT_VARIANT_NOTE;
+      if(oldNote) window.MT_VARIANT_NOTE=oldNote+DIR;      /* note ya toleo huongezwa mwishoni na callClaude */
+      try{ return await _cc.call(this,prompt+DIR,maxTokens,extra); }
+      finally{ window.MT_VARIANT_NOTE=oldNote; }
+    };
   }
 
   window.setSecLang=function(l){
