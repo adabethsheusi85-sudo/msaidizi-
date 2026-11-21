@@ -13111,6 +13111,570 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
+<script id="sfFollow">
+/* ===== SMART USER FOLLOW-UP — HATUA 2 HADI 5 =====
+   2) Kurekodi matukio muhimu  3) Maoni + ujumbe ndani ya app  4) Admin SMART USER MONITORING  5) Vikumbusho vya masharti
+   Kiongezeo huru. Hakibadilishi Firebase Authentication, malipo, leseni, Worker, Azimio wala AI.
+   Kinasikiliza tu (kubonyeza, kubadilisha ukurasa, matokeo ya Azimio) na kuandika makusanyo MAPYA: follow/{uid} na feedback/{id}.
+   Kikishindwa (Rules hazijawekwa, mtandao), app inaendelea kama kawaida. */
+(function(){
+  'use strict';
+  /* ---------- MIPANGILIO (badilisha hapa tu) ---------- */
+  var CFG={
+    PAY_DELAY_H:2,        // ujumbe wa "umekwama kwenye malipo" subiri saa 2 baada ya kufungua malipo
+    BLOCK_DELAY_H:4,      // ujumbe wa Azimio/kizuizi subiri saa 4 baada ya tukio la mwisho
+    GAP_DAYS:3,           // pengo kati ya ukumbusho na ukumbusho wa aina ileile
+    MAX_AB:2,             // ujumbe A na B uonekane mara 2 tu kwa mwalimu mmoja
+    C_GAP_DAYS:7,  C_MAX:3,
+    V_GAP_DAYS:14, V_MAX:3,// ujumbe wa thamani: mara chache sana
+    E_GAP_DAYS:30, E_MAX:2,
+    SNOOZE_LATER_D:3, SNOOZE_CLOSE_D:7,
+    WA_GAP_DAYS:3, WA_MAX:3, // kwa admin: pengo na idadi ya juu ya vikumbusho vya WhatsApp kwa mwalimu mmoja
+    SUPPORT_WA:''         // namba ya WhatsApp ya msaada (mfano '2557XXXXXXXX'); tupu = kitufe hakionekani
+  };
+  var DAY=86400000, HOUR=3600000, TZ='Africa/Dar_es_Salaam';
+  var TXT={
+    A:'Habari mwalimu! Tunaomba kujua, huduma yetu umekwama wapi? Umetengeneza Azimio lako lakini bado hujakamilisha malipo ya leseni. Lipia TSh 3,000 tu kwa mwezi ili uweze kupakua maazimio yako na kuendelea kutumia huduma zetu nyingine.',
+    B:'Habari mwalimu! Tunaona bado hujakamilisha usajili wako wa kulipia. Je, umekutana na changamoto yoyote kwenye malipo? Tupo tayari kukusaidia.',
+    C:'Je, unajua kuwa Msaidizi wa Mwalimu ana huduma nyingine kama kutengeneza mitihani, marking scheme, Andalio na zana nyingine za kitaaluma? Kwa TSh 3,000 tu kwa mwezi unapata huduma nyingi.',
+    V:'Una masomo 6, lakini utalipia TSh 3,000 tu kwa mwezi! Pamoja na Azimio la Kazi, utapata huduma nyingine nyingi za kitaaluma ndani ya Msaidizi wa Mwalimu. Bei yetu ni nafuu ukilinganisha na thamani ya huduma unazopata. Kama hujaridhika au umekutana na changamoto, tungependa kusikia maoni yako ili tuboreshe huduma zetu.',
+    S:'Habari mwalimu! Tumeona ulianza kutengeneza Azimio lakini hujakamilisha. Umekwama wapi? Tupo tayari kukusaidia.',
+    E:'Je, huduma zetu zimekidhi matarajio yako? Tungependa kusikia maoni yako ili tuboreshe.'
+  };
+  var KIND={A:'svc',B:'svc',E:'svc',C:'promo',V:'promo'};   /* huduma muhimu vs matangazo */
+  var CHOICES=[['satisfied','Nimeridhika.'],['price','Bei ni changamoto.'],['payment_stuck','Nimekwama kwenye malipo.'],['usage_problem','Nina changamoto ya kutumia mfumo.'],['missing_service','Huduma ninayotafuta haipo.'],['suggestion','Nina pendekezo jingine.']];
+  var CH_LBL={}; CHOICES.forEach(function(c){CH_LBL[c[0]]=c[1];});
+  var SVC_NAMES={azimio:'Azimio la Kazi',mitihani:'Kutunga Mitihani',marking:'Marking Scheme',andalio:'Andalio la Somo',tathmini:'Tathmini ya Haraka',ratiba:'Ratiba ya Shule',hub:'Kituo cha Alama',benki:'Benki ya Maswali',michoro:'Zana za Kuchora'};
+  var OTHER_SVC=['mitihani','marking','andalio'];
+
+  /* ---------- Vifaa vidogo ---------- */
+  function $(i){return document.getElementById(i);}
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function ms(v){if(v==null)return 0;if(typeof v==='number')return v;if(typeof v.toMillis==='function')return v.toMillis();if(v instanceof Date)return v.getTime();return 0;}
+  function fdb(){return firebase.firestore();}
+  function SV(){return firebase.firestore.FieldValue.serverTimestamp();}
+  function INC(n){return firebase.firestore.FieldValue.increment(n);}
+  function fmt(t){if(!t)return '—';try{return new Date(t).toLocaleString('en-GB',{timeZone:TZ,day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return ''+t;}}
+  function dayKey(t){try{return new Date(t).toLocaleDateString('en-CA',{timeZone:TZ});}catch(e){return '';}}
+  function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+  function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+  function isAdminNow(){try{return !!(window.__msLic&&window.__msLic().admin);}catch(e){return false;}}
+  function licensed(){try{return !!(window.__msLic&&window.__msLic().licensed);}catch(e){return false;}}
+  function warn(m,e){try{console.warn('Smart follow-up: '+m,e);}catch(x){}}
+
+  var CSS='#sfMsgCard{position:fixed;left:12px;right:12px;bottom:12px;z-index:8200;max-width:430px;margin:0 auto;background:#fff;border:1px solid #d8cfb4;border-left:5px solid #d9932f;border-radius:12px;padding:14px 14px 12px;box-shadow:0 8px 30px rgba(0,0,0,.28);font-family:"Helvetica Neue",Arial,sans-serif;color:#222;display:none}'
+  +'#sfMsgCard b.sfh{display:block;font-size:12px;letter-spacing:.4px;color:#777;margin-bottom:4px}#sfMsgCard p{font-size:14px;line-height:1.5;margin:4px 0 10px}'
+  +'#sfMsgCard .sfx{position:absolute;top:6px;right:8px;border:0;background:transparent;font-size:20px;line-height:1;color:#888;cursor:pointer;padding:4px 8px}'
+  +'.sfb{border:0;border-radius:6px;padding:9px 13px;font-weight:700;font-size:13px;cursor:pointer;color:#fff;background:#15291F;margin:4px 6px 0 0}.sfb.alt{background:#d9932f}.sfb.red{background:#b3261e}.sfb.gray{background:#777}.sfb:disabled{opacity:.55;cursor:wait}'
+  +'#sfMsgCard a.sfl{display:inline-block;margin-top:8px;font-size:11.5px;color:#777;text-decoration:underline;cursor:pointer}'
+  +'#sfFb{position:fixed;inset:0;z-index:9250;display:none;align-items:center;justify-content:center;padding:14px;background:rgba(0,0,0,.6);overflow:auto;font-family:"Helvetica Neue",Arial,sans-serif;color:#222}'
+  +'#sfFb .sfc{background:#F4EFE1;border-radius:12px;padding:18px;width:100%;max-width:440px;max-height:92vh;overflow:auto}'
+  +'#sfFb h3{margin:0 0 8px;font-size:17px}#sfFb label.sfr{display:flex;gap:8px;align-items:flex-start;padding:7px 4px;font-size:14px;cursor:pointer}#sfFb label.sfr input{margin-top:3px;width:auto}'
+  +'#sfFb textarea{width:100%;box-sizing:border-box;min-height:84px;padding:9px 11px;border:1px solid #bbb;border-radius:6px;font-size:14px;margin:6px 0;font-family:inherit}'
+  +'#sfFb .sfm{font-size:13px;min-height:18px;margin:6px 0}#sfFb .sfm.err{color:#b3261e}#sfFb .sfm.ok{color:#2e7d32}#sfFb hr{border:0;border-top:1px solid #d8cfb4;margin:12px 0}'
+  +'#fbBar button#sfFbBtn{background:#2f6f8f}#fbBar button#sfAdmBtn{background:#8a5cc0}'
+  +'#sfAdm{position:fixed;inset:0;z-index:9150;display:none;overflow:auto;background:var(--chalk,#F4EFE1);font-family:"Helvetica Neue",Arial,sans-serif;color:#222}'
+  +'#sfAdm .sfa-in{max-width:1150px;margin:0 auto;padding:14px 14px 50px}#sfAdm h2{margin:0;font-size:19px}#sfAdm h3{font-size:15px;margin:18px 0 6px}'
+  +'#sfAdm .sfa-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-right:60px}'
+  +'#sfAdm .sfa-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}#sfAdm .sfa-f label{font-size:12px;color:#555;display:block}'
+  +'#sfAdm select,#sfAdm input[type=date],#sfAdm input[type=search]{width:100%;box-sizing:border-box;padding:8px 9px;border:1px solid #bbb;border-radius:6px;font-size:13px;background:#fff}'
+  +'#sfAdm .sfa-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:10px 0}'
+  +'#sfAdm .sfa-card{background:#fff;border:1px solid #d8cfb4;border-radius:8px;padding:8px 10px}#sfAdm .sfa-card b{display:block;font-size:21px}#sfAdm .sfa-card span{font-size:12px;color:#555}'
+  +'#sfAdm .sfa-wrap{overflow-x:auto;background:#fff;border:1px solid #d8cfb4;border-radius:8px}#sfAdm table{border-collapse:collapse;width:100%;font-size:13px;min-width:900px}'
+  +'#sfAdm th{background:#15291F;color:#F4EFE1;text-align:left;padding:8px 9px;white-space:nowrap}#sfAdm td{padding:7px 9px;border-top:1px solid #eadfc2;vertical-align:top}'
+  +'#sfAdm small{display:block;color:#666;font-size:11.5px;line-height:1.35;word-break:break-all}'
+  +'#sfAdm .sfa-note{background:#fff3d6;border:1px solid #e3c470;border-radius:8px;padding:8px 12px;font-size:13px;margin:10px 0}'
+  +'#sfAdm .sfa-msg{font-size:13px;min-height:18px;margin:4px 0}#sfAdm .sfa-msg.err{color:#b3261e}'
+  +'#sfAdm .chip{display:inline-block;padding:2px 9px;border-radius:12px;color:#fff;font-weight:700;font-size:12px;background:#777}'
+  +'#sfAdm .chip.TRIAL{background:#2f6f8f}#sfAdm .chip.ACTIVE{background:#2e7d32}#sfAdm .chip.EXPIRED{background:#b3261e}#sfAdm .chip.PAYMENT_PENDING{background:#8a5cc0}'
+  +'#sfAdm .ok{color:#2e7d32;font-weight:700}#sfAdm .no{color:#b3261e}';
+  function addCss(){if($('sfCss2'))return;var s=document.createElement('style');s.id='sfCss2';s.textContent=CSS;document.head.appendChild(s);}
+
+  /* =====================================================================
+     HATUA 2: KUREKODI MATUKIO (hati moja ndogo kwa mwalimu: follow/{uid})
+     ===================================================================== */
+  var uid='', disabled=false, doc=null, TS={}, Q=null, flushT=null, cardShown=false, curSession=0;
+  function newQ(){return {set:{},inc:{},svc:{},msgAt:{},msgN:{}};}
+  Q=newQ();
+  function qDirty(){return Object.keys(Q.set).length||Object.keys(Q.inc).length||Object.keys(Q.svc).length||Object.keys(Q.msgAt).length||Object.keys(Q.msgN).length;}
+  function sched(){if(flushT)return;flushT=setTimeout(function(){flushT=null;flush();},6000);}
+  function build(){
+    var p={updatedAt:SV()},k;
+    for(k in Q.set)p[k]=(Q.set[k]===TS)?SV():Q.set[k];
+    for(k in Q.inc)p[k]=INC(Q.inc[k]);
+    if(Object.keys(Q.svc).length){p.svc={};for(k in Q.svc)p.svc[k]=INC(Q.svc[k]);}
+    if(Object.keys(Q.msgAt).length){p.msgAt={};for(k in Q.msgAt)p.msgAt[k]=SV();}
+    if(Object.keys(Q.msgN).length){p.msgN={};for(k in Q.msgN)p.msgN[k]=INC(Q.msgN[k]);}
+    return p;
+  }
+  function flush(){
+    if(!uid||disabled||!qDirty())return;
+    var p=build();Q=newQ();
+    fdb().collection('follow').doc(uid).set(p,{merge:true}).catch(function(e){
+      warn('imeshindwa kuandika',e);
+      if(e&&e.code==='permission-denied')disabled=true;   /* Rules hazijawekwa: acha kujaribu */
+    });
+  }
+  function mirror(k,v){if(!doc)doc={};doc[k]=v;}
+  function mirrorInc(k){if(!doc)doc={};doc[k]=(doc[k]||0)+1;}
+  /* touch: rekodi tukio. thr = muda wa chini (ms) kati ya maandishi mawili ya tukio lilelile kwenye kifaa hiki */
+  function touch(key,lastF,cntF,extra,thr){
+    if(!uid||disabled||isAdminNow())return;
+    var now=Date.now(),lk='sf_t_'+uid+'_'+key,prev=+lsGet(lk)||0;
+    if(thr&&now-prev<thr)return;
+    lsSet(lk,String(now));
+    if(lastF){Q.set[lastF]=TS;mirror(lastF,now);}
+    if(cntF){Q.inc[cntF]=(Q.inc[cntF]||0)+1;mirrorInc(cntF);}
+    if(extra)for(var k in extra){Q.set[k]=extra[k];mirror(k,extra[k]);}
+    sched();
+  }
+  function touchSvc(v){
+    if(!uid||disabled||isAdminNow()||!SVC_NAMES[v])return;
+    var now=Date.now(),lk='sf_t_'+uid+'_svc_'+v,prev=+lsGet(lk)||0;
+    if(now-prev<30*60000)return;
+    lsSet(lk,String(now));
+    Q.svc[v]=(Q.svc[v]||0)+1;
+    if(!doc)doc={};doc.svc=doc.svc||{};doc.svc[v]=(doc.svc[v]||0)+1;
+    sched();
+  }
+  function noteOpen(){
+    var today=dayKey(Date.now()),k='sf_day_'+uid;
+    touch('open','lastOpen',null,null,0);
+    if(lsGet(k)!==today){lsSet(k,today);Q.inc.days=(Q.inc.days||0)+1;Q.set.lastDay=today;mirrorInc('days');sched();}
+  }
+
+  /* --- vichochezi (vyote ni vya kusikiliza tu) --- */
+  function currentV(){try{return (typeof currentView!=='undefined')?currentView:'';}catch(e){return '';}}
+  function hookView(){
+    var o=window.showView; if(typeof o!=='function'||o.__sf2)return false;
+    var w=function(v){
+      var r=o.apply(this,arguments);
+      try{
+        if(currentV()===v){
+          touchSvc(v);
+          if(v==='azimio')touch('azenter','lastAzEnter','nAzEnter',null,5*60000);
+          if(v==='dashboard')scheduleCard(2500);
+        }
+      }catch(e){}
+      return r;
+    };
+    w.__sf2=true;window.showView=w;return true;
+  }
+  function hookExport(){
+    var o=window.azExportAllowed; if(typeof o!=='function'||o.__sf2)return false;
+    var w=async function(){
+      try{touch('dltry','lastDlTry','nDlTry',null,30000);}catch(e){}
+      var r=await o.apply(this,arguments);
+      try{
+        if(r)touch('dlok','lastDlOk','nDlOk',null,30000);
+        else if(!licensed())touch('lic','lastLicBlock','nLicBlock',null,HOUR);
+      }catch(e){}
+      return r;
+    };
+    w.__sf2=true;window.azExportAllowed=w;return true;
+  }
+  var lastDoneId='';
+  function hookAzStatus(){
+    var st=$('az_status'); if(!st)return false;
+    new MutationObserver(function(){
+      try{
+        if(!/^Azimio limetengenezwa/.test(st.textContent||''))return;
+        var id=(typeof azLastMeta!=='undefined'&&azLastMeta)?String(azLastMeta.id):'';
+        if(!id||id===lastDoneId)return;
+        lastDoneId=id;touch('azdone','lastAzDone','nAzDone',null,0);
+      }catch(e){}
+    }).observe(st,{childList:true,characterData:true,subtree:true});
+    return true;
+  }
+  function bindClicks(){
+    document.addEventListener('click',function(e){
+      var t=e.target;if(!t||!t.closest)return;
+      try{
+        if(t.closest('#az_btn'))touch('azstart','lastAzStart','nAzStart',null,60000);
+        if(t.closest('#msPayBtn')||(t.closest('#msBadge')&&!licensed()))touch('payopen','lastPayOpen','nPayOpen',null,10*60000);
+        var d=t.closest('[data-pay]');
+        if(d){
+          var k=d.getAttribute('data-pay');
+          if(k==='now'){touch('payopen','lastPayOpen','nPayOpen',null,10*60000);touch('paynow','lastPayNow',null,null,0);}
+          if(k==='paid')setTimeout(function(){
+            if(document.querySelector('#msPP .msbox.pend,#msModal .msbox.pend,#msPay .msbox.pend'))touch('paidclick','lastPaidClick',null,null,0);
+          },4000);
+        }
+      }catch(x){}
+    },true);
+    document.addEventListener('change',function(e){
+      var t=e.target;if(!t||!t.id)return;
+      if(t.id==='az_grade'||t.id==='az_subject'||t.id==='az_term'){
+        var g=$('az_grade'),s=$('az_subject');
+        try{touch('azsel','lastAzSel',null,{azGrade:String((g&&g.value)||'').slice(0,60),azSubject:String((s&&s.value)||'').slice(0,60)},10*60000);}catch(x){}
+      }
+    },true);
+    setInterval(function(){          /* skrini ya "muda umeisha" = kizuizi cha leseni */
+      var p=$('msPay');
+      if(p&&p.style.display==='flex'&&!isAdminNow())touch('lic','lastLicBlock','nLicBlock',null,HOUR);
+    },3000);
+    document.addEventListener('visibilitychange',function(){if(document.hidden)flush();});
+    window.addEventListener('pagehide',flush);
+  }
+
+  /* =====================================================================
+     HATUA 3 + 5: UJUMBE NDANI YA APP NA VIKUMBUSHO VYA MASHARTI
+     ===================================================================== */
+  function pick(d){
+    if(!d||isAdminNow())return null;
+    var now=Date.now(),msgAt=d.msgAt||{},n=d.msgN||{};
+    if(ms(d.snoozeUntil)>now)return null;
+    var lastAny=0;for(var k in msgAt)lastAny=Math.max(lastAny,ms(msgAt[k]));
+    if(now-lastAny<DAY)return null;                                  /* ujumbe mmoja tu kwa siku */
+    var days=d.days||0,adsOff=d.adsOff===true,svc=d.svc||{};
+    var azDone=ms(d.lastAzDone),payOpen=ms(d.lastPayOpen),paidClick=ms(d.lastPaidClick),block=Math.max(azDone,ms(d.lastLicBlock),ms(d.lastDlTry));
+    var gap=function(c,dd){return now-ms(msgAt[c])>=dd*DAY;};
+    if(licensed()){                                                   /* aliyelipa: ombi la maoni tu */
+      if(!d.lastFeedback&&days>=3&&(d.nDlOk||0)>0&&gap('E',CFG.E_GAP_DAYS)&&(n.E||0)<CFG.E_MAX)return 'E';
+      return null;
+    }
+    var awaiting=paidClick&&now-paidClick<3*DAY;                      /* ameshatuma NIMELIPA: usimsumbue */
+    if(!awaiting){
+      if(payOpen&&now-payOpen>=CFG.PAY_DELAY_H*HOUR&&(n.B||0)<CFG.MAX_AB&&gap('B',CFG.GAP_DAYS))return 'B';
+      if(azDone&&!(d.nDlOk>0)&&now-block>=CFG.BLOCK_DELAY_H*HOUR&&(n.A||0)<CFG.MAX_AB&&gap('A',CFG.GAP_DAYS))return 'A';
+    }
+    if(!adsOff){
+      var other=OTHER_SVC.some(function(s){return svc[s]>0;});
+      if(azDone&&!other&&now-azDone>=CFG.BLOCK_DELAY_H*HOUR&&(n.C||0)<CFG.C_MAX&&gap('C',CFG.C_GAP_DAYS))return 'C';
+      if(days>=2&&now-Math.max(block,payOpen)>=CFG.BLOCK_DELAY_H*HOUR&&(n.V||0)<CFG.V_MAX&&gap('V',CFG.V_GAP_DAYS))return 'V';
+    }
+    return null;
+  }
+  function overlayOpen(){
+    var ids=['msPay','msPP','msModal','sfPf','sfFb','sfAdm','msAdm','azMon'];
+    for(var i=0;i<ids.length;i++){var e=$(ids[i]);if(e&&e.style.display&&e.style.display!=='none')return true;}
+    return document.body.classList.contains('msRO');
+  }
+  var cardTimer=null;
+  function scheduleCard(delay){
+    if(cardShown||!uid||disabled||!doc)return;
+    clearTimeout(cardTimer);
+    cardTimer=setTimeout(function(){
+      if(cardShown||!uid||!doc)return;
+      if(currentV()!=='dashboard'||overlayOpen())return;
+      var c=pick(doc);if(!c)return;
+      cardShown=true;showCard(c);
+    },delay);
+  }
+  function snooze(days){var u=Date.now()+days*DAY;Q.set.snoozeUntil=firebase.firestore.Timestamp.fromMillis(u);mirror('snoozeUntil',u);sched();flush();}
+  function hideCard(){var c=$('sfMsgCard');if(c)c.style.display='none';}
+  function showCard(code){
+    addCss();
+    var c=$('sfMsgCard');if(!c){c=document.createElement('div');c.id='sfMsgCard';document.body.appendChild(c);}
+    var btns='',promo=KIND[code]==='promo';
+    if(code==='A'||code==='B')btns='<button type="button" class="sfb alt" data-sf="pay">LIPA SASA</button><button type="button" class="sfb" data-sf="help">Nahitaji msaada</button><button type="button" class="sfb gray" data-sf="later">Baadaye</button>';
+    else if(code==='C')btns='<button type="button" class="sfb alt" data-sf="svc">Angalia huduma</button><button type="button" class="sfb gray" data-sf="later">Baadaye</button>';
+    else if(code==='V')btns='<button type="button" class="sfb alt" data-sf="fb">Toa maoni</button><button type="button" class="sfb gray" data-sf="later">Sawa</button>';
+    else btns='<button type="button" class="sfb alt" data-sf="fb">Toa maoni</button><button type="button" class="sfb gray" data-sf="later">Baadaye</button>';
+    if(CFG.SUPPORT_WA&&(code==='A'||code==='B'))btns+='<a class="sfb" style="display:inline-block;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/'+esc(CFG.SUPPORT_WA)+'">WhatsApp</a>';
+    c.innerHTML='<button type="button" class="sfx" data-sf="close" aria-label="Funga">&times;</button><b class="sfh">MSAIDIZI WA MWALIMU</b><p>'+esc(TXT[code])+'</p>'+btns+(promo?'<br><a class="sfl" data-sf="adsoff">Acha kupokea matangazo</a>':'');
+    c.style.display='block';
+    Q.msgAt[code]=1;Q.msgN[code]=(Q.msgN[code]||0)+1;                /* rekodi kuwa umeonyeshwa */
+    if(!doc)doc={};doc.msgAt=doc.msgAt||{};doc.msgAt[code]=Date.now();doc.msgN=doc.msgN||{};doc.msgN[code]=(doc.msgN[code]||0)+1;
+    sched();
+    c.onclick=function(e){
+      var t=e.target&&e.target.closest?e.target.closest('[data-sf]'):null;if(!t)return;
+      var a=t.getAttribute('data-sf');
+      if(a==='pay'){hideCard();var b=$('msPayBtn')||$('msBadge');if(b)b.click();}   /* ukurasa wa malipo uliopo, haubadilishwi */
+      else if(a==='help'){hideCard();openFb(code==='B'||code==='A'?'payment_stuck':'');}
+      else if(a==='fb'){hideCard();openFb('');}
+      else if(a==='svc'){hideCard();try{var g=document.querySelector('#view-dashboard .card-grid');if(g)g.scrollIntoView({behavior:'smooth',block:'start'});}catch(x){}snooze(CFG.SNOOZE_LATER_D);}
+      else if(a==='later'){hideCard();snooze(CFG.SNOOZE_LATER_D);}
+      else if(a==='close'){hideCard();snooze(CFG.SNOOZE_CLOSE_D);}
+      else if(a==='adsoff'){hideCard();setAds(false);}
+    };
+  }
+  /* kuacha / kuruhusu matangazo: follow.adsOff + profiles.smsConsent */
+  function setAds(on,done){
+    if(!uid)return;
+    Q.set.adsOff=!on;mirror('adsOff',!on);sched();
+    fdb().collection('profiles').doc(uid).update({smsConsent:!!on,consentAt:SV(),consentVersion:'v1',updatedAt:SV()})
+      .then(function(){if(done)done(true);}).catch(function(e){warn('profaili haikubadilika',e);if(done)done(false);});
+    flush();
+  }
+
+  /* ---------- Maoni ---------- */
+  function openFb(preset){
+    addCss();
+    var m=$('sfFb');if(!m){m=document.createElement('div');m.id='sfFb';document.body.appendChild(m);}
+    var h='<div class="sfc"><h3>Je, huduma zetu zimekidhi matarajio yako?</h3>';
+    CHOICES.forEach(function(c){h+='<label class="sfr"><input type="radio" name="sfch" value="'+c[0]+'"'+(preset===c[0]?' checked':'')+'><span>'+esc(c[1])+'</span></label>';});
+    h+='<textarea id="sfFbTxt" maxlength="1000" placeholder="Andika maoni yako hapa (hiari, isipokuwa kwa pendekezo)..."></textarea>'
+      +'<div class="sfm" id="sfFbMsg"></div><button type="button" class="sfb alt" id="sfFbSend">TUMA KWA ADMIN</button><button type="button" class="sfb gray" id="sfFbX">Funga</button>'
+      +'<hr><label class="sfr"><input type="checkbox" id="sfAds"><span>Naruhusu vikumbusho na matangazo kupitia SMS/WhatsApp.</span></label><div class="sfm" id="sfAdsMsg" style="font-size:12px"></div>'
+      +'<small style="color:#666;font-size:11.5px">Maoni yako yanaonekana na admin pekee. Usiandike nenosiri wala taarifa za malipo.</small></div>';
+    m.innerHTML=h;m.style.display='flex';
+    fdb().collection('profiles').doc(uid).get().then(function(s){if(s.exists&&$('sfAds'))$('sfAds').checked=s.data().smsConsent===true;}).catch(function(){});
+    $('sfAds').onchange=function(){
+      var on=this.checked,box=this;
+      setAds(on,function(ok){var x=$('sfAdsMsg');if(x)x.textContent=ok?(on?'Umekubali kupokea vikumbusho na matangazo.':'Hutapokea tena matangazo.'):'Imeshindwa kuhifadhi. Jaribu tena.';if(!ok)box.checked=!on;});
+    };
+    $('sfFbX').onclick=function(){m.style.display='none';};
+    $('sfFbSend').onclick=function(){
+      var r=m.querySelector('input[name=sfch]:checked'),say=function(t,c){var x=$('sfFbMsg');x.textContent=t||'';x.className='sfm'+(c?' '+c:'');};
+      var txt=($('sfFbTxt').value||'').trim();
+      if(!r){say('Chagua jibu moja.','err');return;}
+      if(r.value==='suggestion'&&txt.length<3){say('Andika pendekezo lako.','err');return;}
+      var last=+lsGet('sf_fb_last')||0;if(Date.now()-last<60000){say('Subiri dakika moja kisha utume tena.','err');return;}
+      var b=$('sfFbSend');b.disabled=true;say('Inatuma...');
+      var rec={uid:uid,choice:r.value,createdAt:SV(),status:'new',v:1};if(txt)rec.text=txt.slice(0,1000);
+      fdb().collection('feedback').add(rec).then(function(){
+        lsSet('sf_fb_last',String(Date.now()));
+        Q.set.lastFeedback=TS;Q.set.fbChoice=r.value;mirror('lastFeedback',Date.now());sched();flush();
+        say('Asante! Maoni yako yamefika kwa admin.','ok');$('sfFbTxt').value='';
+        setTimeout(function(){m.style.display='none';},1800);
+      }).catch(function(e){b.disabled=false;say((e&&e.code==='permission-denied')?'Imekataliwa: Security Rules za maoni bado hazijawekwa.':'Imeshindwa kutuma. Angalia intaneti kisha jaribu tena.','err');});
+    };
+  }
+  window.sfOpenFeedback=function(){if(uid)openFb('');};
+  function ensureBarBtns(){
+    var bar=$('fbBar'),out=$('fbOut');if(!bar||!out)return false;
+    if(!$('sfFbBtn')){var b=document.createElement('button');b.type='button';b.id='sfFbBtn';b.textContent='Maoni';bar.insertBefore(b,out);b.onclick=function(){if(uid)openFb('');};}
+    return true;
+  }
+
+  /* =====================================================================
+     HATUA 4: ADMIN — SMART USER MONITORING
+     ===================================================================== */
+  var A={rows:[],fb:[],shown:100,loading:false};
+  function calcStatus(d){
+    var now=Date.now(),sub=d.subscription||{},e=ms(sub.expiryDate),created=ms(d.createdAt),te=ms(d.trialExpiryDate)||(created?created+7*DAY:0),st;
+    if(e)st=e>now?'ACTIVE':'EXPIRED';else if(te)st=te>now?'TRIAL':'EXPIRED';else st='UNKNOWN';
+    var pay=d.paymentStatus||'NONE',base=st;
+    if(pay==='PENDING'&&(st==='TRIAL'||st==='EXPIRED'))st='PAYMENT_PENDING';
+    return {status:st,base:base,paidEver:!!e,pay:pay};
+  }
+  var STAGES={
+    AWAIT:{l:'Anasubiri uthibitisho wa malipo',p:0,t:null},
+    PAYOPEN:{l:'Alifungua malipo, hajamaliza',p:1,t:'B'},
+    DLBLOCK:{l:'Alijaribu kupakua bila leseni',p:2,t:'A'},
+    AZDONE:{l:'Ametengeneza Azimio (hajalipa)',p:3,t:'A'},
+    AZSTART:{l:'Ameanza kutengeneza Azimio, hajamaliza',p:4,t:'S'},
+    AZSEL:{l:'Amechagua darasa/somo/muhula',p:5,t:'S'},
+    AZENTER:{l:'Ameingia Azimio tu',p:6,t:'V'},
+    OPEN:{l:'Amefungua mfumo tu',p:7,t:'V'},
+    RENEW:{l:'Leseni imeisha (amelipa zamani)',p:8,t:'A'},
+    NONE:{l:'Hajaonekana bado',p:9,t:'V'},
+    ACTIVE:{l:'Amelipa (ACTIVE)',p:10,t:null}
+  };
+  function stageOf(c,f){
+    if(c.paidEver&&c.base==='ACTIVE')return 'ACTIVE';
+    if(c.paidEver&&c.base==='EXPIRED')return 'RENEW';
+    if(c.pay==='PENDING'||ms(f.lastPaidClick))return 'AWAIT';
+    if(ms(f.lastPayOpen))return 'PAYOPEN';
+    if((ms(f.lastLicBlock)||ms(f.lastDlTry))&&!(f.nDlOk>0))return 'DLBLOCK';
+    if(ms(f.lastAzDone))return 'AZDONE';
+    if(ms(f.lastAzStart))return 'AZSTART';
+    if(ms(f.lastAzSel))return 'AZSEL';
+    if(ms(f.lastAzEnter)||(f.svc&&f.svc.azimio>0))return 'AZENTER';
+    if(ms(f.lastOpen))return 'OPEN';
+    return 'NONE';
+  }
+  function lastAct(f){return Math.max(ms(f.lastOpen),ms(f.lastAzEnter),ms(f.lastAzDone),ms(f.lastPayOpen),ms(f.lastDlTry),ms(f.lastFeedback));}
+  function firstName(r){var n=(r.p.fullName||r.u.name||'').trim();return n?n.split(/\s+/)[0]:'';}
+  function tplText(code,r){
+    var t=TXT[code]||TXT.V,fn=firstName(r);
+    if(/^Habari mwalimu!/.test(t))return fn?t.replace(/^Habari mwalimu!/,'Habari Mwalimu '+fn+'!'):t;
+    return (fn?'Habari Mwalimu '+fn+'! ':'Habari mwalimu! ')+t;
+  }
+  function waState(r){
+    var f=r.f,now=Date.now(),n=f.waN||0,at=ms(f.waAt);
+    if(!r.p.phone)return {ok:false,why:'Hana namba'};
+    if(r.p.smsConsent!==true)return {ok:false,why:'Hajaruhusu'};
+    if(r.stage==='ACTIVE')return {ok:false,why:'Amelipa ✓'};
+    if(r.stage==='AWAIT')return {ok:false,why:'Thibitisha malipo yake'};
+    if(n>=CFG.WA_MAX)return {ok:false,why:'Vikumbusho '+n+' vimetumwa'};
+    if(at&&now-at<CFG.WA_GAP_DAYS*DAY)return {ok:false,why:'Subiri siku '+Math.ceil((CFG.WA_GAP_DAYS*DAY-(now-at))/DAY)};
+    return {ok:true};
+  }
+  window.__sfTest={calcStatus:calcStatus,stageOf:stageOf,pick:pick,waState:waState,setUid:function(u){uid=u;},setDoc:function(d){doc=d;},tplText:tplText,STAGES:STAGES};
+
+  function loadAdmin(){
+    if(A.loading)return;A.loading=true;
+    var db=fdb(),m=$('sfaMsg');m.className='sfa-msg';m.textContent='Inapakia...';
+    Promise.all([
+      db.collection('users').limit(1000).get(),
+      db.collection('profiles').limit(1000).get(),
+      db.collection('follow').limit(1000).get(),
+      db.collection('feedback').orderBy('createdAt','desc').limit(200).get()
+    ]).then(function(res){
+      var P={},F={};
+      res[1].forEach(function(d){P[d.id]=d.data()||{};});
+      res[2].forEach(function(d){F[d.id]=d.data()||{};});
+      A.rows=[];
+      res[0].forEach(function(d){
+        var u=d.data()||{},f=F[d.id]||{},c=calcStatus(u);
+        A.rows.push({id:d.id,u:u,p:P[d.id]||{},f:f,c:c,stage:stageOf(c,f),last:lastAct(f)});
+      });
+      A.fb=[];res[3].forEach(function(d){var x=d.data()||{};x._id=d.id;A.fb.push(x);});
+      m.textContent='Imepakiwa: walimu '+A.rows.length+' · maoni '+A.fb.length+' · usomaji ~'+(res[0].size+res[1].size+res[2].size+res[3].size)+' (Spark: kikomo 50,000 kwa siku).';
+      A.shown=100;drawAdmin();
+    }).catch(function(e){
+      m.className='sfa-msg err';
+      m.textContent=(e&&e.code==='permission-denied')?'Huna ruhusa au Security Rules mpya (follow/profiles/feedback) hazijawekwa.':'Imeshindwa kupakia: '+((e&&e.message)||e);
+    }).then(function(){A.loading=false;});
+  }
+  function filtered(){
+    var basis=$('sfaBasis').value,fr=$('sfaFrom').value,to=$('sfaTo').value,svc=$('sfaSvc').value,st=$('sfaSt').value,sg=$('sfaStage').value,wa=$('sfaWaOnly').checked,q=($('sfaQ').value||'').trim().toLowerCase();
+    var t0=fr?new Date(fr+'T00:00:00+03:00').getTime():0,t1=to?new Date(to+'T00:00:00+03:00').getTime()+DAY:0;
+    return A.rows.filter(function(r){
+      var t=basis==='reg'?ms(r.u.createdAt):r.last;
+      if(t0&&(!t||t<t0))return false;if(t1&&(!t||t>=t1))return false;
+      if(svc){var has=svc==='azimio'?(ms(r.f.lastAzEnter)||(r.f.svc&&r.f.svc.azimio>0)):(r.f.svc&&r.f.svc[svc]>0);if(!has)return false;}
+      if(st&&r.c.status!==st)return false;
+      if(sg&&r.stage!==sg)return false;
+      if(wa&&r.p.smsConsent!==true)return false;
+      if(q&&[r.u.email,r.u.name,r.p.fullName,r.p.phone,r.id].join(' ').toLowerCase().indexOf(q)<0)return false;
+      return true;
+    });
+  }
+  function drawAdmin(){
+    var list=filtered(),n=list.length,cnt=function(fn){var k=0;list.forEach(function(r){if(fn(r))k++;});return k;};
+    var fbUids={};A.fb.forEach(function(x){fbUids[x.uid]=1;});
+    var cards=[
+      ['Jumla ya waliosajiliwa',n+(n!==A.rows.length?' / '+A.rows.length:'')],
+      ['Walioingia kwenye Azimio',cnt(function(r){return ms(r.f.lastAzEnter)||(r.f.svc&&r.f.svc.azimio>0);})],
+      ['Waliotengeneza Azimio',cnt(function(r){return ms(r.f.lastAzDone);})],
+      ['Walijaribu kupakua bila leseni',cnt(function(r){return (ms(r.f.lastLicBlock)||ms(r.f.lastDlTry))&&!(r.f.nDlOk>0);})],
+      ['Walifungua ukurasa wa malipo',cnt(function(r){return ms(r.f.lastPayOpen);})],
+      ['Waliacha malipo bila kukamilisha',cnt(function(r){return ms(r.f.lastPayOpen)&&!r.c.paidEver&&r.c.pay!=='PENDING'&&!ms(r.f.lastPaidClick);})],
+      ['Waliofanikiwa kulipa',cnt(function(r){return r.c.paidEver;})],
+      ['Wanaorudi tena (siku 2+)',cnt(function(r){return (r.f.days||0)>=2;})],
+      ['Waliotoa maoni/msaada',cnt(function(r){return fbUids[r.id];})],
+      ['Wenye namba ya simu',cnt(function(r){return r.p.phone;})],
+      ['Wenye ruhusa ya WhatsApp/SMS',cnt(function(r){return r.p.smsConsent===true;})]
+    ];
+    $('sfaCards').innerHTML=cards.map(function(c){return '<div class="sfa-card"><b>'+c[1]+'</b><span>'+esc(c[0])+'</span></div>';}).join('');
+    /* huduma zinazotumiwa zaidi */
+    var sv={};Object.keys(SVC_NAMES).forEach(function(k){sv[k]={u:0,v:0};});
+    list.forEach(function(r){var s=r.f.svc||{};for(var k in s){if(sv[k]&&s[k]>0){sv[k].u++;sv[k].v+=s[k];}}});
+    var arr=Object.keys(sv).map(function(k){return [k,sv[k]];}).sort(function(a,b){return b[1].u-a[1].u;});
+    $('sfaSvcTbl').innerHTML='<table style="min-width:360px"><thead><tr><th>Huduma</th><th>Walimu</th><th>Mara zilizofunguliwa</th></tr></thead><tbody>'+arr.map(function(x){return '<tr><td>'+esc(SVC_NAMES[x[0]])+'</td><td>'+x[1].u+'</td><td>'+x[1].v+'</td></tr>';}).join('')+'</tbody></table>';
+    /* jedwali */
+    var sorted=list.slice().sort(function(a,b){var pa=STAGES[a.stage].p,pb=STAGES[b.stage].p;return pa!==pb?pa-pb:b.last-a.last;});
+    var tpl=$('sfaTpl').value,h='';
+    sorted.slice(0,A.shown).forEach(function(r){
+      var w=waState(r),code=tpl||STAGES[r.stage].t,wcell;
+      if(w.ok&&code){wcell='<button type="button" class="sfb alt" data-wa="'+esc(r.id)+'" data-code="'+code+'">WhatsApp ('+code+')</button>';}
+      else wcell='<small class="'+(w.why==='Amelipa ✓'?'ok':'no')+'">'+esc(w.why||'—')+'</small>';
+      if(ms(r.f.waAt))wcell+='<small>Umetumwa: '+esc(fmt(ms(r.f.waAt)))+' · mara '+(r.f.waN||0)+(r.f.waKind?' ('+esc(r.f.waKind)+')':'')+'</small>';
+      h+='<tr><td><b>'+esc(r.p.fullName||r.u.name||'—')+'</b><small>'+esc(r.u.email||'')+'</small><small>UID: '+esc(r.id)+'</small></td>'
+        +'<td>'+esc(r.p.phone||'—')+'<small>'+(r.p.smsConsent===true?'<span class="ok">WA/SMS: ruhusa ✓</span>':'<span class="no">WA/SMS: hajaruhusu</span>')+'</small></td>'
+        +'<td><span class="chip '+r.c.status+'">'+esc(r.c.status)+'</span></td>'
+        +'<td>'+esc(STAGES[r.stage].l)+'<small>Shughuli ya mwisho: '+esc(fmt(r.last))+'</small></td>'
+        +'<td>'+(r.f.days||0)+'<small>Alijisajili: '+esc(fmt(ms(r.u.createdAt)))+'</small></td>'
+        +'<td>'+wcell+'</td></tr>';
+    });
+    $('sfaBody').innerHTML=h||'<tr><td colspan="6" style="text-align:center;padding:16px">Hakuna waliopatikana.</td></tr>';
+    $('sfaMore').style.display=sorted.length>A.shown?'inline-block':'none';
+    /* maoni */
+    var dist={};A.fb.forEach(function(x){dist[x.choice]=(dist[x.choice]||0)+1;});
+    var byId={};A.rows.forEach(function(r){byId[r.id]=r;});
+    var fh='<div class="sfa-note">'+(CHOICES.map(function(c){return esc(c[1])+' <b>'+(dist[c[0]]||0)+'</b>';}).join(' &nbsp;·&nbsp; '))+'</div>';
+    fh+='<div class="sfa-wrap"><table style="min-width:700px"><thead><tr><th>Tarehe</th><th>Mwalimu</th><th>Jibu</th><th>Maoni</th><th>Hali</th></tr></thead><tbody>';
+    A.fb.slice(0,60).forEach(function(x){
+      var r=byId[x.uid]||{p:{},u:{}};
+      fh+='<tr><td>'+esc(fmt(ms(x.createdAt)))+'</td><td><b>'+esc(r.p.fullName||r.u.name||'—')+'</b><small>'+esc(r.u.email||x.uid)+'</small>'+(r.p.phone?'<small>'+esc(r.p.phone)+'</small>':'')+'</td><td>'+esc(CH_LBL[x.choice]||x.choice)+'</td><td>'+esc(x.text||'')+'</td><td>'+(x.status==='read'?'<span class="ok">Imesomwa</span>':'<button type="button" class="sfb" data-fbread="'+esc(x._id)+'">Weka kama imesomwa</button>')+'</td></tr>';
+    });
+    $('sfaFbBox').innerHTML=fh+'</tbody></table></div>';
+  }
+  function openAdminPanel(){
+    addCss();
+    var p=$('sfAdm');
+    if(!p){
+      p=document.createElement('div');p.id='sfAdm';
+      var stOpts='<option value="">Hali ya malipo: zote</option><option>TRIAL</option><option>PAYMENT_PENDING</option><option>ACTIVE</option><option>EXPIRED</option>';
+      var sgOpts='<option value="">Hatua: zote</option>'+Object.keys(STAGES).map(function(k){return '<option value="'+k+'">'+esc(STAGES[k].l)+'</option>';}).join('');
+      var svOpts='<option value="">Huduma: zote</option>'+Object.keys(SVC_NAMES).map(function(k){return '<option value="'+k+'">'+esc(SVC_NAMES[k])+'</option>';}).join('');
+      p.innerHTML='<div class="sfa-in"><div class="sfa-h"><h2>SMART USER MONITORING</h2><button type="button" class="sfb red" id="sfaClose">Funga</button><button type="button" class="sfb" id="sfaRef">Onyesha upya</button></div>'
+        +'<div class="sfa-note">Takwimu zinaanza kujaa walimu wanapotumia toleo hili jipya. Ujumbe wa WhatsApp unatumwa kwa kubonyeza kitufe kisha SEND mwenyewe, kwa waliokubali tu. Usitume zaidi ya 20–30 kwa siku ili kulinda akaunti ya WhatsApp.</div>'
+        +'<div class="sfa-msg" id="sfaMsg"></div>'
+        +'<div class="sfa-f"><div><label>Tarehe ya</label><select id="sfaBasis"><option value="last">Shughuli ya mwisho</option><option value="reg">Kujisajili</option></select></div><div><label>Kuanzia</label><input type="date" id="sfaFrom"></div><div><label>Hadi</label><input type="date" id="sfaTo"></div>'
+        +'<div><label>Huduma</label><select id="sfaSvc">'+svOpts+'</select></div><div><label>Malipo</label><select id="sfaSt">'+stOpts+'</select></div><div><label>Hatua</label><select id="sfaStage">'+sgOpts+'</select></div>'
+        +'<div><label>Ujumbe wa WhatsApp</label><select id="sfaTpl"><option value="">Otomatiki (kulingana na hatua)</option><option value="A">A — Azimio, hajalipa</option><option value="B">B — Malipo hayajakamilika</option><option value="S">S — Amekwama kutengeneza</option><option value="C">C — Huduma nyingine</option><option value="V">V — Thamani ya huduma</option></select></div>'
+        +'<div><label>Tafuta</label><input type="search" id="sfaQ" placeholder="jina, email, simu, UID"></div></div>'
+        +'<label style="font-size:13px"><input type="checkbox" id="sfaWaOnly"> Wenye ruhusa ya WhatsApp/SMS tu</label>'
+        +'<div class="sfa-cards" id="sfaCards"></div><h3>Huduma zinazotumiwa zaidi</h3><div class="sfa-wrap" id="sfaSvcTbl"></div>'
+        +'<h3>Walimu</h3><div class="sfa-wrap"><table><thead><tr><th>Mwalimu</th><th>Simu</th><th>Malipo</th><th>Hatua</th><th>Siku alizorudi</th><th>WhatsApp</th></tr></thead><tbody id="sfaBody"></tbody></table></div>'
+        +'<button type="button" class="sfb" id="sfaMore" style="display:none">Onyesha zaidi</button>'
+        +'<h3>Maoni na msaada</h3><div id="sfaFbBox"></div></div>';
+      document.body.appendChild(p);
+      $('sfaClose').onclick=function(){p.style.display='none';};
+      $('sfaRef').onclick=loadAdmin;
+      $('sfaMore').onclick=function(){A.shown+=100;drawAdmin();};
+      ['sfaBasis','sfaFrom','sfaTo','sfaSvc','sfaSt','sfaStage','sfaTpl','sfaWaOnly'].forEach(function(id){$(id).addEventListener('change',function(){A.shown=100;drawAdmin();});});
+      $('sfaQ').addEventListener('input',function(){A.shown=100;drawAdmin();});
+      p.addEventListener('click',function(e){
+        var t=e.target&&e.target.closest?e.target.closest('button'):null;if(!t)return;
+        var wa=t.getAttribute('data-wa'),fr=t.getAttribute('data-fbread');
+        if(wa){
+          var r=A.rows.filter(function(x){return x.id===wa;})[0];if(!r)return;
+          var code=t.getAttribute('data-code'),w=waState(r);if(!w.ok)return;
+          var url='https://wa.me/'+String(r.p.phone).replace(/\D/g,'')+'?text='+encodeURIComponent(tplText(code,r));
+          window.open(url,'_blank');
+          var u=firebase.auth().currentUser;
+          fdb().collection('follow').doc(wa).set({waAt:SV(),waN:INC(1),waKind:code,waBy:(u&&u.email)||''},{merge:true}).then(function(){
+            r.f.waAt=Date.now();r.f.waN=(r.f.waN||0)+1;r.f.waKind=code;drawAdmin();
+          }).catch(function(x){$('sfaMsg').className='sfa-msg err';$('sfaMsg').textContent='Alama ya "Umetumwa" haikuhifadhiwa: '+((x&&x.code)||x);});
+        }
+        if(fr){
+          fdb().collection('feedback').doc(fr).update({status:'read'}).then(function(){A.fb.forEach(function(x){if(x._id===fr)x.status='read';});drawAdmin();}).catch(function(x){$('sfaMsg').className='sfa-msg err';$('sfaMsg').textContent='Imeshindwa: '+((x&&x.code)||x);});
+        }
+      });
+    }
+    p.style.display='block';
+    if(!A.rows.length)loadAdmin();else drawAdmin();
+  }
+  function syncAdmBtn(){
+    var bar=$('fbBar'),adm=$('msAdmBtn');if(!bar||!adm)return;
+    var b=$('sfAdmBtn');
+    if(!b){b=document.createElement('button');b.type='button';b.id='sfAdmBtn';b.textContent='Smart Monitor';b.style.display='none';bar.insertBefore(b,adm.nextSibling);b.onclick=openAdminPanel;}
+    var show=false;try{show=getComputedStyle(adm).display!=='none';}catch(e){}
+    b.style.display=show?'inline-block':'none';
+  }
+
+  /* =====================================================================
+     KUANZISHA
+     ===================================================================== */
+  function onUser(u){
+    flush();
+    uid='';doc=null;disabled=false;cardShown=false;Q=newQ();hideCard();
+    var fb=$('sfFb');if(fb)fb.style.display='none';
+    if(!u)return;
+    var my=u.uid;
+    setTimeout(function(){
+      var cu=firebase.auth().currentUser;if(!cu||cu.uid!==my)return;
+      if(isAdminNow())return;                                  /* admin hafuatiliwi */
+      uid=my;
+      fdb().collection('follow').doc(my).get().then(function(s){
+        doc=s.exists?(s.data()||{}):{};
+        noteOpen();
+        scheduleCard(6000);
+      }).catch(function(e){warn('imeshindwa kusoma',e);disabled=true;});
+    },3500);
+  }
+  var tries=0;
+  function boot(){
+    if(typeof firebase==='undefined'||!firebase.apps||!firebase.apps.length||typeof firebase.firestore!=='function'){if(++tries<300)setTimeout(boot,400);return;}
+    try{firebase.auth().onAuthStateChanged(onUser);}catch(e){}
+  }
+  function init(){
+    addCss();bindClicks();
+    var t=0,iv=setInterval(function(){
+      var a=hookView(),b=hookExport(),c=$('az_status')?(hookAzStatus.__d||(hookAzStatus.__d=hookAzStatus())):false;
+      if((a&&b&&c)||++t>60)clearInterval(iv);
+    },300);
+    setInterval(function(){ensureBarBtns();syncAdmBtn();},2000);
+    boot();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
 </body>
 </html>
 
