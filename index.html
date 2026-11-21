@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -525,9 +524,12 @@ body.msRO #view-azimio .az-cal-card,body.msRO #view-azimio .layout>.panel:first-
 <button type="button" class="fbg" id="fbGoogle" disabled><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Endelea na Google</span></button>
 <p class="fbn">Hatuoni nenosiri lako la Google. Tunapokea jina na barua pepe tu.</p>
 <div class="fbor">au tumia barua pepe</div>
+<input type="text" id="fbName" placeholder="Jina kamili" autocomplete="name" style="display:none">
+<input type="tel" id="fbPhone" placeholder="Namba ya simu (mf. 0712345678)" autocomplete="tel" inputmode="tel" style="display:none">
 <input type="email" id="fbEmail" placeholder="Barua pepe (email)" autocomplete="email">
 <input type="password" id="fbPass" placeholder="Nenosiri (angalau herufi 6)" autocomplete="current-password">
 <input type="password" id="fbPass2" placeholder="Rudia nenosiri" autocomplete="new-password" style="display:none">
+<div id="fbConsentBox"><label><input type="checkbox" id="fbConsent"><span>Naruhusu kupokea vikumbusho na matangazo kupitia SMS/WhatsApp (hiari).</span></label></div>
 <button type="button" class="fbgo" id="fbGo">Ingia</button>
 <button type="button" class="fbl" id="fbReset">Umesahau nenosiri?</button>
 </div></div>
@@ -12895,5 +12897,220 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();
 </script>
+<script id="sfModule">
+/* ===== SMART USER FOLLOW-UP — HATUA 1: NAMBA YA SIMU NA TAARIFA ZA MAWASILIANO =====
+   Kiongezeo huru. HAKIBADILISHI Firebase Authentication, Google login, malipo, leseni, Worker wala Azimio.
+   Kinasikiliza tu matukio (kubonyeza Jisajili, mtumiaji kuingia) na kuandika kwenye makusanyo MAPYA: profiles/{uid} na phoneIndex/{namba}.
+   Kikishindwa kwa sababu yoyote (Rules hazijawekwa, mtandao), app inaendelea kama kawaida. */
+(function(){
+  'use strict';
+  var VERSION='v1', SKIP_MAX=3, SKIP_GAP=86400000, NEW_MS=15*60000;
+  var $=function(i){return document.getElementById(i);};
+  var pending=null, modalOpen=false, curUid='';
+
+  /* ---------- Ukaguzi wa namba (Tanzania) ---------- */
+  function normPhone(raw){
+    var s=String(raw==null?'':raw).replace(/[\s\-().]/g,'');
+    var n;
+    if(/^\+255\d{9}$/.test(s)) n=s.slice(4);
+    else if(/^255\d{9}$/.test(s)) n=s.slice(3);
+    else if(/^0\d{9}$/.test(s)) n=s.slice(1);
+    else return null;
+    if(!/^[67]\d{8}$/.test(n)) return null;
+    return n;
+  }
+  function junk(n){
+    if(/^(\d)\1{8}$/.test(n)) return true;            /* tarakimu zote zinafanana */
+    if(/(\d)\1{5,}/.test(n)) return true;             /* tarakimu 6+ mfululizo zilezile */
+    if(/^[67](\d)\1{7}$/.test(n)) return true;        /* 0700000000, 0711111111 */
+    var tail=n.slice(1);
+    if(/^(\d\d)\1{3}$/.test(tail)) return true;       /* 12121212 */
+    if(/^(\d\d\d\d)\1$/.test(tail)) return true;      /* 12341234 */
+    var asc='01234567890123456789', desc='98765432109876543210', i, w;
+    for(i=0;i+7<=n.length;i++){ w=n.substr(i,7); if(asc.indexOf(w)>-1||desc.indexOf(w)>-1) return true; }
+    return false;
+  }
+  function checkPhone(raw){
+    var n=normPhone(raw);
+    if(!n) return {ok:false,msg:'Namba ya simu si sahihi. Tumia namba ya Tanzania inayoanza na 0 au +255 (mfano 0712345678).'};
+    if(junk(n)) return {ok:false,msg:'Namba hii inaonekana si halisi (tarakimu zinajirudia). Andika namba yako sahihi.'};
+    return {ok:true,intl:'+255'+n};
+  }
+  function checkName(raw){
+    var s=String(raw==null?'':raw).trim().replace(/\s+/g,' ');
+    var parts=s.split(' ').filter(function(p){return p.length>=2;});
+    if(s.length<3||s.length>100||parts.length<2) return {ok:false,msg:'Andika jina kamili (majina mawili au zaidi).'};
+    return {ok:true,name:s};
+  }
+  window.__sfValidate={phone:checkPhone,name:checkName};   /* kwa majaribio */
+
+  /* ---------- Fomu ya usajili wa email: sehemu mpya (jina, simu, ruhusa) ---------- */
+  function inSignup(){var g=$('fbGo');return !!g&&g.textContent==='Jisajili';}
+  function syncFields(){
+    var up=inSignup(), n=$('fbName'), p=$('fbPhone'), c=$('fbConsentBox');
+    if(n) n.style.display=up?'block':'none';
+    if(p) p.style.display=up?'block':'none';
+    if(c) c.style.display=up?'block':'none';
+  }
+  function gateMsg(t){var m=$('fbMsg');if(m){m.textContent=t;m.className='err';}}
+  function savePending(email,name,phone,consent){
+    pending={email:String(email||'').trim().toLowerCase(),name:name,phone:phone,consent:!!consent,t:Date.now()};
+    try{sessionStorage.setItem('sf_pending',JSON.stringify(pending));}catch(e){}
+  }
+  function loadPending(){
+    var p=pending;
+    if(!p){try{p=JSON.parse(sessionStorage.getItem('sf_pending')||'null');}catch(e){p=null;}}
+    if(p&&Date.now()-p.t>900000)p=null;
+    return p;
+  }
+  function clearPending(){pending=null;try{sessionStorage.removeItem('sf_pending');}catch(e){}}
+  function guard(ev){
+    if(!inSignup()) return;
+    var nm=checkName(($('fbName')||{}).value), ph=checkPhone(($('fbPhone')||{}).value);
+    var bad=!nm.ok?nm.msg:(!ph.ok?ph.msg:'');
+    if(bad){ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();gateMsg(bad);return;}
+    savePending(($('fbEmail')||{}).value,nm.name,ph.intl,($('fbConsent')||{}).checked);
+  }
+  function bindGate(){
+    var go=$('fbGo'); if(!go||!$('fbName')) return false;
+    document.addEventListener('click',function(e){var t=e.target;if(t&&t.closest&&t.closest('#fbGo'))guard(e);},true);
+    document.addEventListener('keydown',function(e){
+      if(e.key!=='Enter')return;var t=e.target;
+      if(t&&t.id&&/^(fbEmail|fbPass|fbPass2|fbName|fbPhone)$/.test(t.id))guard(e);
+    },true);
+    try{
+      var mo=new MutationObserver(syncFields);
+      mo.observe(go,{childList:true,characterData:true,subtree:true,attributes:true});
+      if($('fbTabUp'))mo.observe($('fbTabUp'),{attributes:true});
+    }catch(e){}
+    ['fbTabIn','fbTabUp'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(){setTimeout(syncFields,0);});});
+    syncFields();return true;
+  }
+
+  /* ---------- Kuhifadhi taarifa (profiles + phoneIndex) ---------- */
+  function fdb(){return firebase.firestore();}
+  function sv(){return firebase.firestore.FieldValue.serverTimestamp();}
+  function cacheKey(uid){return 'sf_prof_'+uid;}
+  function saveProfile(u,d){
+    var db=fdb(), idx=db.collection('phoneIndex').doc(d.phone), prof=db.collection('profiles').doc(u.uid);
+    return idx.get().then(function(s){
+      var batch=db.batch();
+      if(!s.exists) batch.set(idx,{uid:u.uid,createdAt:sv()});
+      batch.set(prof,{fullName:d.name,phone:d.phone,smsConsent:!!d.consent,consentAt:sv(),consentVersion:VERSION,source:d.source,createdAt:sv(),updatedAt:sv()});
+      return batch.commit();
+    },function(e){
+      if(e&&e.code==='permission-denied'){var x=new Error('dup');x.code='sf-dup';throw x;}
+      throw e;
+    }).then(function(){
+      try{localStorage.setItem(cacheKey(u.uid),'1');}catch(e){}
+      return syncName(u,d.name,0);
+    });
+  }
+  /* Jina kwenye hati ya users (Rules zilizopo zinaruhusu name+updatedAt). Hati inaweza kuwa bado haijaundwa: jaribu tena kidogo. */
+  function syncName(u,name,n){
+    return fdb().collection('users').doc(u.uid).update({name:name,updatedAt:sv()}).catch(function(){
+      if(n<4) return new Promise(function(r){setTimeout(r,2000);}).then(function(){return syncName(u,name,n+1);});
+    });
+  }
+
+  /* ---------- Ukurasa wa kukamilisha taarifa ---------- */
+  var CSS='#sfPf{position:fixed;inset:0;z-index:9300;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(15,25,20,.88);overflow:auto;font-family:"Helvetica Neue",Arial,sans-serif;color:#222}'
+   +'#sfPf .sfc{background:var(--chalk,#F4EFE1);border-radius:12px;padding:22px;width:100%;max-width:400px;box-shadow:0 10px 40px rgba(0,0,0,.4)}'
+   +'#sfPf h2{margin:0 0 6px;font-size:19px;color:#15291F}#sfPf p{font-size:13.5px;line-height:1.5;margin:6px 0}'
+   +'#sfPf input[type=text],#sfPf input[type=tel]{width:100%;box-sizing:border-box;padding:10px 12px;margin:6px 0;border:1px solid #bbb;border-radius:6px;font-size:14px}'
+   +'#sfPf label.sfk{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.45;margin:8px 0;color:#333}#sfPf label.sfk input{margin-top:2px;width:auto}'
+   +'#sfPf .sfm{font-size:13px;min-height:18px;margin:6px 0}#sfPf .sfm.err{color:#b3261e}#sfPf .sfm.ok{color:#2e7d32}'
+   +'#sfPf button{border:0;border-radius:6px;padding:11px 14px;font-weight:700;font-size:13.5px;cursor:pointer;color:#fff;background:#15291F;width:100%;margin-top:6px}'
+   +'#sfPf button.sfs{background:transparent;color:#555;font-weight:600;text-decoration:underline}#sfPf button:disabled{opacity:.55;cursor:wait}'
+   +'#fbGate #fbConsentBox{font-size:12px;line-height:1.4;color:#444;margin:0 0 10px;display:none}#fbGate #fbConsentBox label{display:flex;gap:8px;align-items:flex-start}#fbGate #fbConsentBox input{width:auto;margin:2px 0 0}';
+  function addCss(){if($('sfCss'))return;var s=document.createElement('style');s.id='sfCss';s.textContent=CSS;document.head.appendChild(s);}
+  function closeModal(){var m=$('sfPf');if(m)m.style.display='none';modalOpen=false;}
+  function skipInfo(uid){
+    var n=0,t=0;try{n=+localStorage.getItem('sf_skips_'+uid)||0;t=+localStorage.getItem('sf_skipat_'+uid)||0;}catch(e){}
+    return {n:n,t:t};
+  }
+  function openModal(u,opts){
+    if(modalOpen) return;
+    addCss(); modalOpen=true;
+    var m=$('sfPf');
+    if(!m){m=document.createElement('div');m.id='sfPf';document.body.appendChild(m);}
+    var canSkip=!!opts.canSkip;
+    m.innerHTML='<div class="sfc"><h2>Kamilisha taarifa zako</h2>'
+      +'<p>'+(opts.source==='google'?'Karibu! Tumechukua jina na email kutoka Google. ':'')+'Tunahitaji namba yako ya simu ili tukusaidie ukikwama na kukutumia taarifa muhimu za akaunti yako.</p>'
+      +'<input type="text" id="sfName" placeholder="Jina kamili" autocomplete="name">'
+      +'<input type="tel" id="sfPhone" placeholder="Namba ya simu (mf. 0712345678)" autocomplete="tel" inputmode="tel">'
+      +'<label class="sfk"><input type="checkbox" id="sfConsent"><span>Naruhusu kupokea vikumbusho na matangazo ya Msaidizi wa Mwalimu kupitia SMS/WhatsApp. (Hiari — unaweza kuacha, na bado utaendelea kutumia huduma.)</span></label>'
+      +'<div class="sfm" id="sfMsg">'+(opts.err?opts.err:'')+'</div>'
+      +'<button type="button" id="sfSave">HIFADHI NA ENDELEA</button>'
+      +(canSkip?'<button type="button" class="sfs" id="sfSkip">Baadaye</button>':'')+'</div>';
+    $('sfName').value=opts.name||''; if(opts.phone)$('sfPhone').value=opts.phone;
+    if(opts.err)$('sfMsg').className='sfm err';
+    m.style.display='flex';
+    function say(t,c){var x=$('sfMsg');x.textContent=t||'';x.className='sfm'+(c?' '+c:'');}
+    $('sfSave').onclick=function(){
+      var nm=checkName($('sfName').value), ph=checkPhone($('sfPhone').value);
+      if(!nm.ok){say(nm.msg,'err');return;} if(!ph.ok){say(ph.msg,'err');return;}
+      var b=$('sfSave');b.disabled=true;say('Inahifadhi...');
+      saveProfile(u,{name:nm.name,phone:ph.intl,consent:$('sfConsent').checked,source:opts.source}).then(function(){
+        clearPending();closeModal();
+      }).catch(function(e){
+        b.disabled=false;
+        if(e&&e.code==='sf-dup') say('Namba hii tayari inatumika na akaunti nyingine. Ikiwa ni yako, ingia kwa akaunti uliyoanza nayo, au tumia namba nyingine.','err');
+        else if(e&&e.code==='permission-denied') say('Imekataliwa na Firestore: Security Rules za taarifa za mawasiliano bado hazijawekwa.','err');
+        else say('Imeshindwa kuhifadhi. Angalia intaneti kisha jaribu tena.','err');
+      });
+    };
+    if(canSkip)$('sfSkip').onclick=function(){
+      try{localStorage.setItem('sf_skips_'+u.uid,String(skipInfo(u.uid).n+1));localStorage.setItem('sf_skipat_'+u.uid,String(Date.now()));}catch(e){}
+      closeModal();
+    };
+  }
+
+  /* ---------- Mtumiaji akiingia: je, ana taarifa? ---------- */
+  function isGoogle(u){try{return (u.providerData||[]).some(function(p){return p&&p.providerId==='google.com';});}catch(e){return false;}}
+  function isAdminNow(){try{return !!(window.__msLic&&window.__msLic().admin);}catch(e){return false;}}
+  function onUser(u){
+    if(!u){curUid='';closeModal();return;}
+    if(u.uid===curUid) return; curUid=u.uid;
+    try{if(localStorage.getItem(cacheKey(u.uid))==='1'){clearPending();return;}}catch(e){}
+    /* subiri kidogo ili hali ya Admin ijulikane (admin halazimishwi) */
+    setTimeout(function(){
+      if(!firebase.auth().currentUser||firebase.auth().currentUser.uid!==u.uid) return;
+      if(isAdminNow()) return;
+      fdb().collection('profiles').doc(u.uid).get().then(function(s){
+        if(s.exists){try{localStorage.setItem(cacheKey(u.uid),'1');}catch(e){}clearPending();return;}
+        var pd=loadPending(), email=String(u.email||'').toLowerCase(), src=isGoogle(u)?'google':'email';
+        if(pd&&pd.email&&pd.email===email){
+          return saveProfile(u,{name:pd.name,phone:pd.phone,consent:pd.consent,source:src}).then(clearPending).catch(function(e){
+            openModal(u,{source:src,canSkip:false,name:pd.name,phone:pd.phone,
+              err:(e&&e.code==='sf-dup')?'Namba hii tayari inatumika na akaunti nyingine. Andika namba nyingine, au ingia kwa akaunti uliyoanza nayo.':'Imeshindwa kuhifadhi taarifa. Jaribu tena.'});
+          });
+        }
+        var created=u.metadata&&u.metadata.creationTime?new Date(u.metadata.creationTime).getTime():0;
+        var fresh=created&&Date.now()-created<NEW_MS;
+        var sk=skipInfo(u.uid);
+        if(!fresh&&sk.n>=1&&Date.now()-sk.t<SKIP_GAP) return;      /* alisema Baadaye: subiri saa 24 */
+        openModal(u,{source:src,canSkip:!fresh&&sk.n<SKIP_MAX,name:u.displayName||''});
+      }).catch(function(e){try{console.warn('Taarifa za mawasiliano: imeshindwa kusoma',e);}catch(x){}});
+    },3500);
+  }
+
+  /* ---------- Kuanzisha (subiri login na Firestore za mfumo wa sasa) ---------- */
+  var tries=0;
+  function boot(){
+    if(typeof firebase==='undefined'||!firebase.apps||!firebase.apps.length||typeof firebase.firestore!=='function'){
+      if(++tries<300)setTimeout(boot,400);return;
+    }
+    try{firebase.auth().onAuthStateChanged(onUser);}catch(e){}
+  }
+  function init(){
+    addCss();
+    var t=0,iv=setInterval(function(){if(bindGate()||++t>50)clearInterval(iv);},200);
+    boot();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
 </body>
 </html>
+
