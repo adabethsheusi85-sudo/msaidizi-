@@ -229,6 +229,12 @@ var CSS = '#view-nukuu .nk-tabs{display:flex;gap:8px;margin-bottom:14px}' +
 '.nk-meta{font:12px "Helvetica Neue",Arial,sans-serif;color:var(--muted);margin-bottom:10px}' +
 '.nk-note{font:11.5px "Helvetica Neue",Arial,sans-serif;color:var(--muted);margin-top:18px;border-top:1px solid var(--paper-line);padding-top:8px}' +
 '.nk-empty{font:13px "Helvetica Neue",Arial,sans-serif;color:var(--muted)}' +
+'.nk-saved{margin-top:16px;border-top:1px solid rgba(244,239,225,.15);padding-top:12px}' +
+'.nk-saved h3{margin:0 0 4px;font:700 14px "Helvetica Neue",Arial,sans-serif;color:var(--amber)}' +
+'.nk-saved .nk-sub{font:12px "Helvetica Neue",Arial,sans-serif;color:var(--sage);margin:0 0 8px}' +
+'.nk-saved .nk-empty{color:var(--sage)}' +
+'.nk-saved-item{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid rgba(244,239,225,.1);font:13px "Helvetica Neue",Arial,sans-serif;color:var(--chalk)}' +
+'.nk-saved-t span{color:var(--sage);font-size:12px}' +
 '@media print{#view-nukuu:not(.nk-lic) .nk-paper{display:none!important}#view-nukuu:not(.nk-lic)::before{content:"Nukuu ni za Preview tu — kuchapisha kunahitaji leseni.";display:block;padding:20px;font:16px Arial,sans-serif}}';
 
 var HTML = '<div class="layout"><div class="panel">' +
@@ -245,7 +251,8 @@ var HTML = '<div class="layout"><div class="panel">' +
 '<button type="button" class="nk-btn" id="nk_go">⚡ Tengeneza Nukuu</button><button type="button" class="nk-btn sec hidden" id="nk_stop">⏹ Simamisha</button><button type="button" class="nk-btn sec hidden" id="nk_resume">▶ Endelea</button>' +
 '<div class="nk-status" id="nk_status"></div>' +
 '<p class="hint">Wenye leseni wanaweza kupakua Word na kunakili; wasio na leseni wanaona <b>Preview</b> tu. Ni rasimu ya AI: mwalimu ahakiki kabla ya kutumia darasani.</p></div>' +
-'<div class="output-panel" style="background:transparent;box-shadow:none"><div class="nk-tools"><button type="button" class="nk-btn" id="nk_dl">⬇️ Pakua Word</button><button type="button" class="nk-btn sec" id="nk_copy">📋 Nakili</button></div><div class="nk-paper nk-locked" id="nk_paper"><div class="nk-wm" id="nk_wm"></div><div class="nk-body" id="nk_body"><p class="nk-empty">Chagua somo na mada kisha bonyeza "Tengeneza Nukuu".</p></div></div></div></div>';
+'<div class="output-panel" style="background:transparent;box-shadow:none"><div class="nk-tools"><button type="button" class="nk-btn" id="nk_dl">⬇️ Pakua Word</button><button type="button" class="nk-btn sec" id="nk_copy">📋 Nakili</button></div><div class="nk-paper nk-locked" id="nk_paper"><div class="nk-wm" id="nk_wm"></div><div class="nk-body" id="nk_body"><p class="nk-empty">Chagua somo na mada kisha bonyeza "Tengeneza Nukuu".</p></div></div>' +
+'<div class="nk-saved"><h3>Nukuu Zilizohifadhiwa</h3><p class="nk-sub">Nukuu huhifadhiwa kiotomatiki kwenye simu/kivinjari hiki tu. Ukifuta data ya kivinjari zitapotea.</p><div id="nk_saved_list"></div></div></div></div>';
 
 function status(msg, isErr){ var s = $('nk_status'); if(!s) return; s.textContent = msg || ''; s.className = 'nk-status' + (isErr ? ' err' : ''); }
 function setBusy(b){
@@ -346,6 +353,51 @@ function setMode(m){
   $('nk_photo_box').classList.toggle('hidden', m !== 'picha');
 }
 
+/* ---------- Kuhifadhi nukuu (kiotomatiki, kwenye kivinjari hiki) ---------- */
+var LS_SAVED = 'nukuu_saved_v1', SAVED_MAX = 30;
+function savedGet(){ try{ var a = JSON.parse(localStorage.getItem(LS_SAVED) || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; } }
+function savedPut(a){ try{ localStorage.setItem(LS_SAVED, JSON.stringify(a)); return true; }catch(e){ return false; } }
+function autosave(){
+  if(!st.meta || !st.meta.id || !st.out.length) return;
+  var rec = { id:st.meta.id, grade:st.meta.grade, subject:st.meta.subject, topic:st.meta.topic, lang:st.meta.lang,
+    out:st.out.slice(), done:st.idx >= st.plan.length, savedAt:new Date().toISOString() };
+  var list = savedGet(), i = list.findIndex(function(x){ return x.id === rec.id; });
+  if(i >= 0) list[i] = rec; else list.unshift(rec);
+  if(list.length > SAVED_MAX) list.length = SAVED_MAX;
+  var dropped = 0;
+  while(!savedPut(list)){
+    if(list.length <= 1){ status('Nafasi ya kuhifadhi imejaa; nukuu hii haikuhifadhiwa. Futa nukuu za zamani.', true); return; }
+    list.pop(); dropped++;
+  }
+  if(dropped) status('Nafasi ya kuhifadhi imejaa — nukuu za zamani zaidi zimeondolewa.', true);
+  renderSaved();
+}
+function renderSaved(){
+  var box = $('nk_saved_list'); if(!box) return;
+  var list = savedGet(), en = isEn(st.ngazi), h = '';
+  if(!list.length){ box.innerHTML = '<p class="nk-empty">Hakuna nukuu zilizohifadhiwa bado.</p>'; return; }
+  list.forEach(function(r){
+    var d = ''; try{ d = new Date(r.savedAt).toLocaleDateString(en ? 'en-GB' : 'sw-TZ'); }catch(e){}
+    h += '<div class="nk-saved-item"><div class="nk-saved-t"><b>' + esc(r.subject) + '</b> — ' + esc(r.grade) + '<br><span>' + esc(r.topic || '') + ' · ' + esc(d) + (r.done ? '' : ' · <i>Haijakamilika</i>') + '</span></div>' +
+      '<div><button type="button" class="nk-btn sec" data-act="open" data-id="' + esc(r.id) + '">📂 Fungua</button><button type="button" class="nk-btn sec" data-act="del" data-id="' + esc(r.id) + '">🗑️ Futa</button></div></div>';
+  });
+  box.innerHTML = h;
+}
+function savedClick(e){
+  var b = e.target && e.target.closest ? e.target.closest('button[data-act]') : null; if(!b) return;
+  var id = b.getAttribute('data-id'), list = savedGet();
+  if(b.getAttribute('data-act') === 'del'){
+    if(!confirm(T('Futa nukuu hii iliyohifadhiwa?'))) return;
+    savedPut(list.filter(function(x){ return x.id !== id; })); renderSaved(); return;
+  }
+  var r = list.filter(function(x){ return x.id === id; })[0]; if(!r) return;
+  if(st.running){ status('Subiri nukuu inayotengenezwa imalize kwanza.', true); return; }
+  st.meta = { id:r.id, grade:r.grade, subject:r.subject, topic:r.topic, lang:r.lang };
+  st.out = r.out.slice(); st.plan = r.out.map(function(){ return null; }); if(!r.done) st.plan.push(null); st.idx = r.out.length;
+  $('nk_resume').classList.add('hidden'); render(); status('');
+  try{ $('nk_paper').scrollIntoView({ behavior:'smooth', block:'start' }); }catch(x){}
+}
+
 /* ---------- Vitendo ---------- */
 async function readPhotos(){
   var files = Array.prototype.slice.call($('nk_files').files || []);
@@ -373,7 +425,7 @@ async function run(from){
     for(var i=from; i<st.plan.length; i++){
       if(st.stop){ status('Imesimamishwa. Bonyeza "Endelea" kuendelea.'); $('nk_resume').classList.remove('hidden'); return; }
       status('Inatengeneza sehemu ' + (i+1) + ' kati ya ' + st.plan.length + ' (' + st.plan[i].title + ')… usifunge ukurasa');
-      st.out[i] = await nkAI(st.plan[i].prompt, st.plan[i].max); st.idx = i + 1; render();
+      st.out[i] = await nkAI(st.plan[i].prompt, st.plan[i].max); st.idx = i + 1; render(); autosave();
     }
     status('Imekamilika ✔ Hii ni Preview ya rasimu; ihakiki.');
   }catch(e){
@@ -394,28 +446,55 @@ function start(){
     var r = planPicha(c, text); st.plan = r.plan;
     if(r.cut) status('Maandishi ni marefu: sehemu ' + MAX_CHUNKS + ' za kwanza tu ndizo zitatengenezwa.');
   }
-  st.out = []; st.idx = 0; st.meta = { grade:grade, subject:subject, topic:t.label, lang:c.lang };
+  st.out = []; st.idx = 0; st.meta = { id:String(Date.now()), grade:grade, subject:subject, topic:t.label, lang:c.lang };
   render(); run(0);
 }
 
+var NK = { card:null, view:null, style:null, booted:false, tries:0 };
+function missingGlobals(){
+  var m = [];
+  function chk(n, ok){ try{ if(!ok()) m.push(n); }catch(e){ m.push(n); } }
+  chk('showView', function(){ return typeof showView === 'function'; });
+  chk('callClaude', function(){ return typeof callClaude === 'function'; });
+  chk('MTAALA_TIE', function(){ return typeof MTAALA_TIE !== 'undefined'; });
+  chk('primaryGrades', function(){ return typeof primaryGrades !== 'undefined'; });
+  chk('secondaryGrades', function(){ return typeof secondaryGrades !== 'undefined'; });
+  chk('primarySubjectsByGrade', function(){ return typeof primarySubjectsByGrade !== 'undefined'; });
+  chk('secondaryOLevelSubjects', function(){ return typeof secondaryOLevelSubjects !== 'undefined'; });
+  chk('secondaryALevelSubjects', function(){ return typeof secondaryALevelSubjects !== 'undefined'; });
+  chk('titles', function(){ return typeof titles === 'object'; });
+  return m;
+}
+function placeCard(grid){
+  var anchor = null;
+  grid.querySelectorAll('.task-card').forEach(function(c){ if(/showView\('andalio'\)/.test(c.getAttribute('onclick') || '')) anchor = c; });
+  if(anchor && anchor.nextSibling) grid.insertBefore(NK.card, anchor.nextSibling); else grid.appendChild(NK.card);
+}
+/* Kinga: app ikijenga upya Dashibodi na kuondoa kadi/skrini, zinarudishwa zenyewe. */
+function ensure(){
+  try{
+    if(!NK.booted) return;
+    var wrap = document.querySelector('.wrap'), grid = document.querySelector('#view-dashboard .card-grid');
+    if(!wrap || !grid) return;
+    if(!document.getElementById('view-nukuu')) wrap.appendChild(NK.view);
+    if(!document.getElementById('nk_card')) placeCard(grid);
+    if(!document.getElementById('nk-css')) document.head.appendChild(NK.style);
+  }catch(e){}
+}
 function boot(){
-  if(typeof showView !== 'function' || typeof callClaude !== 'function' || typeof MTAALA_TIE === 'undefined' ||
-     typeof primaryGrades === 'undefined' || typeof secondaryGrades === 'undefined' || typeof primarySubjectsByGrade === 'undefined' ||
-     typeof secondaryOLevelSubjects === 'undefined' || typeof secondaryALevelSubjects === 'undefined' || typeof titles !== 'object'){
-    console.warn('nukuu.js: vitu vya app havikupatikana; kipengele hakijaanzishwa.'); return;
-  }
+  var miss = missingGlobals();
+  if(miss.length){ window.__nukuuDiag = { booted:false, missing:miss }; return false; }
   var wrap = document.querySelector('.wrap'), grid = document.querySelector('#view-dashboard .card-grid');
-  if(!wrap || !grid) return;
-  var style = document.createElement('style'); style.id = 'nk-css'; style.textContent = CSS; document.head.appendChild(style);
+  if(!wrap || !grid){ window.__nukuuDiag = { booted:false, missing:['.wrap / #view-dashboard .card-grid'] }; return false; }
+  var style = document.createElement('style'); style.id = 'nk-css'; style.textContent = CSS; document.head.appendChild(style); NK.style = style;
 
   titles.nukuu = 'Nukuu za Somo';
-  var view = document.createElement('div'); view.id = 'view-nukuu'; view.className = 'hidden'; view.innerHTML = HTML; wrap.appendChild(view);
+  var view = document.createElement('div'); view.id = 'view-nukuu'; view.className = 'hidden'; view.innerHTML = HTML; wrap.appendChild(view); NK.view = view;
 
-  var card = document.createElement('div'); card.className = 'task-card'; card.id = 'nk_card';
+  var card = document.createElement('div'); card.className = 'task-card'; card.id = 'nk_card'; NK.card = card;
   card.innerHTML = '<div class="icon">📖</div><h3>Nukuu za Somo</h3><p>Nukuu za mada: AI kutoka mtaala wa TIE, au piga picha kurasa za kitabu/karatasi upate nukuu safi (Preview).</p>';
-  card.addEventListener('click', function(){ st.ngazi = (typeof currentNgazi === 'string' && currentNgazi === 'sekondari') ? 'sekondari' : 'msingi'; updateTitle(); showView('nukuu'); nkSetNgazi(st.ngazi); setMode(st.mode); paintWatermark(); applyLic(); });
-  var anchor = null; grid.querySelectorAll('.task-card').forEach(function(c){ if(/showView\('andalio'\)/.test(c.getAttribute('onclick')||'')) anchor = c; });
-  if(anchor && anchor.nextSibling) grid.insertBefore(card, anchor.nextSibling); else grid.appendChild(card);
+  card.addEventListener('click', function(){ st.ngazi = (typeof currentNgazi === 'string' && currentNgazi === 'sekondari') ? 'sekondari' : 'msingi'; updateTitle(); showView('nukuu'); nkSetNgazi(st.ngazi); renderSaved(); setMode(st.mode); paintWatermark(); applyLic(); });
+  placeCard(grid);
 
   $('nk_grade').addEventListener('change', fillSubjects);
   $('nk_subject').addEventListener('change', function(){ fillTopics(); loadDraft(); });
@@ -433,14 +512,25 @@ function boot(){
   $('nk_go').addEventListener('click', start);
   $('nk_stop').addEventListener('click', function(){ st.stop = true; status('Inasimamisha baada ya sehemu hii…'); });
   $('nk_resume').addEventListener('click', function(){ if(!st.running && st.idx < st.plan.length){ $('nk_resume').classList.add('hidden'); run(st.idx); } });
+  $('nk_saved_list').addEventListener('click', savedClick); renderSaved();
   var paper = $('nk_paper');
   ['copy','cut','contextmenu','dragstart','selectstart'].forEach(function(ev){ paper.addEventListener(ev, function(e){ if(!lic()) e.preventDefault(); }); });
+  NK.booted = true; window.__nukuuDiag = { booted:true, missing:[] };
+  return true;
 }
 
 /* ---------- Tafsiri ya Kiingereza (Sekondari + English): Nukuu na Zana za Kuchora ---------- */
 var MC_DICT = {"✨ Chora Kiotomatiki": "✨ Draw Automatically", "Uwanja": "Canvas", "⤢ Panua Uwanja": "⤢ Expand Canvas", "✋ Sogeza": "✋ Pan", "☝ Chagua": "☝ Select", "Punguza mwonekano": "Zoom out", "Kuza mwonekano": "Zoom in", "Rudi kwenye mwonekano wa kawaida": "Reset to normal view", "Ongeza nafasi chini": "Add space below", "⬍ Ongeza urefu": "⬍ Increase height", "Ongeza nafasi kulia": "Add space to the right", "⬌ Ongeza upana": "⬌ Increase width", "💾 Hifadhi": "💾 Save", "▲ Ficha zana": "▲ Hide tools", "Umbo": "Shapes", "☝️ Chagua": "☝️ Select", "▭ Mstatili": "▭ Rectangle", "◻ Mraba": "◻ Square", "◯ Mduara": "◯ Circle", "⬭ Duaradufu": "⬭ Ellipse", "△ Pembetatu": "△ Triangle", "⬠ Poligoni": "⬠ Polygon", "✎ Poligoni huru": "✎ Freehand polygon", "✔ Maliza": "✔ Finish", "Mistari": "Lines", "╱ Mstari": "╱ Line", "➝ Mshale": "➝ Arrow", "∠ Pembe": "∠ Angle", "✏️ Kalamu": "✏️ Pen", "〰 Mto": "〰 River", "🛣 Barabara": "🛣 Road", "↔ Kipimo": "↔ Dimension", "Maandishi": "Text", "🔤 Maandishi": "🔤 Text", "🏷 Lebo + mstari": "🏷 Label + line", "▭ Kisanduku": "▭ Box", "◇ Uamuzi": "◇ Decision", "⬬ Mwanzo/Mwisho": "⬬ Start/End", "Alama": "Symbols", "Ramani / Jiografia": "Maps / Geography", "Dira (K, KS, M, MG)": "Compass (N, S, E, W)", "Mshale wa Kaskazini": "North arrow", "Gridi ya latitudo/longitudo": "Latitude/longitude grid", "Gridi ya koordinati (x,y)": "Coordinate grid (x,y)", "Mlima": "Mountain", "Mji": "Town", "Kijiji": "Village", "Shule": "School", "Hospitali": "Hospital", "Alama ya mahali": "Location marker", "Ziwa": "Lake", "Sayansi": "Science", "Bika (beaker)": "Beaker", "Chupa ya koniko": "Conical flask", "Mrija wa majaribio": "Test tube", "Kipimajoto": "Thermometer", "📍 Weka alama": "📍 Place symbol", "Picha": "Images", "🖼️ Ingiza Picha kutoka Gallery": "🖼️ Insert Image from Gallery", "✂ Kata": "✂ Crop", "↺ Rudisha ukataji": "↺ Undo crop", "Rangi/Unene": "Colour/Thickness", "Mstari": "Line", "Jaza": "Fill", "Unene": "Thickness", "Kitone": "Dashed", "Herufi": "Font size", "Pande": "Sides", "Hariri": "Edit", "↶ Tendua": "↶ Undo", "↷ Rudia": "↷ Redo", "＋ Kubwa": "＋ Larger", "－ Ndogo": "－ Smaller", "✎ Hariri maandishi": "✎ Edit text", "⧉ Nakili": "⧉ Duplicate", "⬆ Mbele": "⬆ Bring forward", "⬇ Nyuma": "⬇ Send backward", "🗑 Futa": "🗑 Delete", "🧹 Futa Yote": "🧹 Clear All", "Karatasi": "Paper", "Mlalo 800×600": "Landscape 800×600", "Mlalo mpana 800×400": "Wide landscape 800×400", "Mraba 600×600": "Square 600×600", "Wima 600×800": "Portrait 600×800", "Wima mrefu 800×1200": "Tall portrait 800×1200", "Mlalo mkubwa 1200×800": "Large landscape 1200×800", "Wima kubwa 1000×1400": "Large portrait 1000×1400", "Mraba mkubwa 1200×1200": "Large square 1200×1200", "Mrefu sana 800×1800": "Extra tall 800×1800", "Gridi": "Grid", "Namba": "Numbers", "Nata kwenye gridi": "Snap to grid", "Hatua": "Step", "Pikseli ngapi ni sentimita 1 kwa mistari ya kipimo": "How many pixels equal 1 centimetre for dimension lines", "px kwa cm": "px per cm", "Faili": "File", "Jina la mchoro": "Drawing name", "Aina ya mchoro": "Drawing type", "Aina: —": "Type: —", "Jiometria": "Geometry", "Hisabati": "Mathematics", "Sayansi na viumbe": "Science and living things", "Vifaa na mashine": "Equipment and machines", "Picha zangu (Gallery)": "My images (Gallery)", "Nyingine": "Other", "💾 Hifadhi kama Mpya": "💾 Save as New", "📄 Mpya": "📄 New", "🖨️ Chapisha": "🖨️ Print", "✔ Tumia kwenye mtihani": "✔ Use in exam", "Ramani za kufundishia ni michoro rahisi unayochora mwenyewe; mfumo huu hauna data ya ramani sahihi za maeneo yote.": "Teaching maps are simple drawings that you draw yourself; this system has no accurate map data for all areas.", "Maktaba ya Michoro na Picha Zangu": "My Drawings and Images Library", "🔍 Tafuta kwa jina": "🔍 Search by name", "Zote": "All", "🖼️ Zenye picha": "🖼️ With images", "✏️ Zilizochorwa tu": "✏️ Drawn only", "⬇️ Nakala rudufu (.json)": "⬇️ Backup (.json)", "⬆️ Rejesha (.json)": "⬆️ Restore (.json)", "📌 Michoro na picha huhifadhiwa": "📌 Drawings and images are saved", "ndani ya kivinjari cha kifaa hiki tu": "only inside this device's browser", "(hakuna seva). Ukifuta data ya kivinjari, ukibadili simu au kivinjari, vitapotea. Bonyeza \"Nakala rudufu\" mara kwa mara na uhifadhi faili hilo mahali salama (mf. WhatsApp, Drive au kompyuta).": "(no server). If you clear the browser data, or change phone or browser, they will be lost. Press \"Backup\" regularly and keep that file somewhere safe (e.g. WhatsApp, Drive or a computer).", "Mfumo huu hauthibitishi usahihi wa kisayansi au wa kijiografia wa ramani na michoro — mwalimu athibitishe kabla ya kuitumia kwenye mtihani.": "This system does not verify the scientific or geographic accuracy of maps and drawings — the teacher should verify before using them in an exam.", "Maelekezo ya mchoro, mf: Chora mraba wenye kila upande wa sentimita 5. / Chora duara lenye kipenyo cha sentimita 8. / Chora pembetatu yenye msingi sentimita 6 na kimo sentimita 4.": "Drawing instructions, e.g.: Draw a square with each side 5 centimetres. / Draw a circle with a diameter of 8 centimetres. / Draw a triangle with a base of 6 centimetres and a height of 4 centimetres.", "⤡ Rudi Ukubwa wa Kawaida": "⤡ Back to Normal Size", "▼ Onyesha zana": "▼ Show tools", "✔ Weka mabadiliko kwenye mtihani": "✔ Apply changes to the exam", "✔ Tumia kwenye swali/mtihani": "✔ Use in question/exam", "Zana za Kuchora (Offline)": "Drawing Tools (Offline)", "Chora maumbo, ramani rahisi, michoro ya sayansi na chati, au ingiza picha kutoka Gallery — bila intaneti. Hifadhi na utumie kwenye maswali na mitihani.": "Draw shapes, simple maps, science diagrams and charts, or insert images from the Gallery — without internet. Save and use them in questions and exams.", "Alama imewekwa. Kwa gridi ya latitudo/longitudo, bonyeza \"Hariri maandishi\" kubadilisha namba. Ni kiolezo cha kufundishia, si ramani sahihi ya eneo.": "Symbol placed. For the latitude/longitude grid, press \"Edit text\" to change the numbers. It is a teaching template, not an accurate map of the area.", "Chagua picha kwanza kwa \"☝ Chagua\", kisha bonyeza \"✂ Kata\".": "First select the image with \"☝ Select\", then press \"✂ Crop\".", "Inasoma picha…": "Reading image…", "Kisanduku kiko nje ya picha au ni kidogo mno — jaribu tena ndani ya picha.": "The box is outside the image or too small — try again inside the image.", "Pembe imewekwa. \"Hariri maandishi\" hukuwezesha kuiita (mf. x) badala ya digrii.": "Angle placed. \"Edit text\" lets you name it (e.g. x) instead of degrees.", "Picha hii haijakatwa.": "This image has not been cropped.", "Picha ni ya aina ya HEIC/HEIF. Inabadilishwa kuwa JPG… (sekunde 5–30; usifunge ukurasa)": "The image is HEIC/HEIF. Converting to JPG… (5–30 seconds; do not close the page)", "Sasa gusa mahali pa kuweka lebo.": "Now tap where to place the label.", "⏳ AI inatengeneza mchoro, subiri sekunde chache…": "⏳ AI is creating the drawing, wait a few seconds…", "⚠️ AI haikuweza kutengeneza mchoro unaotumika. Jaribu tena au tumia maelekezo mafupi zaidi.": "⚠️ AI could not create a usable drawing. Try again or use shorter instructions.", "⚠️ Andika kwanza maelekezo ya mchoro, mf. \"Chora mraba wenye kila upande wa sentimita 5.\"": "⚠️ First type the drawing instructions, e.g. \"Draw a square with each side 5 centimetres.\"", "✓ Picha imeingizwa. Iburute kuisogeza; duara jeupe kubadilisha ukubwa (uwiano unabaki); \"✂ Kata\" kukata; kisha tumia Maandishi, Mshale au Lebo juu yake. Hifadhi ukimaliza.": "✓ Image inserted. Drag it to move it; use the white circle to resize (proportions are kept); \"✂ Crop\" to crop; then use Text, Arrow or Label on top of it. Save when you finish.", "✓ Picha imekatwa. Bonyeza \"↺ Rudisha ukataji\" kurudisha sehemu zilizokatwa.": "✓ Image cropped. Press \"↺ Undo crop\" to restore the cropped parts.", "✓ Ukataji umerudishwa.": "✓ Crop restored."};
 var NK_DICT = {"Nukuu za Somo": "Lesson Notes", "Nukuu za mada: AI kutoka mtaala wa TIE, au piga picha kurasa za kitabu/karatasi upate nukuu safi (Preview).": "Notes by topic: AI from the TIE curriculum, or photograph pages of a book/paper to get clean notes (Preview).", "Shule ya Msingi": "Primary School", "Sekondari": "Secondary", "📚 Kutoka mtaala": "📚 From curriculum", "📷 Kutoka picha": "📷 From photos", "Darasa/Kidato": "Class/Form", "Somo": "Subject", "Hisabati": "Mathematics", "Historia ya Tanzania na Maadili": "Tanzanian History and Ethics", "Mada ndogo (kutoka mtaala wa TIE)": "Sub-topic (from the TIE curriculum)", "…au andika mada mwenyewe (hiari)": "…or type your own topic (optional)", "mfano: Vita vya Maji Maji": "e.g. The Maji Maji War", "Picha za kurasa (hadi 15 kwa kila upakiaji)": "Page photos (up to 15 per upload)", "📷 Soma picha": "📷 Read photos", "🗑️ Futa maandishi": "🗑️ Clear text", "Maandishi yaliyosomwa (yahakiki na urekebishe kabla ya kutengeneza)": "Text read from photos (check and correct before generating)", "Maandishi ya picha yataonekana hapa. Unaweza kuongeza kurasa zaidi hata siku nyingine; yanahifadhiwa kwenye simu hii.": "Text from the photos will appear here. You can add more pages even on another day; it is saved on this phone.", "Maelekezo ya ziada (hiari)": "Extra instructions (optional)", "mfano: eleza kwa mifano ya Tanzania": "e.g. explain with examples from Tanzania", "⚡ Tengeneza Nukuu": "⚡ Generate Notes", "⏹ Simamisha": "⏹ Stop", "▶ Endelea": "▶ Continue", "Wenye leseni wanaweza kupakua Word na kunakili; wasio na leseni wanaona": "Licensed users can download Word and copy; unlicensed users see", "tu. Ni rasimu ya AI: mwalimu ahakiki kabla ya kutumia darasani.": "only. This is an AI draft: the teacher should verify it before using it in class.", "⬇️ Pakua Word": "⬇️ Download Word", "🔒 Pakua Word (leseni)": "🔒 Download Word (licence)", "📋 Nakili": "📋 Copy", "Chagua somo na mada kisha bonyeza \"Tengeneza Nukuu\".": "Choose a subject and topic, then press \"Generate Notes\".", "— Chagua mada ndogo —": "— Choose a sub-topic —", "— Mtaala wa somo hili bado haujaingizwa; andika mada hapa chini —": "— The curriculum for this subject is not added yet; type a topic below —", "Chagua picha kwanza.": "Choose photos first.", "Imesimamishwa. Bonyeza \"Endelea\" kuendelea.": "Stopped. Press \"Continue\" to carry on.", "Imekamilika ✔ Hii ni Preview ya rasimu; ihakiki.": "Completed ✔ This is a draft Preview; please verify it.", "Chagua mada ndogo kutoka mtaala au andika mada.": "Choose a sub-topic from the curriculum or type a topic.", "Soma picha kwanza (au andika/bandika maandishi ya kutosha) kabla ya kutengeneza.": "Read photos first (or type/paste enough text) before generating.", "Inasimamisha baada ya sehemu hii…": "Stopping after this section…", "Hakuna maandishi bado.": "No text yet.", "Nukuu imenakiliwa ✔": "Notes copied ✔", "Imeshindwa kunakili.": "Copy failed.", "Kivinjari hiki hakiruhusu kunakili.": "This browser does not allow copying.", "Tengeneza nukuu kwanza kabla ya kupakua.": "Generate notes first before downloading.", "Tengeneza nukuu kwanza kabla ya kunakili.": "Generate notes first before copying.", "Picha haisomeki. Tumia picha ya JPG au PNG.": "The image cannot be read. Use a JPG or PNG image.", "Kubadilisha picha ya HEIC kumeshindwa (inahitaji intaneti mara ya kwanza). Jaribu tena au tumia JPG.": "Converting the HEIC image failed (needs internet the first time). Try again or use a JPG.", "Hakuna maandishi yaliyosomwa kwenye picha hii.": "No text was read from this image.", "Kikomo cha maombi kimefikiwa. Subiri kidogo kisha jaribu tena.": "The request limit has been reached. Wait a bit and try again.", "Hujaingia au huna ruhusa. Toka (log out), ingia tena kisha jaribu.": "You are not signed in or lack permission. Log out, sign in again, then try.", "Hujaingia. Toka (log out) kisha ingia tena.": "You are not signed in. Log out, then sign in again.", "Kusoma picha kumechelewa sana. Jaribu tena.": "Reading the image took too long. Try again.", "Imeshindwa kuunganisha na seva. Angalia mtandao.": "Could not connect to the server. Check your network.", "Kupakua Nukuu kunahitaji leseni ya malipo ya Msaidizi wa Mwalimu. Preview inapatikana kwa majaribio.": "Downloading notes requires a paid licence of Msaidizi wa Mwalimu. Preview is available for trial.", "Kunakili Nukuu kunahitaji leseni ya malipo ya Msaidizi wa Mwalimu.": "Copying notes requires a paid licence of Msaidizi wa Mwalimu.", "Zana ya Word haijapakia. Pakia ukurasa upya (una mtandao?) kisha jaribu tena.": "The Word tool has not loaded. Reload the page (are you online?) and try again.", "Futa maandishi yote ya mada hii?": "Delete all the text for this topic?", "Kidato 1": "Form I", "Kidato 2": "Form II", "Kidato 3": "Form III", "Kidato 4": "Form IV", "Kidato 5": "Form V", "Kidato 6": "Form VI", "Darasa la 1": "Standard 1", "Darasa la 2": "Standard 2", "Darasa la 3": "Standard 3", "Darasa la 4": "Standard 4", "Darasa la 5": "Standard 5", "Darasa la 6": "Standard 6", "Darasa la 7": "Standard 7", "Darasa la Awali": "Pre-Primary"};
 
+NK_DICT['Nukuu Zilizohifadhiwa'] = 'Saved Notes';
+NK_DICT['Nukuu huhifadhiwa kiotomatiki kwenye simu/kivinjari hiki tu. Ukifuta data ya kivinjari zitapotea.'] = 'Notes are saved automatically on this phone/browser only. If you clear the browser data they will be lost.';
+NK_DICT['Hakuna nukuu zilizohifadhiwa bado.'] = 'No saved notes yet.';
+NK_DICT['📂 Fungua'] = '📂 Open'; NK_DICT['🗑️ Futa'] = '🗑️ Delete'; NK_DICT['Haijakamilika'] = 'Incomplete';
+NK_DICT['Futa nukuu hii iliyohifadhiwa?'] = 'Delete this saved note?';
+NK_DICT['Subiri nukuu inayotengenezwa imalize kwanza.'] = 'Wait for the notes being generated to finish first.';
+NK_DICT['Nafasi ya kuhifadhi imejaa; nukuu hii haikuhifadhiwa. Futa nukuu za zamani.'] = 'Storage is full; these notes were not saved. Delete old notes.';
+NK_DICT['Nafasi ya kuhifadhi imejaa — nukuu za zamani zaidi zimeondolewa.'] = 'Storage is full — the oldest saved notes were removed.';
 var MC_PATS = [
   [/^Nukta (\d+) kati ya 3 imewekwa\.$/, 'Point $1 of 3 placed.'],
   [/^Uwanja sasa ni (.+)\. Mchoro wako haujaguswa\.$/, 'The canvas is now $1. Your drawing was not touched.'],
@@ -565,7 +655,15 @@ function azMathFix(){
   new MutationObserver(fix).observe(out, { childList:true, subtree:true });
 }
 
-if(window.__NK_TEST__){ window.__nk = { trApply:trApply, trLookup:trLookup, NK_DICT:NK_DICT, NK_PATS:NK_PATS, MC_DICT:MC_DICT, MC_PATS:MC_PATS, azMathFix:azMathFix, nkMd:nkMd, nkChunks:nkChunks, planMtaala:planMtaala, planPicha:planPicha, nkLang:nkLang, nkTopicOptions:nkTopicOptions }; }
+if(window.__NK_TEST__){ window.__nk = { autosave:autosave, savedGet:savedGet, renderSaved:renderSaved, _st:st, trApply:trApply, trLookup:trLookup, NK_DICT:NK_DICT, NK_PATS:NK_PATS, MC_DICT:MC_DICT, MC_PATS:MC_PATS, azMathFix:azMathFix, nkMd:nkMd, nkChunks:nkChunks, planMtaala:planMtaala, planPicha:planPicha, nkLang:nkLang, nkTopicOptions:nkTopicOptions }; }
 function ready(fn){ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
-ready(function(){ try{ azMathFix(); }catch(e){ console.warn('azMathFix:', e); } try{ boot(); }catch(e){ console.warn('nukuu.js haikuanza:', e); } try{ i18nInit(); }catch(e){ console.warn('i18n:', e); } });
+function bootRetry(){
+  var ok = false;
+  try{ ok = boot() === true; }catch(e){ console.warn('nukuu.js haikuanza:', e); }
+  if(!ok && ++NK.tries < 15){ setTimeout(bootRetry, 1000); return; }   // app inaweza kuchelewa kupakia vitu vyake
+  try{ i18nInit(); }catch(e){ console.warn('i18n:', e); }
+  if(!ok) console.warn('nukuu.js: kipengele hakijaanzishwa. Vinavyokosekana:', (window.__nukuuDiag && window.__nukuuDiag.missing) || []);
+  setInterval(ensure, 2000);
+}
+ready(function(){ try{ azMathFix(); }catch(e){ console.warn('azMathFix:', e); } bootRetry(); });
 })();
