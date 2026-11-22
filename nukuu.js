@@ -12,7 +12,7 @@ if(window.__nukuuLoaded) return; window.__nukuuLoaded = true;
 
 var MAX_PHOTOS = 15, MAX_CHUNK = 3000, MAX_CHUNKS = 20, MAX_SRC = 70000;
 var LS_DRAFT = 'nukuu_draft_v1';
-var st = { mode:'mtaala', plan:[], out:[], idx:0, running:false, stop:false, meta:null, photoBusy:false };
+var st = { mode:'mtaala', ngazi:'msingi', plan:[], out:[], idx:0, running:false, stop:false, meta:null, photoBusy:false };
 
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -49,21 +49,25 @@ function nkTopicOptions(rec){
 /* ---------- Kujenga mpango wa maombi ---------- */
 var RULES = 'Kanuni: tumia maarifa sahihi tu; USIBUNI takwimu, tarehe, majina wala nukuu usizozijua kwa uhakika (ukiwa na shaka, andika kwa ujumla). ' +
   'Tumia umbizo rahisi: "## " kwa vichwa, "- " kwa orodha, **neno** kwa msisitizo. Usiandike maneno ya mazungumzo kwa mtumiaji; toa nukuu yenyewe tu.';
-function langLine(l){ return l==='en' ? 'Andika nukuu zote kwa Kiingereza fasaha na rahisi kueleweka.' : 'Andika kwa Kiswahili sanifu kinachoeleweka.'; }
+var L = {
+  sw:{ title:'Nukuu za Somo', draft:'Rasimu iliyotengenezwa na AI — mwalimu ahakiki usahihi kabla ya kutumia darasani.', intro:'Utangulizi', examples:'Mifano na Matumizi', summary:'Muhtasari', keys:'Maneno Muhimu', questions:'Maswali ya Kujipima', answers:'Majibu', main:'Maelezo Makuu', concepts:'Dhana Kuu', detail:'Maelezo ya Kina', uses:'Matumizi na Umuhimu' },
+  en:{ title:'Lesson Notes', draft:'AI-generated draft — the teacher should verify accuracy before using it in class.', intro:'Introduction', examples:'Examples and Applications', summary:'Summary', keys:'Key Terms', questions:'Review Questions', answers:'Answers', main:'Main Explanation', concepts:'Key Concepts', detail:'Detailed Explanation', uses:'Applications and Importance' }
+};
+function langLine(l){ return l==='en' ? 'Write EVERYTHING in English, including every heading and label; do not use any Swahili words.' : 'Andika kila kitu kwa Kiswahili sanifu, ikiwemo vichwa vyote.'; }
 function hdr(c){
   return 'Wewe ni mwalimu mzoefu wa ' + c.subject + ' nchini Tanzania. Unaandaa NUKUU ZA SOMO kwa wanafunzi wa ' + c.grade + ', kufuata mtaala wa TIE.\n' +
     'Somo: ' + c.subject + '\nMada kuu: ' + (c.main||'—') + '\nMada ndogo: ' + (c.sub||'—') + '\n' + langLine(c.lang) + '\n' + RULES + '\n' +
     (c.extra ? 'Maelekezo ya ziada ya mwalimu: ' + c.extra + '\n' : '');
 }
 function planMtaala(c){
-  var p = [];
+  var p = [], T = L[c.lang] || L.sw;
   if(c.ngazi === 'msingi'){
     p.push({ title:'Nukuu', max:2200, prompt: hdr(c) +
-      'Andika nukuu fupi na rahisi kwa umri wa ' + c.grade + ' (maneno 350–500, sentensi fupi): ## Utangulizi (sentensi 2–3), ## Maelezo Makuu (pointi/aya fupi), ## Mifano (2–3), ## Muhtasari (pointi 3–5), ## Maswali ya Kujipima (5, bila majibu).' +
+      'Andika nukuu fupi na rahisi kwa umri wa ' + c.grade + ' (maneno 350–500, sentensi fupi) zenye sehemu hizi, kwa vichwa hivi hasa: "## ' + T.intro + '" (sentensi 2–3), "## ' + T.main + '" (pointi/aya fupi), "## ' + T.examples + '" (mifano 2–3), "## ' + T.summary + '" (pointi 3–5), "## ' + T.questions + '" (maswali 5, bila majibu).' +
       (c.items.length ? '\nVipengele vya mtaala vya kufunika: ' + c.items.join('; ') : '') });
     return p;
   }
-  p.push({ title:'Utangulizi', max:1400, prompt: hdr(c) + 'Andika "## Utangulizi": umuhimu wa mada, malengo ya kujifunza (pointi 4–6) na maneno muhimu (key terms) yenye maana fupi. Maneno 200–300.' });
+  p.push({ title:T.intro, max:1400, prompt: hdr(c) + 'Andika "## ' + T.intro + '": umuhimu wa mada, malengo ya kujifunza (pointi 4–6) na maneno muhimu (key terms) yenye maana fupi. Maneno 200–300.' });
   var items = c.items.slice(0, 6);
   if(items.length){
     items.forEach(function(it, i){
@@ -71,13 +75,13 @@ function planMtaala(c){
         'Andika maelezo ya kina ya kipengele hiki cha mtaala: "' + it + '". Anza na kichwa cha "## ". Eleza dhana, hatua au sababu kwa mtiririko, ukitumia vichwa vidogo na orodha pale inapofaa. Maneno 350–500.' });
     });
   }else{
-    ['Dhana Kuu','Maelezo ya Kina','Matumizi na Umuhimu'].forEach(function(t){
+    [T.concepts, T.detail, T.uses].forEach(function(t){
       p.push({ title:t, max:2600, prompt: hdr(c) + 'Andika sehemu ya "## ' + t + '" ya nukuu hii kwa kina (maneno 350–500), kwa vichwa vidogo na orodha pale inapofaa.' });
     });
   }
-  p.push({ title:'Mifano', max:2000, prompt: hdr(c) + 'Andika "## Mifano na Matumizi": mifano 4–6 iliyoelezwa hatua kwa hatua (au mifano halisi ya maisha ya Tanzania pale somo halihusishi hesabu).' });
-  p.push({ title:'Muhtasari', max:1200, prompt: hdr(c) + 'Andika "## Muhtasari" wa mada hii (pointi 6–8) na "## Maneno Muhimu" (orodha fupi).' });
-  p.push({ title:'Maswali', max:1800, prompt: hdr(c) + 'Andika "## Maswali ya Kujipima": maswali 8 ya aina mbalimbali (chaguo, majibu mafupi, maelezo), kisha "## Majibu" yenye majibu mafupi sahihi.' });
+  p.push({ title:T.examples, max:2000, prompt: hdr(c) + 'Andika "## ' + T.examples + '": mifano 4–6 iliyoelezwa hatua kwa hatua (au mifano halisi ya maisha ya Tanzania pale somo halihusishi hesabu).' });
+  p.push({ title:T.summary, max:1200, prompt: hdr(c) + 'Andika "## ' + T.summary + '" wa mada hii (pointi 6–8) na "## ' + T.keys + '" (orodha fupi).' });
+  p.push({ title:T.questions, max:1800, prompt: hdr(c) + 'Andika "## ' + T.questions + '": maswali 8 ya aina mbalimbali (chaguo, majibu mafupi, maelezo), kisha "## ' + T.answers + '" yenye majibu mafupi sahihi.' });
   return p;
 }
 function nkChunks(text){
@@ -100,7 +104,8 @@ function planPicha(c, text){
       'Andika kwa lugha ileile ya maandishi. Toa nukuu tu, bila maelezo yako.' + (c.extra ? '\nMaelekezo ya ziada ya mwalimu: ' + c.extra : '') + '\n\nMaandishi:\n"""\n' + ch + '\n"""' });
   });
   p.push({ title:'Muhtasari na Maswali', max:2200, prompt:
-    'Kutokana na maandishi haya ya somo la ' + c.subject + ' (' + c.grade + '), andika "## Muhtasari" (pointi 5–8) kisha "## Maswali ya Kujipima" (maswali 8 ya aina mbalimbali) na "## Majibu" mafupi. ' +
+    'Kutokana na maandishi haya ya somo la ' + c.subject + ' (' + c.grade + '), andika muhtasari (pointi 5–8), kisha maswali ya kujipima (maswali 8 ya aina mbalimbali) na majibu mafupi. Kila sehemu iwe na kichwa cha "## ". ' +
+    'Vichwa viwe kwa lugha ileile ya maandishi: kama ni Kiingereza tumia "Summary", "Review Questions", "Answers"; kama ni Kiswahili tumia "Muhtasari", "Maswali ya Kujipima", "Majibu". ' +
     'Tumia maudhui ya maandishi haya tu; usibuni ukweli. Andika kwa lugha ileile ya maandishi.\n\nMaandishi:\n"""\n' + text.slice(0, 6000) + '\n"""' });
   return { plan:p, cut:cut };
 }
@@ -214,7 +219,9 @@ var CSS = '#view-nukuu .nk-tabs{display:flex;gap:8px;margin-bottom:14px}' +
 '.nk-btn:disabled{opacity:.5;cursor:not-allowed}' +
 '.nk-status{font:12.5px "Helvetica Neue",Arial,sans-serif;color:var(--sage);margin:10px 0;line-height:1.5}' +
 '.nk-status.err{color:#f0b3a6}' +
-'.nk-paper{position:relative;background:var(--paper);color:var(--ink);border-radius:8px;padding:22px 20px;min-height:220px;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}' +
+'.nk-paper{position:relative;background:var(--paper);color:var(--ink);border-radius:8px;padding:22px 20px;min-height:220px;overflow:hidden}' +
+'.nk-paper.nk-locked{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}' +
+'.nk-tools{display:flex;flex-wrap:wrap;margin-bottom:4px}' +
 '.nk-wm{position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;z-index:2}' +
 '.nk-body{position:relative;z-index:1;font:15px/1.65 Georgia,serif}' +
 '.nk-body h2{margin:0 0 4px;font-size:19px}.nk-body h3{margin:18px 0 6px;font-size:16px;color:var(--amber-dark)}' +
@@ -222,9 +229,10 @@ var CSS = '#view-nukuu .nk-tabs{display:flex;gap:8px;margin-bottom:14px}' +
 '.nk-meta{font:12px "Helvetica Neue",Arial,sans-serif;color:var(--muted);margin-bottom:10px}' +
 '.nk-note{font:11.5px "Helvetica Neue",Arial,sans-serif;color:var(--muted);margin-top:18px;border-top:1px solid var(--paper-line);padding-top:8px}' +
 '.nk-empty{font:13px "Helvetica Neue",Arial,sans-serif;color:var(--muted)}' +
-'@media print{#view-nukuu .nk-paper{display:none!important}#view-nukuu::before{content:"Nukuu ni za Preview tu — haziwezi kuchapishwa.";display:block;padding:20px;font:16px Arial,sans-serif}}';
+'@media print{#view-nukuu:not(.nk-lic) .nk-paper{display:none!important}#view-nukuu:not(.nk-lic)::before{content:"Nukuu ni za Preview tu — kuchapisha kunahitaji leseni.";display:block;padding:20px;font:16px Arial,sans-serif}}';
 
 var HTML = '<div class="layout"><div class="panel">' +
+'<div class="nk-tabs"><button type="button" class="nk-tab on" id="nk_ng_msingi">Shule ya Msingi</button><button type="button" class="nk-tab" id="nk_ng_sek">Sekondari</button></div>' +
 '<div class="nk-tabs"><button type="button" class="nk-tab on" id="nk_tab_mtaala">📚 Kutoka mtaala</button><button type="button" class="nk-tab" id="nk_tab_picha">📷 Kutoka picha</button></div>' +
 '<div class="row2"><div class="field"><label>Darasa/Kidato</label><select id="nk_grade"></select></div><div class="field"><label>Somo</label><select id="nk_subject"></select></div></div>' +
 '<div class="field"><label>Mada ndogo (kutoka mtaala wa TIE)</label><select id="nk_topic"></select></div>' +
@@ -236,8 +244,8 @@ var HTML = '<div class="layout"><div class="panel">' +
 '<div class="field"><label>Maelekezo ya ziada (hiari)</label><textarea id="nk_extra" placeholder="mfano: eleza kwa mifano ya Tanzania"></textarea></div>' +
 '<button type="button" class="nk-btn" id="nk_go">⚡ Tengeneza Nukuu</button><button type="button" class="nk-btn sec hidden" id="nk_stop">⏹ Simamisha</button><button type="button" class="nk-btn sec hidden" id="nk_resume">▶ Endelea</button>' +
 '<div class="nk-status" id="nk_status"></div>' +
-'<p class="hint">Nukuu zinaonekana kama <b>Preview</b> tu (hakuna kupakua wala kuchapisha). Ni rasimu ya AI: mwalimu ahakiki kabla ya kutumia darasani.</p></div>' +
-'<div class="output-panel" style="background:transparent;box-shadow:none"><div class="nk-paper" id="nk_paper"><div class="nk-wm" id="nk_wm"></div><div class="nk-body" id="nk_body"><p class="nk-empty">Chagua somo na mada kisha bonyeza "Tengeneza Nukuu".</p></div></div></div></div>';
+'<p class="hint">Wenye leseni wanaweza kupakua Word na kunakili; wasio na leseni wanaona <b>Preview</b> tu. Ni rasimu ya AI: mwalimu ahakiki kabla ya kutumia darasani.</p></div>' +
+'<div class="output-panel" style="background:transparent;box-shadow:none"><div class="nk-tools"><button type="button" class="nk-btn" id="nk_dl">⬇️ Pakua Word</button><button type="button" class="nk-btn sec" id="nk_copy">📋 Nakili</button></div><div class="nk-paper nk-locked" id="nk_paper"><div class="nk-wm" id="nk_wm"></div><div class="nk-body" id="nk_body"><p class="nk-empty">Chagua somo na mada kisha bonyeza "Tengeneza Nukuu".</p></div></div></div></div>';
 
 function status(msg, isErr){ var s = $('nk_status'); if(!s) return; s.textContent = msg || ''; s.className = 'nk-status' + (isErr ? ' err' : ''); }
 function setBusy(b){
@@ -251,13 +259,37 @@ function paintWatermark(){
   var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="560" height="230"><text x="20" y="130" transform="rotate(-24 280 115)" font-family="Arial" font-size="17" font-weight="700" fill="#000" fill-opacity="0.11">' + xml(t) + '</text></svg>';
   $('nk_wm').style.backgroundImage = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
 }
+function lic(){ try{ var l = window.__msLic && window.__msLic(); return !!(l && l.licensed); }catch(e){ return false; } }
+function applyLic(){
+  var on = lic(), v = $('view-nukuu'), pp = $('nk_paper'), wm = $('nk_wm');
+  if(v) v.classList.toggle('nk-lic', on);
+  if(pp) pp.classList.toggle('nk-locked', !on);
+  if(wm) wm.style.display = on ? 'none' : 'block';
+  var dl = $('nk_dl'); if(dl) dl.textContent = on ? '⬇️ Pakua Word' : '🔒 Pakua Word (leseni)';
+}
 function render(){
-  var m = st.meta || {}, h = '';
+  applyLic();
+  var m = st.meta || {}, T = L[m.lang] || L.sw, h = '';
   if(!st.out.length){ $('nk_body').innerHTML = '<p class="nk-empty">Chagua somo na mada kisha bonyeza "Tengeneza Nukuu".</p>'; return; }
-  h += '<h2>Nukuu za Somo — ' + esc(m.subject) + '</h2><div class="nk-meta">' + esc(m.grade) + (m.topic ? ' · ' + esc(m.topic) : '') + '</div>';
+  h += '<h2>' + esc(T.title) + ' — ' + esc(m.subject) + '</h2><div class="nk-meta">' + esc(m.grade) + (m.topic ? ' · ' + esc(m.topic) : '') + '</div>';
   st.out.forEach(function(o){ if(o) h += nkMd(o); });
-  if(st.idx >= st.plan.length) h += '<div class="nk-note">Rasimu iliyotengenezwa na AI — mwalimu ahakiki usahihi kabla ya kutumia darasani.</div>';
+  if(st.idx >= st.plan.length) h += '<div class="nk-note">' + esc(T.draft) + '</div>';
   $('nk_body').innerHTML = h;
+}
+function download(){
+  if(!st.out.length){ status('Tengeneza nukuu kwanza kabla ya kupakua.', true); return; }
+  if(!lic()){ alert('Kupakua Nukuu kunahitaji leseni ya malipo ya Msaidizi wa Mwalimu. Preview inapatikana kwa majaribio.'); return; }
+  if(typeof domToDocxParagraphs !== 'function' || typeof downloadDocxParagraphs !== 'function'){ alert('Zana ya Word haijapakia. Pakia ukurasa upya (una mtandao?) kisha jaribu tena.'); return; }
+  var m = st.meta || {};
+  try{ downloadDocxParagraphs(domToDocxParagraphs($('nk_body')), 'Nukuu_' + (m.subject||'') + '_' + (m.topic||m.grade||''), null); }
+  catch(e){ alert('Imeshindikana kutengeneza Word: ' + ((e && e.message) || e)); }
+}
+function copyText(){
+  if(!st.out.length){ status('Tengeneza nukuu kwanza kabla ya kunakili.', true); return; }
+  if(!lic()){ alert('Kunakili Nukuu kunahitaji leseni ya malipo ya Msaidizi wa Mwalimu.'); return; }
+  var t = $('nk_body').innerText;
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(function(){ status('Nukuu imenakiliwa ✔'); }, function(){ status('Imeshindwa kunakili.', true); }); }
+  else status('Kivinjari hiki hakiruhusu kunakili.', true);
 }
 
 /* ---------- Mada, maandishi ya picha, rasimu ---------- */
@@ -289,11 +321,23 @@ function fillTopics(){
   sel.appendChild(new Option('— Chagua mada ndogo —', ''));
   groups.forEach(function(g){ var og = document.createElement('optgroup'); og.label = g.label; g.items.forEach(function(i){ og.appendChild(new Option(i.label, i.v)); }); sel.appendChild(og); });
 }
-function fillSubjects(){ var s = $('nk_subject'); s.innerHTML = ''; getSubjectsFor($('nk_grade').value).forEach(function(x){ s.appendChild(new Option(x, x)); }); fillTopics(); loadDraft(); }
+function nkGrades(){ return st.ngazi === 'msingi' ? primaryGrades : secondaryGrades; }
+function nkSubjects(grade){
+  if(st.ngazi === 'msingi') return primarySubjectsByGrade[grade] || primarySubjectsByGrade['Darasa la 7'];
+  var n = parseInt(String(grade||'').replace(/\D/g,''), 10) || 1;
+  if(n >= 5) return secondaryALevelSubjects;
+  return n <= 2 ? secondaryOLevelSubjects.concat(typeof SECONDARY_2023_EXTRA_SUBJECTS !== 'undefined' ? SECONDARY_2023_EXTRA_SUBJECTS : []) : secondaryOLevelSubjects;
+}
+function fillSubjects(){ var s = $('nk_subject'); s.innerHTML = ''; nkSubjects($('nk_grade').value).forEach(function(x){ s.appendChild(new Option(x, x)); }); fillTopics(); loadDraft(); }
 function refresh(){
   var g = $('nk_grade'); g.innerHTML = '';
-  getGradesForNgazi().forEach(function(x){ g.appendChild(new Option(x, x)); });
+  nkGrades().forEach(function(x){ g.appendChild(new Option(x, x)); });
   fillSubjects();
+}
+function nkSetNgazi(n){
+  st.ngazi = n;
+  $('nk_ng_msingi').classList.toggle('on', n === 'msingi'); $('nk_ng_sek').classList.toggle('on', n === 'sekondari');
+  refresh();
 }
 function setMode(m){
   st.mode = m;
@@ -339,7 +383,7 @@ async function run(from){
 function start(){
   if(st.running) return;
   var grade = $('nk_grade').value, subject = $('nk_subject').value, t = curTopic();
-  var c = { grade:grade, subject:subject, ngazi:currentNgazi, lang:nkLang(currentNgazi, subject), main:t.main, sub:t.sub, items:t.items, extra:$('nk_extra').value.trim() };
+  var c = { grade:grade, subject:subject, ngazi:st.ngazi, lang:nkLang(st.ngazi, subject), main:t.main, sub:t.sub, items:t.items, extra:$('nk_extra').value.trim() };
   if(st.mode === 'mtaala'){
     if(!t.sub){ status('Chagua mada ndogo kutoka mtaala au andika mada.', true); return; }
     st.plan = planMtaala(c);
@@ -349,13 +393,14 @@ function start(){
     var r = planPicha(c, text); st.plan = r.plan;
     if(r.cut) status('Maandishi ni marefu: sehemu ' + MAX_CHUNKS + ' za kwanza tu ndizo zitatengenezwa.');
   }
-  st.out = []; st.idx = 0; st.meta = { grade:grade, subject:subject, topic:t.label };
+  st.out = []; st.idx = 0; st.meta = { grade:grade, subject:subject, topic:t.label, lang:c.lang };
   render(); run(0);
 }
 
 function boot(){
   if(typeof showView !== 'function' || typeof callClaude !== 'function' || typeof MTAALA_TIE === 'undefined' ||
-     typeof getGradesForNgazi !== 'function' || typeof getSubjectsFor !== 'function' || typeof titles !== 'object'){
+     typeof primaryGrades === 'undefined' || typeof secondaryGrades === 'undefined' || typeof primarySubjectsByGrade === 'undefined' ||
+     typeof secondaryOLevelSubjects === 'undefined' || typeof secondaryALevelSubjects === 'undefined' || typeof titles !== 'object'){
     console.warn('nukuu.js: vitu vya app havikupatikana; kipengele hakijaanzishwa.'); return;
   }
   var wrap = document.querySelector('.wrap'), grid = document.querySelector('#view-dashboard .card-grid');
@@ -367,7 +412,7 @@ function boot(){
 
   var card = document.createElement('div'); card.className = 'task-card';
   card.innerHTML = '<div class="icon">📖</div><h3>Nukuu za Somo</h3><p>Nukuu za mada: AI kutoka mtaala wa TIE, au piga picha kurasa za kitabu/karatasi upate nukuu safi (Preview).</p>';
-  card.addEventListener('click', function(){ showView('nukuu'); refresh(); setMode(st.mode); paintWatermark(); });
+  card.addEventListener('click', function(){ showView('nukuu'); st.ngazi = (typeof currentNgazi === 'string' && currentNgazi === 'sekondari') ? 'sekondari' : 'msingi'; nkSetNgazi(st.ngazi); setMode(st.mode); paintWatermark(); applyLic(); });
   var anchor = null; grid.querySelectorAll('.task-card').forEach(function(c){ if(/showView\('andalio'\)/.test(c.getAttribute('onclick')||'')) anchor = c; });
   if(anchor && anchor.nextSibling) grid.insertBefore(card, anchor.nextSibling); else grid.appendChild(card);
 
@@ -380,11 +425,15 @@ function boot(){
   $('nk_tab_picha').addEventListener('click', function(){ setMode('picha'); });
   $('nk_read').addEventListener('click', readPhotos);
   $('nk_clear').addEventListener('click', function(){ if(!$('nk_src').value || confirm('Futa maandishi yote ya mada hii?')){ $('nk_src').value = ''; var a = lsGet(LS_DRAFT); delete a[draftKey()]; lsSet(LS_DRAFT, a); srcInfo(); } });
+  $('nk_ng_msingi').addEventListener('click', function(){ nkSetNgazi('msingi'); });
+  $('nk_ng_sek').addEventListener('click', function(){ nkSetNgazi('sekondari'); });
+  $('nk_dl').addEventListener('click', download);
+  $('nk_copy').addEventListener('click', copyText);
   $('nk_go').addEventListener('click', start);
   $('nk_stop').addEventListener('click', function(){ st.stop = true; status('Inasimamisha baada ya sehemu hii…'); });
   $('nk_resume').addEventListener('click', function(){ if(!st.running && st.idx < st.plan.length){ $('nk_resume').classList.add('hidden'); run(st.idx); } });
   var paper = $('nk_paper');
-  ['copy','cut','contextmenu','dragstart','selectstart'].forEach(function(ev){ paper.addEventListener(ev, function(e){ e.preventDefault(); }); });
+  ['copy','cut','contextmenu','dragstart','selectstart'].forEach(function(ev){ paper.addEventListener(ev, function(e){ if(!lic()) e.preventDefault(); }); });
 }
 
 if(window.__NK_TEST__){ window.__nk = { nkMd:nkMd, nkChunks:nkChunks, planMtaala:planMtaala, planPicha:planPicha, nkLang:nkLang, nkTopicOptions:nkTopicOptions }; }
