@@ -450,6 +450,14 @@ function start(){
   render(); run(0);
 }
 
+/* Uchunguzi: fungua tovuti kwa anwani ikiishia ?nkdiag=1 kuona hali ya nukuu.js kwenye skrini (wateja hawaoni). */
+var NKDIAG = false; try{ NKDIAG = location.search.indexOf('nkdiag') >= 0; }catch(e){}
+function nkDiag(txt, ok){
+  if(!NKDIAG || !document.body) return;
+  var el = document.getElementById('nk-diag');
+  if(!el){ el = document.createElement('div'); el.id = 'nk-diag'; el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:6px 10px;font:12px/1.4 Arial,sans-serif;color:#fff;'; document.body.appendChild(el); }
+  el.style.background = ok ? '#1b7f3b' : '#b00020'; el.textContent = txt;
+}
 var NK = { card:null, view:null, style:null, booted:false, tries:0 };
 function missingGlobals(){
   var m = [];
@@ -658,8 +666,14 @@ function azMathFix(){
 if(window.__NK_TEST__){ window.__nk = { autosave:autosave, savedGet:savedGet, renderSaved:renderSaved, _st:st, trApply:trApply, trLookup:trLookup, NK_DICT:NK_DICT, NK_PATS:NK_PATS, MC_DICT:MC_DICT, MC_PATS:MC_PATS, azMathFix:azMathFix, nkMd:nkMd, nkChunks:nkChunks, planMtaala:planMtaala, planPicha:planPicha, nkLang:nkLang, nkTopicOptions:nkTopicOptions }; }
 function ready(fn){ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
 function bootRetry(){
-  var ok = false;
-  try{ ok = boot() === true; }catch(e){ console.warn('nukuu.js haikuanza:', e); }
+  var ok = false, err = '';
+  if(NK.tries === 0) nkDiag('nukuu.js imepakia ✔ (toleo 8) — inaanzisha kadi…', true);
+  try{ ok = boot() === true; }catch(e){ err = String((e && e.message) || e); console.warn('nukuu.js haikuanza:', e); }
+  if(ok){ nkDiag('✔ Nukuu imeanza: kadi (nk_card) imeundwa kwenye Dashibodi.', true); }
+  else{
+    var ms = (window.__nukuuDiag && window.__nukuuDiag.missing) || [];
+    nkDiag('✖ Nukuu bado haijaanza (jaribio ' + (NK.tries + 1) + '/15). ' + (err ? 'Kosa: ' + err + '. ' : '') + (ms.length ? 'Vinavyokosekana kwenye app: ' + ms.join(', ') : ''), false);
+  }
   if(!ok && ++NK.tries < 15){ setTimeout(bootRetry, 1000); return; }   // app inaweza kuchelewa kupakia vitu vyake
   try{ i18nInit(); }catch(e){ console.warn('i18n:', e); }
   if(!ok) console.warn('nukuu.js: kipengele hakijaanzishwa. Vinavyokosekana:', (window.__nukuuDiag && window.__nukuuDiag.missing) || []);
