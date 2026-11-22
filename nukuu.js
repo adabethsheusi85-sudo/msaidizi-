@@ -436,7 +436,39 @@ function boot(){
   ['copy','cut','contextmenu','dragstart','selectstart'].forEach(function(ev){ paper.addEventListener(ev, function(e){ if(!lic()) e.preventDefault(); }); });
 }
 
-if(window.__NK_TEST__){ window.__nk = { nkMd:nkMd, nkChunks:nkChunks, planMtaala:planMtaala, planPicha:planPicha, nkLang:nkLang, nkTopicOptions:nkTopicOptions }; }
+if(window.__NK_TEST__){ window.__nk = { azMathFix:azMathFix, nkMd:nkMd, nkChunks:nkChunks, planMtaala:planMtaala, planPicha:planPicha, nkLang:nkLang, nkTopicOptions:nkTopicOptions }; }
+/* ---------- Marekebisho ya onyesho: Azimio la Sekondari — "Hisabati" -> "Mathematics" ----------
+   Hubadilisha MANENO YA KUONYESHA tu kwenye jibu la Azimio (kichwa, Somo, kitabu rejea, nakala ya maandishi).
+   Haigusi msimbo wa Azimio, Worker, wala data inayotumwa kwa seva. Linatumika tu: Kidato + Hisabati + maudhui ya Kiingereza. */
+function azMathFix(){
+  var out = document.getElementById('az_output');
+  if(!out || !window.MutationObserver) return;
+  var busy = false;
+  function applies(){
+    try{
+      if(typeof azLastMeta === 'undefined' || !azLastMeta) return false;
+      if(!/^\s*hisabati\s*$/i.test(azLastMeta.subject || '')) return false;
+      if(!/^\s*kidato/i.test(azLastMeta.grade || '')) return false;
+      return typeof azLangFor === 'function' ? azLangFor(azLastMeta.subject, azLastMeta.grade, null) === 'en' : true;
+    }catch(e){ return false; }
+  }
+  function toEn(t){ return String(t).replace(/HISABATI/g, 'MATHEMATICS').replace(/\bHisabati\b/g, 'Mathematics'); }
+  function fix(){
+    if(busy || !applies()) return;
+    busy = true;
+    try{
+      var w = document.createTreeWalker(out, NodeFilter.SHOW_TEXT, null), n, list = [];
+      while((n = w.nextNode())){ if(/hisabati/i.test(n.nodeValue)) list.push(n); }
+      list.forEach(function(t){ t.nodeValue = toEn(t.nodeValue); });
+      var h = document.getElementById('az_headLabel'); if(h) h.textContent = toEn(h.textContent);
+      if(typeof lastTextByOutput === 'object' && lastTextByOutput && lastTextByOutput['az_output']) lastTextByOutput['az_output'] = toEn(lastTextByOutput['az_output']);
+      azLastMeta.subject = 'Mathematics'; azLastMeta.title = toEn(azLastMeta.title || '');
+    }catch(e){}
+    busy = false;
+  }
+  new MutationObserver(fix).observe(out, { childList:true, subtree:true });
+}
+
 function ready(fn){ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
-ready(function(){ try{ boot(); }catch(e){ console.warn('nukuu.js haikuanza:', e); } });
+ready(function(){ try{ azMathFix(); }catch(e){ console.warn('azMathFix:', e); } try{ boot(); }catch(e){ console.warn('nukuu.js haikuanza:', e); } });
 })();
