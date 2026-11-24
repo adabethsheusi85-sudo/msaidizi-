@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="sw" translate="no">
 <head>
@@ -911,73 +910,73 @@ body.msRO #view-azimio .az-cal-card,body.msRO #view-azimio .layout>.panel:first-
     <!-- SEKONDARI -->
     <div id="ratiba-panel-sekondari" class="hidden">
       <div class="panel">
-        <h3 class="rt-h">Muda wa Vipindi na Mapumziko — Sekondari</h3>
+        <h3 class="rt-h">Period Times and Breaks — Secondary</h3>
         <div class="row2">
-          <div class="field"><label>Muda wa Kuanza Shule</label><input type="time" id="rt_s_start"></div>
-          <div class="field"><label>Idadi ya Vipindi kwa Siku</label><input type="number" id="rt_s_periods" min="1" max="14"></div>
+          <div class="field"><label>School Start Time</label><input type="time" id="rt_s_start"></div>
+          <div class="field"><label>Number of Periods per Day</label><input type="number" id="rt_s_periods" min="1" max="14"></div>
         </div>
-        <div class="field"><label>Muda wa Kipindi Kimoja (dakika)</label><input type="number" id="rt_s_periodlen" min="10" max="120"></div>
+        <div class="field"><label>Length of One Period (minutes)</label><input type="number" id="rt_s_periodlen" min="10" max="120"></div>
         <div class="field">
-          <label>Siku za Shule</label>
+          <label>School Days</label>
           <div class="days-row" id="rt_s_days">
-            <label class="day-chip"><input type="checkbox" value="Jumatatu"> Jumatatu</label>
-            <label class="day-chip"><input type="checkbox" value="Jumanne"> Jumanne</label>
-            <label class="day-chip"><input type="checkbox" value="Jumatano"> Jumatano</label>
-            <label class="day-chip"><input type="checkbox" value="Alhamisi"> Alhamisi</label>
-            <label class="day-chip"><input type="checkbox" value="Ijumaa"> Ijumaa</label>
-            <label class="day-chip"><input type="checkbox" value="Jumamosi"> Jumamosi</label>
+            <label class="day-chip"><input type="checkbox" value="Jumatatu"> Monday</label>
+            <label class="day-chip"><input type="checkbox" value="Jumanne"> Tuesday</label>
+            <label class="day-chip"><input type="checkbox" value="Jumatano"> Wednesday</label>
+            <label class="day-chip"><input type="checkbox" value="Alhamisi"> Thursday</label>
+            <label class="day-chip"><input type="checkbox" value="Ijumaa"> Friday</label>
+            <label class="day-chip"><input type="checkbox" value="Jumamosi"> Saturday</label>
           </div>
         </div>
       </div>
       <div class="panel">
-        <h3 class="rt-h">Mapumziko — Sekondari</h3>
-        <p class="hint" style="margin-top:0;">Ongeza, badilisha au futa mapumziko kadri shule yako inavyohitaji — hakuna idadi wala nafasi maalum iliyowekwa.</p>
+        <h3 class="rt-h">Breaks — Secondary</h3>
+        <p class="hint" style="margin-top:0;">Add, edit or delete breaks as your school needs — there is no fixed number or position.</p>
         <table class="results-table rt-subj-table">
-          <thead><tr><th>Jina la Mapumziko</th><th style="width:130px;">Baada ya Kipindi Na.</th><th style="width:90px;">Dakika</th><th style="width:40px;"></th></tr></thead>
+          <thead><tr><th>Break Name</th><th style="width:130px;">After Period No.</th><th style="width:90px;">Minutes</th><th style="width:40px;"></th></tr></thead>
           <tbody id="rt_s_breaks_tbody"></tbody>
         </table>
-        <button class="rowBtn" style="margin-top:10px;" onclick="rtAddBreak('sekondari')">+ Ongeza Mapumziko</button>
+        <button class="rowBtn" style="margin-top:10px;" onclick="rtAddBreak('sekondari')">+ Add Break</button>
       </div>
       <div class="panel">
-        <h3 class="rt-h">Muda Halisi wa Kila Kipindi — Sekondari</h3>
-        <p class="hint" style="margin-top:0;">Muda hapa chini unahesabiwa kiotomatiki kutoka mipangilio hapo juu. Kama shule yako ina muda tofauti kwa kipindi fulani, badilisha moja kwa moja hapa.</p>
+        <h3 class="rt-h">Actual Time of Each Period — Secondary</h3>
+        <p class="hint" style="margin-top:0;">The times below are calculated automatically from the settings above. If your school uses a different time for a particular period, change it directly here.</p>
         <table class="results-table rt-times-table">
-          <thead><tr><th>Kipindi</th><th>Kuanza</th><th>Kumaliza</th></tr></thead>
+          <thead><tr><th>Period</th><th>Start</th><th>End</th></tr></thead>
           <tbody id="rt_s_times_tbody"></tbody>
         </table>
-        <button class="rowBtn" style="margin-top:10px;" onclick="rtResetTimes('sekondari')">↺ Rudisha Muda wa Kawaida</button>
+        <button class="rowBtn" style="margin-top:10px;" onclick="rtResetTimes('sekondari')">↺ Reset to Standard Times</button>
       </div>
       <div class="panel">
-        <h3 class="rt-h">Masomo na Vipindi kwa Wiki — Sekondari</h3>
-        <div class="field"><label>Kidato</label><select id="rt_s_grade" onchange="renderRatibaSubjects('sekondari')"></select></div>
-        <p class="hint" style="margin-top:0;">Rekebisha idadi ya vipindi vya wiki kwa kila somo la kidato hiki, na andika jina la mwalimu (kamili au herufi za mwanzo) — mfumo utatengeneza herufi za mwanzo (mfano "Asha Salum" → A.S) kiotomatiki kwenye jedwali la ratiba.</p>
+        <h3 class="rt-h">Subjects and Periods per Week — Secondary</h3>
+        <div class="field"><label>Form</label><select id="rt_s_grade" onchange="renderRatibaSubjects('sekondari')"></select></div>
+        <p class="hint" style="margin-top:0;">Subjects and weekly periods for Forms 1–4 come from the TIE syllabus data. Adjust the number of periods per week for each subject of this form, and enter the teacher's name (full name or initials) — the system will create the initials (e.g. "Asha Salum" → A.S) automatically in the timetable. Where the syllabus does not give periods per week, the box is left empty for you to fill in.</p>
         <table class="results-table rt-subj-table">
-          <thead><tr id="rt_s_subjects_thead"><th>Somo</th><th style="width:110px;">Vipindi/Wiki</th></tr></thead>
+          <thead><tr id="rt_s_subjects_thead"><th>Subject</th><th style="width:110px;">Periods/Week</th></tr></thead>
           <tbody id="rt_s_subjects_tbody"></tbody>
         </table>
       </div>
       <div class="panel">
-        <h3 class="rt-h">Shughuli Nyingine (Baada ya Vipindi vya Masomo)</h3>
-        <div class="field"><label>Muda wa Shughuli Nyingine (dakika)</label><input type="number" id="rt_s_sn_muda" min="0" max="180"></div>
-        <p class="hint" style="margin-top:0;">Andika shughuli ya siku hiyo (mfano: Usafi, Michezo, Klabu za Masomo, Mafunzo). Kama shughuli inabadilika kwa juma, andika hivyo hivyo kwenye kisanduku husika — ratiba bado haijapangi mzunguko huu kiotomatiki.</p>
+        <h3 class="rt-h">Other Activities (After Lessons)</h3>
+        <div class="field"><label>Length of Other Activities (minutes)</label><input type="number" id="rt_s_sn_muda" min="0" max="180"></div>
+        <p class="hint" style="margin-top:0;">Enter the activity for each day (e.g. Cleaning, Sports, Subject Clubs, Training). If an activity changes from week to week, write it that way in the box — the timetable does not rotate it automatically yet.</p>
         <table class="results-table rt-subj-table" id="rt_s_sn_table">
-          <thead><tr><th style="width:130px;">Siku</th><th>Shughuli Nyingine</th></tr></thead>
+          <thead><tr><th style="width:130px;">Day</th><th>Other Activities</th></tr></thead>
           <tbody id="rt_s_sn_tbody"></tbody>
         </table>
       </div>
       <div class="panel">
-        <h3 class="rt-h">Tengeneza Ratiba Kamili — Sekondari</h3>
-        <p class="hint" style="margin-top:0;">Mfumo utapanga vipindi kwa kuzingatia: masomo magumu asubuhi inapowezekana, kuepuka kurudia somo moja mfululizo bila sababu, kusambaza vipindi vya kila somo katika siku tofauti za wiki, kisha kuhakiki mgongano wa somo/kipindi.</p>
-        <button class="generate" style="width:auto;padding:12px 26px;" onclick="generateRatiba('sekondari')">⚡ Tengeneza Ratiba Kamili</button>
-        <button class="rowBtn" style="margin-left:10px;" onclick="downloadRatibaXlsx('sekondari')">⬇️ Pakua Excel (.xlsx)</button>
-        <button class="rowBtn" style="margin-left:10px;" onclick="downloadRatibaDocx('sekondari')">⬇️ Pakua Word (.docx)</button>
+        <h3 class="rt-h">Generate Full Timetable — Secondary</h3>
+        <p class="hint" style="margin-top:0;">The system arranges periods by considering: hard subjects in the morning where possible, avoiding repeating the same subject back-to-back without reason, spreading each subject's periods across different days of the week, and then checking for subject/period clashes.</p>
+        <button class="generate" style="width:auto;padding:12px 26px;" onclick="generateRatiba('sekondari')">⚡ Generate Full Timetable</button>
+        <button class="rowBtn" style="margin-left:10px;" onclick="downloadRatibaXlsx('sekondari')">⬇️ Download Excel (.xlsx)</button>
+        <button class="rowBtn" style="margin-left:10px;" onclick="downloadRatibaDocx('sekondari')">⬇️ Download Word (.docx)</button>
         <div id="rt_s_output" style="margin-top:18px;"></div>
       </div>
       <div class="panel">
-        <h3 class="rt-h">Ratiba ya Somo Moja — Sekondari</h3>
-        <p class="hint" style="margin-top:0;">Baada ya kubofya "Tengeneza Ratiba Kamili" hapo juu, chagua somo ili kuona ratiba yake pekee kwa madarasa/vidato vyote.</p>
-        <div class="field"><label>Somo</label><select id="rt_s_subj_pick"></select></div>
-        <button class="rowBtn" style="width:auto;" onclick="renderSubjectRatiba('sekondari')">Onyesha Ratiba ya Somo</button>
+        <h3 class="rt-h">Single-Subject Timetable — Secondary</h3>
+        <p class="hint" style="margin-top:0;">After clicking "Generate Full Timetable" above, choose a subject to see its timetable alone for all forms.</p>
+        <div class="field"><label>Subject</label><select id="rt_s_subj_pick"></select></div>
+        <button class="rowBtn" style="width:auto;" onclick="renderSubjectRatiba('sekondari')">Show Subject Timetable</button>
         <div id="rt_s_subj_output" style="margin-top:14px;"></div>
       </div>
     </div>
@@ -1341,6 +1340,7 @@ const RT_DEFAULT_VIPINDI_MSINGI = {
   "Darasa la Awali": {"Kuhusiana":0,"Kuwasiliana":0,"Kutunza Afya":0,"Kutunza Mazingira":0,"Kumudu Stadi za Kisanii":0,"Kutumia Dhana za Kihisabati":0}
 };
 function rtDefaultVipindi(ngazi, grade, subject){
+  if(ngazi === 'sekondari' && RT_SEC_GRADES.indexOf(grade) >= 0) return rtSecPeriods(grade, subject);
   if(ngazi === 'msingi'){
     const g = RT_DEFAULT_VIPINDI_MSINGI[grade];
     if(g && g[subject] !== undefined) return g[subject];
@@ -1385,6 +1385,53 @@ const RATIBA_YEAR_KEY = 'msaidizi_ratiba_year_v1';
 
 const RATIBA_DAYS = ["Jumatatu","Jumanne","Jumatano","Alhamisi","Ijumaa","Jumamosi"];
 
+/* ===== v25-3: RATIBA YA SEKONDARI — Form 1–4, masomo na vipindi kutoka MTAALA_TIE, kiolesura chote kwa Kiingereza =====
+   Funguo za data (Kidato 1, Jumatatu, Hisabati...) HAZIBADILIKI — ni maandishi ya kuonyesha tu yanayotafsiriwa, hivyo data
+   iliyohifadhiwa na ratiba ya Msingi vinaendelea kufanya kazi kama kawaida. */
+const RT_SEC_GRADES = ["Kidato 1","Kidato 2","Kidato 3","Kidato 4"];
+const RT_DAY_EN = {"Jumatatu":"Monday","Jumanne":"Tuesday","Jumatano":"Wednesday","Alhamisi":"Thursday","Ijumaa":"Friday","Jumamosi":"Saturday"};
+const RT_SUBJ_EN = {"Hisabati":"Mathematics","Historia ya Tanzania na Maadili":"History of Tanzania and Ethics"};
+const RT_BREAK_EN = {"Mapumziko Mafupi":"Short Break","Mapumziko ya Chakula":"Lunch Break","Mapumziko":"Break"};
+function rtL(ngazi, sw, en){ return ngazi === 'sekondari' ? en : sw; }
+function rtGradeLabel(ngazi, g){ if(ngazi !== 'sekondari') return g; const m = /^Kidato\s+(\d+)$/.exec(g||''); return m ? ('Form '+m[1]) : g; }
+function rtDayLabel(ngazi, d){ return ngazi === 'sekondari' ? (RT_DAY_EN[d] || d) : d; }
+function rtSubjLabel(ngazi, s){ return ngazi === 'sekondari' ? (RT_SUBJ_EN[s] || s) : s; }
+// MTAALA_TIE inatangazwa kwenye script ya baadaye (const): kabla haijapakia, kuifikia kunatupa kosa — hivyo tunalinda kwa try/catch.
+// Wakati ukurasa bado unapakia (readyState 'loading') hatuigusi kabisa MTAALA_TIE — ikiwa tayari, tunaisoma.
+function rtSecJson(grade){ try{ if(document.readyState === 'loading') return null; return (typeof MTAALA_TIE !== 'undefined' && MTAALA_TIE[grade]) || null; }catch(e){ return null; } }
+function rtSecSubjectList(grade){ const g = rtSecJson(grade); return g ? Object.keys(g) : null; }
+// Vipindi kwa wiki vinatoka ngazi ya somo (w) tu. Kama JSON haina (null), tunarudisha 0 = wazi; mwalimu ajaze mwenyewe (hatubuni idadi).
+function rtSecPeriods(grade, subject){ const g = rtSecJson(grade); const w = g && g[subject] && g[subject].w; return (typeof w === 'number' && w > 0) ? w : 0; }
+function rtSecMigrate(grade){
+  const d = ratibaData.sekondari;
+  const list = rtSecSubjectList(grade);
+  if(!list) return false;                      // JSON bado haijapakia: usiguse chochote
+  if(!d.subjectsByGrade) d.subjectsByGrade = {};
+  const old = d.subjectsByGrade[grade] || {};
+  if(!d.migrated) d.migrated = {};
+  if(!d.migrated[grade]){
+    // Mara ya kwanza: masomo ya zamani yasiyo kwenye JSON yanahifadhiwa kwenye `legacy` (hayafutwi), yasionekane wala kupangwa.
+    if(!d.legacy) d.legacy = {};
+    d.legacy[grade] = d.legacy[grade] || {};
+    Object.keys(old).forEach(sub=>{ if(list.indexOf(sub) < 0) d.legacy[grade][sub] = old[sub]; });
+    d.migrated[grade] = 'tie-json-v1';
+    const fresh = {};
+    list.forEach(sub=>{
+      const w = rtSecPeriods(grade, sub);
+      if(old[sub] === undefined){ fresh[sub] = { vipindi:w, mwalimu:'' }; return; }
+      const rec = rtNormalizeSubjectRec(old[sub], 'sekondari', grade, sub);
+      // Thamani 5 ilikuwa chaguomsingi ya zamani kwa kila somo: badilisha na idadi ya JSON; thamani nyingine alizoweka mwalimu zinabaki.
+      if(rec.vipindi === 5 && w > 0 && w !== 5) rec.vipindi = w;
+      fresh[sub] = rec;
+    });
+    d.subjectsByGrade[grade] = fresh;
+  }else{
+    const store = d.subjectsByGrade[grade] = d.subjectsByGrade[grade] || {};
+    list.forEach(sub=>{ store[sub] = rtNormalizeSubjectRec(store[sub] !== undefined ? store[sub] : { vipindi:rtSecPeriods(grade, sub), mwalimu:'' }, 'sekondari', grade, sub); });
+  }
+  return true;
+}
+
 function rtDefaultShughuliNyingine(ngazi){
   const byDay = {}; RATIBA_DAYS.forEach(d=> byDay[d] = "");
   if(ngazi === 'msingi'){
@@ -1398,7 +1445,7 @@ function rtDefaultTop(ngazi){
     ? { start:"07:30", periods:8, periodlen:40, days:["Jumatatu","Jumanne","Jumatano","Alhamisi","Ijumaa"],
         breaks:[{label:'Mapumziko Mafupi', after:3, duration:20}, {label:'Mapumziko ya Chakula', after:6, duration:40}] }
     : { start:"07:00", periods:8, periodlen:40, days:["Jumatatu","Jumanne","Jumatano","Alhamisi","Ijumaa"],
-        breaks:[{label:'Mapumziko Mafupi', after:3, duration:20}, {label:'Mapumziko ya Chakula', after:5, duration:60}] };
+        breaks:[{label:'Short Break', after:3, duration:20}, {label:'Lunch Break', after:5, duration:60}] };
 }
 // Hubadilisha data ya zamani (shortbreak/shortbreak_after/lunch/lunch_after ya kudumu)
 // kuwa orodha mpya ya mapumziko inayoweza kuhaririwa na kufutwa, bila kupoteza taarifa
@@ -1431,13 +1478,14 @@ function rtSetYear(v){
   ratibaYear = v;
   try{ localStorage.setItem(RATIBA_YEAR_KEY, v); }catch(e){}
 }
-function rtHeadHtml(){
+function rtHeadHtml(ngazi){
   const school = (ratibaSchool||'').trim(), year = (ratibaYear||'').trim();
   const title = school + (school && year ? ' — ' : '') + year;
+  const en = ngazi === 'sekondari';
   return '<div class="panel sm-head">'+
     '<div class="sm-head-row">'+
-      '<input type="text" class="sm-school-input" aria-label="Jina la shule" placeholder="Andika jina la shule" value="'+smAttr(ratibaSchool||'')+'" oninput="rtSetSchool(this.value)">'+
-      '<input type="text" class="sm-school-input rt-year-input" aria-label="Mwaka wa masomo" placeholder="Mwaka wa masomo (mfano 2026)" value="'+smAttr(ratibaYear||'')+'" oninput="rtSetYear(this.value)">'+
+      '<input type="text" class="sm-school-input" aria-label="'+(en?'School name':'Jina la shule')+'" placeholder="'+(en?'Enter school name':'Andika jina la shule')+'" value="'+smAttr(ratibaSchool||'')+'" oninput="rtSetSchool(this.value)">'+
+      '<input type="text" class="sm-school-input rt-year-input" aria-label="'+(en?'Academic year':'Mwaka wa masomo')+'" placeholder="'+(en?'Academic year (e.g. 2026)':'Mwaka wa masomo (mfano 2026)')+'" value="'+smAttr(ratibaYear||'')+'" oninput="rtSetYear(this.value)">'+
     '</div>'+
     '<h2 class="sm-school-title'+(title?'':' hidden')+'">'+escapeHtml(title)+'</h2>'+
   '</div>';
@@ -1446,6 +1494,7 @@ function rtHeadHtml(){
 function getSubjectsForNgazi(ngazi, grade){
   if(ngazi === 'msingi'){ return primarySubjectsByGrade[grade] || primarySubjectsByGrade["Darasa la 7"]; }
   const kidatoNum = parseInt((grade||"").replace(/\D/g,'')) || 1;
+  if(kidatoNum <= 4){ const fromJson = rtSecSubjectList(grade); if(fromJson) return fromJson; }   // v25-3: masomo kutoka MTAALA_TIE
   return kidatoNum >= 5 ? secondaryALevelSubjects : secondaryOLevelSubjects;
 }
 
@@ -1497,6 +1546,7 @@ function renderRatibaSubjects(ngazi){
   const tbodyId = ngazi === 'msingi' ? 'rt_m_subjects_tbody' : 'rt_s_subjects_tbody';
   const theadId = ngazi === 'msingi' ? 'rt_m_subjects_thead' : 'rt_s_subjects_thead';
   const grade = document.getElementById(gradeSelId).value;
+  if(ngazi === 'sekondari') rtSecMigrate(grade);
   const store = ratibaData[ngazi].subjectsByGrade;
   const showTeacher = rtShowTeacherCol(ngazi, grade);
 
@@ -1512,22 +1562,25 @@ function renderRatibaSubjects(ngazi){
 
   const thead = document.getElementById(theadId);
   if(thead){
-    thead.innerHTML = '<th>Somo</th>' +
-      (showTeacher ? '<th style="width:130px;">Mwalimu</th>' : '') +
-      '<th style="width:110px;">Vipindi/Wiki</th>';
+    thead.innerHTML = '<th>'+rtL(ngazi,'Somo','Subject')+'</th>' +
+      (showTeacher ? '<th style="width:130px;">'+rtL(ngazi,'Mwalimu','Teacher')+'</th>' : '') +
+      '<th style="width:110px;">'+rtL(ngazi,'Vipindi/Wiki','Periods/Week')+'</th>';
   }
 
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = Object.keys(store[grade]).map(s=>{
-    const rec = store[grade][s];
+    const rec = store[grade][s] || { vipindi:0, mwalimu:'' };
     const gEsc = grade.replace(/'/g,"\\'");
     const sEsc = s.replace(/'/g,"\\'");
+    const sec = ngazi === 'sekondari';
+    const unspecified = sec && RT_SEC_GRADES.indexOf(grade) >= 0 && rtSecPeriods(grade, s) === 0;
+    const note = (unspecified && !(rec.vipindi > 0)) ? '<br><small style="color:#a15c00;">Periods per week not given in the syllabus — enter manually.</small>' : '';
     const teacherTd = showTeacher
-      ? '<td><input type="text" maxlength="12" placeholder="mfano A.S" value="'+escapeHtml(rec.mwalimu)+'" '+
+      ? '<td><input type="text" maxlength="12" placeholder="'+rtL(ngazi,'mfano A.S','e.g. A.S')+'" value="'+escapeHtml(rec.mwalimu)+'" '+
         'onchange="ratibaData[\''+ngazi+'\'].subjectsByGrade[\''+gEsc+'\'][\''+sEsc+'\'].mwalimu=this.value.trim();"></td>'
       : '';
-    return '<tr><td>'+escapeHtml(s)+'</td>'+teacherTd+
-      '<td><input type="number" min="0" max="20" value="'+rec.vipindi+'" '+
+    return '<tr><td>'+escapeHtml(rtSubjLabel(ngazi,s))+note+'</td>'+teacherTd+
+      '<td><input type="number" min="0" max="20" '+(sec ? 'placeholder="—" value="'+(rec.vipindi||'')+'" ' : 'value="'+rec.vipindi+'" ')+
       'onchange="ratibaData[\''+ngazi+'\'].subjectsByGrade[\''+gEsc+'\'][\''+sEsc+'\'].vipindi=parseInt(this.value)||0;"></td></tr>';
   }).join('');
 }
@@ -1542,7 +1595,7 @@ function renderShughuliNyingine(ngazi){
   RATIBA_DAYS.forEach(day=>{ if(byDay[day] === undefined) byDay[day] = ""; });
   tbody.innerHTML = RATIBA_DAYS.map(day=>{
     const dEsc = day.replace(/'/g,"\\'");
-    return '<tr><td>'+day+'</td><td><input type="text" maxlength="60" placeholder="mfano Usafi / Michezo" value="'+escapeHtml(byDay[day])+'" '+
+    return '<tr><td>'+rtDayLabel(ngazi,day)+'</td><td><input type="text" maxlength="60" placeholder="'+rtL(ngazi,'mfano Usafi / Michezo','e.g. Cleaning / Sports')+'" value="'+escapeHtml(byDay[day])+'" '+
       'onchange="ratibaData[\''+ngazi+'\'].shughuliNyingine.byDay[\''+dEsc+'\']=this.value.trim();"></td></tr>';
   }).join('');
 }
@@ -1565,7 +1618,7 @@ function rtBuildTimeline(ngazi){
     d.breaks.forEach(br=>{
       const after = parseInt(br.after)||0, dur = parseInt(br.duration)||0;
       if(after === p && dur > 0){
-        timeline.push({type:'break', label: br.label || 'Mapumziko', start:toHHMM(cursor), end:toHHMM(cursor+dur)});
+        timeline.push({type:'break', label: br.label || rtL(ngazi,'Mapumziko','Break'), start:toHHMM(cursor), end:toHHMM(cursor+dur)});
         cursor += dur;
       }
     });
@@ -1580,23 +1633,23 @@ function renderRatibaBreaks(ngazi){
   const d = ratibaData[ngazi];
   if(!Array.isArray(d.breaks)) d.breaks = [];
   if(!d.breaks.length){
-    tbody.innerHTML = '<tr><td colspan="4" class="hint" style="padding:10px 4px;margin:0;">Hakuna mapumziko yaliyowekwa. Bofya "+ Ongeza Mapumziko" kuongeza.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="hint" style="padding:10px 4px;margin:0;">'+rtL(ngazi,'Hakuna mapumziko yaliyowekwa. Bofya "+ Ongeza Mapumziko" kuongeza.','No breaks have been set. Click "+ Add Break" to add one.')+'</td></tr>';
     return;
   }
   tbody.innerHTML = d.breaks.map((br,i)=>
-    '<tr><td><input type="text" maxlength="40" placeholder="mfano Mapumziko Mafupi" value="'+escapeHtml(br.label||'')+'" '+
+    '<tr><td><input type="text" maxlength="40" placeholder="'+rtL(ngazi,'mfano Mapumziko Mafupi','e.g. Short Break')+'" value="'+escapeHtml(br.label||'')+'" '+
       'onchange="rtUpdateBreak(\''+ngazi+'\','+i+',\'label\',this.value)"></td>'+
     '<td><input type="number" min="1" max="'+(d.periods||14)+'" value="'+(parseInt(br.after)||1)+'" '+
       'onchange="rtUpdateBreak(\''+ngazi+'\','+i+',\'after\',this.value)"></td>'+
     '<td><input type="number" min="0" max="180" value="'+(parseInt(br.duration)||0)+'" '+
       'onchange="rtUpdateBreak(\''+ngazi+'\','+i+',\'duration\',this.value)"></td>'+
-    '<td><button class="q-del" title="Futa mapumziko haya" onclick="rtDeleteBreak(\''+ngazi+'\','+i+')">✕</button></td></tr>'
+    '<td><button class="q-del" title="'+rtL(ngazi,'Futa mapumziko haya','Delete this break')+'" onclick="rtDeleteBreak(\''+ngazi+'\','+i+')">✕</button></td></tr>'
   ).join('');
 }
 function rtAddBreak(ngazi){
   const d = ratibaData[ngazi];
   if(!Array.isArray(d.breaks)) d.breaks = [];
-  d.breaks.push({label:'Mapumziko', after: Math.min(3, d.periods||8), duration:15});
+  d.breaks.push({label:rtL(ngazi,'Mapumziko','Break'), after: Math.min(3, d.periods||8), duration:15});
   renderRatibaBreaks(ngazi);
   renderRatibaTimes(ngazi);
 }
@@ -1623,7 +1676,7 @@ function renderRatibaTimes(ngazi){
     if(t.type === 'break'){
       return '<tr class="rt-break-row"><td>'+escapeHtml(t.label)+'</td><td colspan="2">'+t.start+' – '+t.end+'</td></tr>';
     }
-    return '<tr><td>Kipindi '+t.num+'</td>'+
+    return '<tr><td>'+rtL(ngazi,'Kipindi ','Period ')+t.num+'</td>'+
       '<td><input type="time" value="'+t.start+'" onchange="rtSetTimeOverride(\''+ngazi+'\','+t.num+',\'start\',this.value)"></td>'+
       '<td><input type="time" value="'+t.end+'" onchange="rtSetTimeOverride(\''+ngazi+'\','+t.num+',\'end\',this.value)"></td></tr>';
   }).join('');
@@ -1672,10 +1725,11 @@ const RT_MAX_SAME_DAY = 2;
 let ratibaGenerated = {};
 
 function rtGetGradesList(ngazi){
-  return ngazi === 'msingi' ? primaryGrades.slice() : secondaryGrades.slice();
+  return ngazi === 'msingi' ? primaryGrades.slice() : RT_SEC_GRADES.slice();
 }
 
 function ratibaSubjectsForGeneration(ngazi, grade){
+  if(ngazi === 'sekondari') rtSecMigrate(grade);
   const store = ratibaData[ngazi].subjectsByGrade;
   if(!store[grade]) store[grade] = {};
   // Hakikisha kila somo jipya lililoongezwa kwenye database (mfano masomo mapya ya Darasa
@@ -1872,7 +1926,7 @@ function generateRatiba(ngazi){
     const capacity = periodsCount * days.length;
     const totalNeeded = subs.reduce((a,s)=>a+s.vipindi,0);
     if(totalNeeded > capacity){
-      warnings.push(grade+': jumla ya vipindi vilivyoombwa ('+totalNeeded+') vinazidi nafasi zilizopo kwa wiki ('+capacity+'). Punguza idadi kwenye jedwali la masomo la darasa hili.');
+      warnings.push(rtL(ngazi, grade+': jumla ya vipindi vilivyoombwa ('+totalNeeded+') vinazidi nafasi zilizopo kwa wiki ('+capacity+'). Punguza idadi kwenye jedwali la masomo la darasa hili.', rtGradeLabel(ngazi,grade)+': the total periods requested ('+totalNeeded+') exceed the slots available per week ('+capacity+'). Reduce the numbers in this form\'s subjects table.'));
     }
 
     const remaining = {}; subs.forEach(s=> remaining[s.subject] = s.vipindi);
@@ -1945,7 +1999,7 @@ function generateRatiba(ngazi){
     if(!st) return;
     st.subs.forEach(s=>{
       if(st.remaining[s.subject] > 0){
-        warnings.push(grade+': somo la "'+s.subject+'" halikuweza kupangiwa vipindi vyote — vimebaki '+st.remaining[s.subject]+' bila nafasi (labda mwalimu '+(st.teacherOf[s.subject]||'—')+' ana mgongano wa muda na madarasa mengine, au nafasi za wiki hazitoshi).');
+        warnings.push(rtL(ngazi, grade+': somo la "'+s.subject+'" halikuweza kupangiwa vipindi vyote — vimebaki '+st.remaining[s.subject]+' bila nafasi (labda mwalimu '+(st.teacherOf[s.subject]||'—')+' ana mgongano wa muda na madarasa mengine, au nafasi za wiki hazitoshi).', rtGradeLabel(ngazi,grade)+': not all periods for "'+rtSubjLabel(ngazi,s.subject)+'" could be placed — '+st.remaining[s.subject]+' left without a slot (the teacher '+(st.teacherOf[s.subject]||'—')+' may have a time clash with other classes, or the weekly slots are not enough).'));
       }
     });
   });
@@ -1976,7 +2030,7 @@ function rtCountVsTarget(ngazi, byGrade, days, periodsCount){
       if(target <= 0) return;
       const got = counts[subject] || 0;
       if(got !== target){
-        problems.push(grade+': somo la "'+subject+'" lina vipindi '+got+' kwenye ratiba badala ya '+target+' vilivyoombwa kwenye jedwali la Vipindi/Wiki.');
+        problems.push(rtL(ngazi, grade+': somo la "'+subject+'" lina vipindi '+got+' kwenye ratiba badala ya '+target+' vilivyoombwa kwenye jedwali la Vipindi/Wiki.', rtGradeLabel(ngazi,grade)+': subject "'+rtSubjLabel(ngazi,subject)+'" has '+got+' periods in the timetable instead of the '+target+' requested in the Periods/Week table.'));
       }
     });
   });
@@ -2002,14 +2056,14 @@ function rtValidateRatiba(ngazi, byGrade, days, periodsCount){
         if(!teacher) continue;
         const key = day+'|'+p+'|'+teacher;
         if(!occ[key]) occ[key] = [];
-        occ[key].push(grade+' ('+subject+')');
+        occ[key].push(rtGradeLabel(ngazi,grade)+' ('+rtSubjLabel(ngazi,subject)+')');
       }
     });
   });
   Object.keys(occ).forEach(key=>{
     if(occ[key].length > 1){
       const parts = key.split('|');
-      problems.push('Mgongano wa Mwalimu: '+parts[2]+' ameratibiwa kufundisha zaidi ya darasa moja siku ya '+parts[0]+', Kipindi '+parts[1]+' — '+occ[key].join(' na '));
+      problems.push(rtL(ngazi, 'Mgongano wa Mwalimu: '+parts[2]+' ameratibiwa kufundisha zaidi ya darasa moja siku ya '+parts[0]+', Kipindi '+parts[1]+' — '+occ[key].join(' na '), 'Teacher clash: '+parts[2]+' is scheduled to teach more than one class on '+rtDayLabel(ngazi,parts[0])+', Period '+parts[1]+' — '+occ[key].join(' and ')));
     }
   });
   return problems;
@@ -2072,25 +2126,28 @@ function rtShowPrintPreview(elId, title){
   overlay.id = 'rtPvOverlay';
   overlay.dataset.elId = elId;
   overlay.dataset.title = title || 'Ratiba';
+  const isSec = !!(el.closest && el.closest('#ratiba-panel-sekondari'));
+  overlay.dataset.sec = isSec ? '1' : '';
+  const T = (sw,en)=> isSec ? en : sw;
   overlay.innerHTML =
     '<div class="rt-pv-box">'+
-      '<div class="rt-pv-head"><h3>Onyesho la Kuchapisha — '+escapeHtml(title||'')+'</h3>'+
+      '<div class="rt-pv-head"><h3>'+T('Onyesho la Kuchapisha','Print Preview')+' — '+escapeHtml(title||'')+'</h3>'+
         '<button class="rt-pv-close" onclick="rtClosePrintPreview()">✕</button></div>'+
       '<div class="rt-pv-controls">'+
-        '<label>Ukubwa wa Karatasi<select id="rtPvPaper" onchange="rtRenderPreview()">'+
+        '<label>'+T('Ukubwa wa Karatasi','Paper Size')+'<select id="rtPvPaper" onchange="rtRenderPreview()">'+
           '<option value="A4">A4</option><option value="Letter">Letter</option>'+
         '</select></label>'+
-        '<label>Mwelekeo<select id="rtPvOrient" onchange="rtRenderPreview()">'+
-          '<option value="portrait">Wima (Portrait)</option>'+
-          '<option value="landscape">Mlalo (Landscape)</option>'+
+        '<label>'+T('Mwelekeo','Orientation')+'<select id="rtPvOrient" onchange="rtRenderPreview()">'+
+          '<option value="portrait">'+T('Wima (Portrait)','Portrait')+'</option>'+
+          '<option value="landscape">'+T('Mlalo (Landscape)','Landscape')+'</option>'+
         '</select></label>'+
       '</div>'+
-      '<div class="rt-pv-tip">Hii ndiyo ukubwa halisi wa maandishi utakaoona kwenye print/PDF — hakuna kupunguzwa kwa kujibana kwenye ukurasa mmoja. Ikiwa dirisha la kuchapisha la kivinjari chako lina chaguo la "Scale"/"Fit to page", chagua "None" au "100%" ili kudumisha ukubwa huu.</div>'+
-      '<div id="rtPvFrameWrap"><div id="rtPvFrameInner"><iframe id="rtPvFrame" title="Onyesho la ukurasa"></iframe></div></div>'+
-      '<div class="rt-pv-pages" id="rtPvPages">Inapakia onyesho...</div>'+
+      '<div class="rt-pv-tip">'+T('Hii ndiyo ukubwa halisi wa maandishi utakaoona kwenye print/PDF — hakuna kupunguzwa kwa kujibana kwenye ukurasa mmoja. Ikiwa dirisha la kuchapisha la kivinjari chako lina chaguo la "Scale"/"Fit to page", chagua "None" au "100%" ili kudumisha ukubwa huu.','This is the actual text size you will get in the print/PDF — nothing is shrunk to fit one page. If your browser print dialog has a "Scale"/"Fit to page" option, choose "None" or "100%" to keep this size.')+'</div>'+
+      '<div id="rtPvFrameWrap"><div id="rtPvFrameInner"><iframe id="rtPvFrame" title="'+T('Onyesho la ukurasa','Page preview')+'"></iframe></div></div>'+
+      '<div class="rt-pv-pages" id="rtPvPages">'+T('Inapakia onyesho...','Loading preview...')+'</div>'+
       '<div class="rt-pv-actions">'+
-        '<button class="rowBtn" onclick="rtDoActualPrint()">🖨️ Chapisha / Pakua PDF</button>'+
-        '<button class="rt-pv-secondary" onclick="rtClosePrintPreview()">Funga</button>'+
+        '<button class="rowBtn" onclick="rtDoActualPrint()">🖨️ '+T('Chapisha / Pakua PDF','Print / Save as PDF')+'</button>'+
+        '<button class="rt-pv-secondary" onclick="rtClosePrintPreview()">'+T('Funga','Close')+'</button>'+
       '</div>'+
     '</div>';
   document.body.appendChild(overlay);
@@ -2118,7 +2175,8 @@ function rtRenderPreview(){
   frame.style.transform = 'scale('+scale+')';
   inner.style.width = (fullWpx*scale)+'px';
   inner.style.height = (fullHpx*scale)+'px';
-  document.getElementById('rtPvPages').textContent = 'Inapakia onyesho...';
+  const isSecR = overlay.dataset.sec === '1';
+  document.getElementById('rtPvPages').textContent = isSecR ? 'Loading preview...' : 'Inapakia onyesho...';
   frame.srcdoc = rtPrintDocHtml(elId, title, paper, orientation);
   frame.onload = function(){
     try{
@@ -2135,10 +2193,10 @@ function rtRenderPreview(){
         const lbl = doc.createElement('div');
         lbl.style.position='absolute'; lbl.style.top=(fullHpx*i-13)+'px'; lbl.style.right='2mm';
         lbl.style.fontSize='9px'; lbl.style.color='#c0392b'; lbl.style.fontFamily='Arial,sans-serif';
-        lbl.textContent='— mwisho wa ukurasa '+i+' —';
+        lbl.textContent=isSecR ? ('— end of page '+i+' —') : ('— mwisho wa ukurasa '+i+' —');
         doc.body.appendChild(lbl);
       }
-      document.getElementById('rtPvPages').textContent = 'Kadirio la kurasa: '+pages+' ('+paper+', '+(orientation==='landscape'?'Mlalo':'Wima')+')';
+      document.getElementById('rtPvPages').textContent = isSecR ? ('Estimated pages: '+pages+' ('+paper+', '+(orientation==='landscape'?'Landscape':'Portrait')+')') : ('Kadirio la kurasa: '+pages+' ('+paper+', '+(orientation==='landscape'?'Mlalo':'Wima')+')');
     }catch(e){}
   };
 }
@@ -2149,7 +2207,7 @@ function rtDoActualPrint(){
   const paper = document.getElementById('rtPvPaper').value;
   const orientation = document.getElementById('rtPvOrient').value;
   const win = window.open('', '_blank', 'width=1000,height=720');
-  if(!win){ alert('Tafadhali ruhusu dirisha ibukizi (pop-up) kwenye kivinjari ili kuchapisha.'); return; }
+  if(!win){ alert(overlay.dataset.sec === '1' ? 'Please allow pop-ups in your browser to print.' : 'Tafadhali ruhusu dirisha ibukizi (pop-up) kwenye kivinjari ili kuchapisha.'); return; }
   win.document.write(rtPrintDocHtml(elId, title, paper, orientation));
   win.document.close();
   win.focus();
@@ -2160,7 +2218,7 @@ function rtPrintPanel(elId, title){ rtShowPrintPreview(elId, title); }
 
 /* ---- Ratiba Kuu (jedwali moja la shule nzima), Darasa la 7 likijitegemea ---- */
 function rtMasterGroups(ngazi, gradesWithData){
-  if(ngazi !== 'msingi') return [{ title:'Ratiba Kuu ya Masomo', grades: gradesWithData.slice().sort((a,b)=>rtGradeNum(a)-rtGradeNum(b)) }];
+  if(ngazi !== 'msingi') return [{ title:rtL(ngazi,'Ratiba Kuu ya Masomo','Master Timetable'), grades: gradesWithData.slice().sort((a,b)=>rtGradeNum(a)-rtGradeNum(b)) }];
   // Darasa la 1 na la 2 hayaonyeshwi kwenye jedwali kuu (mwalimu mmoja hufundisha yote,
   // hivyo hayana ratiba ya mzunguko wa masomo kama madarasa mengine). Madarasa yanapangwa
   // kwa kupanda (III juu, V chini) kama ilivyo kwenye ratiba halisi ya shule.
@@ -2182,16 +2240,16 @@ function renderMasterRatiba(ngazi, gen, timeline){
     const panelId = 'rt-master-'+ngazi+'-'+gi;
     html += '<div class="panel"><h3 class="rt-h">'+escapeHtml(group.title)+'</h3>';
     html += '<div id="'+panelId+'">';
-    html += '<div class="rt-scroll"><table class="results-table rt-grid"><thead><tr><th>Siku</th><th>Darasa</th>'+
-      timeline.map(t=> t.type==='period' ? '<th>Kip.'+t.num+'<br><small>'+t.start+'-'+t.end+'</small></th>' : '<th><small>'+escapeHtml(t.label)+'</small></th>').join('')+
-      '<th>Shughuli Nyingine</th></tr></thead><tbody>';
+    html += '<div class="rt-scroll"><table class="results-table rt-grid"><thead><tr><th>'+rtL(ngazi,'Siku','Day')+'</th><th>'+rtL(ngazi,'Darasa','Form')+'</th>'+
+      timeline.map(t=> t.type==='period' ? '<th>'+rtL(ngazi,'Kip.','Per.')+t.num+'<br><small>'+t.start+'-'+t.end+'</small></th>' : '<th><small>'+escapeHtml(t.label)+'</small></th>').join('')+
+      '<th>'+rtL(ngazi,'Shughuli Nyingine','Other Activities')+'</th></tr></thead><tbody>';
     days.forEach(day=>{
       group.grades.forEach((grade,i)=>{
         const grid = gen.byGrade[grade];
         const subs = ratibaData[ngazi].subjectsByGrade[grade] || {};
         html += '<tr>';
-        if(i===0) html += '<td rowspan="'+group.grades.length+'" class="rt-master-day">'+day+'</td>';
-        html += '<td class="rt-master-grade">'+escapeHtml(ngazi==='msingi' ? rtRoman(grade) : grade)+'</td>';
+        if(i===0) html += '<td rowspan="'+group.grades.length+'" class="rt-master-day">'+rtDayLabel(ngazi,day)+'</td>';
+        html += '<td class="rt-master-grade">'+escapeHtml(ngazi==='msingi' ? rtRoman(grade) : rtGradeLabel(ngazi,grade))+'</td>';
         const gEsc = grade.replace(/'/g,"\\'"), dEsc = day.replace(/'/g,"\\'");
         timeline.forEach(t=>{
           if(t.type!=='period'){ html += '<td class="rt-break-row"></td>'; return; }
@@ -2199,8 +2257,8 @@ function renderMasterRatiba(ngazi, gen, timeline){
           const rec = subs[subject];
           const teacher = rec && rec.mwalimu ? rtInitials(rec.mwalimu) : '';
           const cls = 'rt-editable-td'+(subject ? (isHardSubject(subject) ? ' rt-hard' : '') : ' rt-free');
-          const opts = '<option value="">— (futa)</option>'+getSubjectsForNgazi(ngazi, grade).map(s=>
-            '<option value="'+escapeHtml(s)+'"'+(s===subject?' selected':'')+'>'+escapeHtml(s)+'</option>').join('');
+          const opts = '<option value="">'+rtL(ngazi,'— (futa)','— (clear)')+'</option>'+getSubjectsForNgazi(ngazi, grade).map(s=>
+            '<option value="'+escapeHtml(s)+'"'+(s===subject?' selected':'')+'>'+escapeHtml(rtSubjLabel(ngazi,s))+'</option>').join('');
           html += '<td class="'+cls+'"><select class="rt-cell-select" onchange="rtEditMasterCell(\''+ngazi+'\',\''+gEsc+'\',\''+dEsc+'\','+t.num+',this.value)">'+opts+'</select>'+
             (teacher? '<br><small>'+escapeHtml(teacher)+'</small>':'')+'</td>';
         });
@@ -2210,7 +2268,7 @@ function renderMasterRatiba(ngazi, gen, timeline){
     });
     html += '</tbody></table></div>';
     html += '</div>';
-    html += '<button class="rowBtn" onclick="rtPrintPanel(\''+panelId+'\',\''+escapeHtml(group.title).replace(/'/g,"\\'")+'\')">🖨️ Chapisha Ratiba Hii</button>';
+    html += '<button class="rowBtn" onclick="rtPrintPanel(\''+panelId+'\',\''+escapeHtml(group.title).replace(/'/g,"\\'")+'\')">🖨️ '+rtL(ngazi,'Chapisha Ratiba Hii','Print This Timetable')+'</button>';
     html += '</div>';
   });
   return html;
@@ -2237,7 +2295,7 @@ function rtEditMasterCell(ngazi, grade, day, num, value){
         return t2 && t2 === teacher;
       });
       if(clashGrade){
-        alert('Haiwezekani: mwalimu '+teacher+' tayari anafundisha darasa la '+clashGrade+' siku ya '+day+', Kipindi '+num+'. Chagua somo au mwalimu mwingine.');
+        alert(rtL(ngazi, 'Haiwezekani: mwalimu '+teacher+' tayari anafundisha darasa la '+clashGrade+' siku ya '+day+', Kipindi '+num+'. Chagua somo au mwalimu mwingine.', 'Not possible: teacher '+teacher+' is already teaching '+rtGradeLabel(ngazi,clashGrade)+' on '+rtDayLabel(ngazi,day)+', Period '+num+'. Choose another subject or teacher.'));
         renderGeneratedRatiba(ngazi);
         return;
       }
@@ -2253,12 +2311,14 @@ function rtPopulateSubjectPicker(ngazi){
   const sel = document.getElementById(ngazi==='msingi' ? 'rt_m_subj_pick' : 'rt_s_subj_pick');
   if(!sel) return;
   const set = new Set();
-  Object.values(ratibaData[ngazi].subjectsByGrade).forEach(byS=>{
+  Object.keys(ratibaData[ngazi].subjectsByGrade).forEach(gr=>{
+    if(ngazi === 'sekondari' && RT_SEC_GRADES.indexOf(gr) < 0) return;   // Sekondari: Form 1–4 tu
+    const byS = ratibaData[ngazi].subjectsByGrade[gr];
     Object.keys(byS).forEach(s=>{ if((byS[s].vipindi||0) > 0) set.add(s); });
   });
-  const subjects = Array.from(set).sort();
+  const subjects = Array.from(set).sort((a,b)=> rtSubjLabel(ngazi,a).localeCompare(rtSubjLabel(ngazi,b)));
   const prev = sel.value;
-  sel.innerHTML = subjects.map(s=>'<option>'+escapeHtml(s)+'</option>').join('');
+  sel.innerHTML = subjects.map(s=>'<option value="'+escapeHtml(s)+'">'+escapeHtml(rtSubjLabel(ngazi,s))+'</option>').join('');
   if(subjects.includes(prev)) sel.value = prev;
 }
 function renderSubjectRatiba(ngazi){
@@ -2266,27 +2326,27 @@ function renderSubjectRatiba(ngazi){
   const sel = document.getElementById(ngazi==='msingi' ? 'rt_m_subj_pick' : 'rt_s_subj_pick');
   if(!out || !sel) return;
   const gen = ratibaGenerated[ngazi];
-  if(!gen){ out.innerHTML = '<p class="hint">Bofya kwanza "Tengeneza Ratiba Kamili" hapo juu.</p>'; return; }
+  if(!gen){ out.innerHTML = '<p class="hint">'+rtL(ngazi,'Bofya kwanza "Tengeneza Ratiba Kamili" hapo juu.','First click "Generate Full Timetable" above.')+'</p>'; return; }
   const subject = sel.value;
-  if(!subject){ out.innerHTML = '<p class="hint">Hakuna somo la kuchagua.</p>'; return; }
+  if(!subject){ out.innerHTML = '<p class="hint">'+rtL(ngazi,'Hakuna somo la kuchagua.','There is no subject to choose.')+'</p>'; return; }
   const timeline = rtBuildTimeline(ngazi).filter(t=>t.type==='period');
   const days = gen.days;
   const gradesWithData = Object.keys(gen.byGrade).filter(g=> (ratibaData[ngazi].subjectsByGrade[g]||{})[subject]);
-  let html = '<div class="rt-scroll"><table class="results-table rt-grid"><thead><tr><th>Darasa</th>'+
-    days.map(day=>'<th>'+day+'</th>').join('')+'</tr></thead><tbody>';
+  let html = '<div class="rt-scroll"><table class="results-table rt-grid"><thead><tr><th>'+rtL(ngazi,'Darasa','Form')+'</th>'+
+    days.map(day=>'<th>'+rtDayLabel(ngazi,day)+'</th>').join('')+'</tr></thead><tbody>';
   gradesWithData.forEach(grade=>{
     const grid = gen.byGrade[grade];
     const rec = (ratibaData[ngazi].subjectsByGrade[grade]||{})[subject];
     const teacher = rec && rec.mwalimu ? rtInitials(rec.mwalimu) : '';
-    html += '<tr><td>'+escapeHtml(ngazi==='msingi' ? grade : grade)+(teacher?' <small>('+escapeHtml(teacher)+')</small>':'')+'</td>';
+    html += '<tr><td>'+escapeHtml(rtGradeLabel(ngazi,grade))+(teacher?' <small>('+escapeHtml(teacher)+')</small>':'')+'</td>';
     days.forEach(day=>{
       const hits = timeline.filter(t=> grid[day][t.num] === subject);
-      html += '<td>'+(hits.length ? hits.map(t=>'Kip.'+t.num).join(', ') : '—')+'</td>';
+      html += '<td>'+(hits.length ? hits.map(t=>rtL(ngazi,'Kip.','Per.')+t.num).join(', ') : '—')+'</td>';
     });
     html += '</tr>';
   });
   html += '</tbody></table></div>';
-  if(!gradesWithData.length) html = '<p class="hint">Hakuna darasa lenye somo hili kwa sasa.</p>';
+  if(!gradesWithData.length) html = '<p class="hint">'+rtL(ngazi,'Hakuna darasa lenye somo hili kwa sasa.','No form has this subject at the moment.')+'</p>';
   out.innerHTML = html;
 }
 
@@ -2303,46 +2363,46 @@ function renderGeneratedRatiba(ngazi){
   let html = '';
   const allMsgs = gen.warnings.concat(gen.validation);
   html += '<div class="panel rt-report '+(allMsgs.length? 'warn':'')+'">';
-  html += '<h3 class="rt-h">Ripoti ya Uhakiki (Uhakiki wa Pili)</h3>';
+  html += '<h3 class="rt-h">'+rtL(ngazi,'Ripoti ya Uhakiki (Uhakiki wa Pili)','Verification Report (Second Check)')+'</h3>';
   if(allMsgs.length){
     html += '<ul class="rt-report-list">'+allMsgs.map(m=>'<li>'+escapeHtml(m)+'</li>').join('')+'</ul>';
   }else{
-    html += '<p class="rt-ok-msg">✓ Hakuna mgongano wa mwalimu, darasa, au somo/kipindi uliobainika.</p>';
+    html += '<p class="rt-ok-msg">'+rtL(ngazi,'✓ Hakuna mgongano wa mwalimu, darasa, au somo/kipindi uliobainika.','✓ No teacher, class, or subject/period clash was found.')+'</p>';
   }
   html += '</div>';
 
   if(!gradesWithData.length){
-    html += '<p class="hint">Hakuna darasa lenye masomo yenye vipindi (>0) kwa sasa. Kagua jedwali la "Masomo na Vipindi kwa Wiki" hapo juu.</p>';
+    html += '<p class="hint">'+rtL(ngazi,'Hakuna darasa lenye masomo yenye vipindi (>0) kwa sasa. Kagua jedwali la "Masomo na Vipindi kwa Wiki" hapo juu.','No form has subjects with periods (>0) at the moment. Check the "Subjects and Periods per Week" table above.')+'</p>';
     out.innerHTML = html;
     return;
   }
 
-  html += '<p class="hint">Bofya kwenye kipindi chochote cha jedwali kuu kubadilisha somo au kuchagua "— (futa)" kuliondoa.</p>';
-  html += rtHeadHtml();
+  html += '<p class="hint">'+rtL(ngazi,'Bofya kwenye kipindi chochote cha jedwali kuu kubadilisha somo au kuchagua "— (futa)" kuliondoa.','Click any period in the master table to change the subject, or choose "— (clear)" to remove it.')+'</p>';
+  html += rtHeadHtml(ngazi);
   html += renderMasterRatiba(ngazi, gen, timeline.length ? rtBuildTimeline(ngazi) : timeline);
 
-  html += '<div class="panel"><h3 class="rt-h">Ratiba za Kila Darasa (Kina)</h3><p class="hint" style="margin-top:0;">Jedwali kuu la shule nzima liko hapo juu. Chini ni ratiba ya kina ya darasa moja moja, kwa marejeo.</p></div>';
+  html += '<div class="panel"><h3 class="rt-h">'+rtL(ngazi,'Ratiba za Kila Darasa (Kina)','Timetable for Each Form (Detailed)')+'</h3><p class="hint" style="margin-top:0;">'+rtL(ngazi,'Jedwali kuu la shule nzima liko hapo juu. Chini ni ratiba ya kina ya darasa moja moja, kwa marejeo.','The whole-school master table is above. Below is the detailed timetable for each form, for reference.')+'</p></div>';
 
   gradesWithData.forEach(grade=>{
     const grid = gen.byGrade[grade];
     const gradePanelId = 'rt-grade-'+ngazi+'-'+rtSlug(grade);
-    html += '<div class="panel"><h3 class="rt-h">Ratiba — '+escapeHtml(grade)+'</h3>';
+    html += '<div class="panel"><h3 class="rt-h">'+rtL(ngazi,'Ratiba — ','Timetable — ')+escapeHtml(rtGradeLabel(ngazi,grade))+'</h3>';
     html += '<div id="'+gradePanelId+'">';
-    html += '<div class="rt-scroll"><table class="results-table rt-grid"><thead><tr><th>Muda</th>'+days.map(day=>'<th>'+day+'</th>').join('')+'</tr></thead><tbody>';
+    html += '<div class="rt-scroll"><table class="results-table rt-grid"><thead><tr><th>'+rtL(ngazi,'Muda','Time')+'</th>'+days.map(day=>'<th>'+rtDayLabel(ngazi,day)+'</th>').join('')+'</tr></thead><tbody>';
     timeline.forEach(t=>{
-      html += '<tr><td>Kipindi '+t.num+'<br><small>'+t.start+'–'+t.end+'</small></td>';
+      html += '<tr><td>'+rtL(ngazi,'Kipindi ','Period ')+t.num+'<br><small>'+t.start+'–'+t.end+'</small></td>';
       days.forEach(day=>{
         const subj = grid[day][t.num];
         const cls = subj ? (isHardSubject(subj) ? 'rt-hard' : '') : 'rt-free';
-        html += '<td class="'+cls+'">'+(subj ? escapeHtml(subj) : '—')+'</td>';
+        html += '<td class="'+cls+'">'+(subj ? escapeHtml(rtSubjLabel(ngazi,subj)) : '—')+'</td>';
       });
       html += '</tr>';
     });
     const sn = (d.shughuliNyingine && d.shughuliNyingine.byDay) || {};
-    html += '<tr class="rt-sn-row"><td>Shughuli Nyingine</td>'+days.map(day=>'<td>'+escapeHtml(sn[day]||'—')+'</td>').join('')+'</tr>';
+    html += '<tr class="rt-sn-row"><td>'+rtL(ngazi,'Shughuli Nyingine','Other Activities')+'</td>'+days.map(day=>'<td>'+escapeHtml(sn[day]||'—')+'</td>').join('')+'</tr>';
     html += '</tbody></table></div>';
     html += '</div>';
-    html += '<button class="rowBtn" onclick="rtPrintPanel(\''+gradePanelId+'\',\'Ratiba — '+escapeHtml(grade).replace(/'/g,"\\'")+'\')">🖨️ Chapisha Ratiba Hii</button>';
+    html += '<button class="rowBtn" onclick="rtPrintPanel(\''+gradePanelId+'\',\''+rtL(ngazi,'Ratiba — ','Timetable — ')+escapeHtml(rtGradeLabel(ngazi,grade)).replace(/'/g,"\\'")+'\')">🖨️ '+rtL(ngazi,'Chapisha Ratiba Hii','Print This Timetable')+'</button>';
     html += '</div>';
   });
 
@@ -2359,18 +2419,18 @@ function renderGeneratedRatiba(ngazi){
         if(!teacher) continue;
         if(!teacherMap[teacher]) teacherMap[teacher] = {};
         if(!teacherMap[teacher][day]) teacherMap[teacher][day] = {};
-        teacherMap[teacher][day][p] = grade+': '+subject;
+        teacherMap[teacher][day][p] = rtGradeLabel(ngazi,grade)+': '+rtSubjLabel(ngazi,subject);
       }
     });
   });
   const teacherNames = Object.keys(teacherMap).sort();
   if(teacherNames.length){
-    html += '<div class="panel"><h3 class="rt-h">Ratiba Fupi za Walimu</h3>';
+    html += '<div class="panel"><h3 class="rt-h">'+rtL(ngazi,'Ratiba Fupi za Walimu','Teachers\' Short Timetables')+'</h3>';
     teacherNames.forEach(teacher=>{
       const teacherPanelId = 'rt-teacher-'+ngazi+'-'+rtSlug(teacher);
       html += '<div class="rt-teacher-block"><strong>'+escapeHtml(teacher)+'</strong>';
       html += '<div id="'+teacherPanelId+'">';
-      html += '<div class="rt-scroll"><table class="results-table rt-grid"><thead><tr><th>Kipindi</th>'+days.map(day=>'<th>'+day+'</th>').join('')+'</tr></thead><tbody>';
+      html += '<div class="rt-scroll"><table class="results-table rt-grid"><thead><tr><th>'+rtL(ngazi,'Kipindi','Period')+'</th>'+days.map(day=>'<th>'+rtDayLabel(ngazi,day)+'</th>').join('')+'</tr></thead><tbody>';
       timeline.forEach(t=>{
         html += '<tr><td>'+t.num+'</td>'+days.map(day=>{
           const v = teacherMap[teacher][day] && teacherMap[teacher][day][t.num];
@@ -2379,7 +2439,7 @@ function renderGeneratedRatiba(ngazi){
       });
       html += '</tbody></table></div>';
       html += '</div>';
-      html += '<button class="rowBtn" onclick="rtPrintPanel(\''+teacherPanelId+'\',\'Ratiba ya Mwalimu '+escapeHtml(teacher).replace(/'/g,"\\'")+'\')">🖨️ Chapisha Ratiba Hii</button>';
+      html += '<button class="rowBtn" onclick="rtPrintPanel(\''+teacherPanelId+'\',\''+rtL(ngazi,'Ratiba ya Mwalimu ','Teacher Timetable ')+escapeHtml(teacher).replace(/'/g,"\\'")+'\')">🖨️ '+rtL(ngazi,'Chapisha Ratiba Hii','Print This Timetable')+'</button>';
       html += '</div>';
     });
     html += '</div>';
@@ -2390,6 +2450,7 @@ function renderGeneratedRatiba(ngazi){
 
 function setRatibaTab(tab){
   ratibaTab = tab;
+  if(tab === 'sekondari'){ try{ renderRatibaSubjects('sekondari'); rtPopulateSubjectPicker('sekondari'); }catch(e){} }
   document.getElementById('ratiba-panel-msingi').classList.toggle('hidden', tab!=='msingi');
   document.getElementById('ratiba-panel-sekondari').classList.toggle('hidden', tab!=='sekondari');
   document.getElementById('ratibaTabMsingi').classList.toggle('active', tab==='msingi');
@@ -2409,6 +2470,8 @@ function saveRatibaConfig(){
   setTimeout(()=>{ if(msg.textContent) msg.textContent=''; }, 4000);
 }
 
+// rtInit() inaendeshwa kabla MTAALA_TIE haijapakia; mara ukurasa umepakia kabisa, onyesha masomo ya Sekondari kutoka JSON.
+document.addEventListener('DOMContentLoaded', function(){ try{ renderRatibaSubjects('sekondari'); rtPopulateSubjectPicker('sekondari'); }catch(e){} });
 function rtInit(){
   try{
     const raw = localStorage.getItem(RATIBA_STORE_KEY);
@@ -2422,7 +2485,7 @@ function rtInit(){
   const mGrade = document.getElementById('rt_m_grade');
   mGrade.innerHTML = primaryGrades.map(g=>'<option>'+g+'</option>').join('');
   const sGrade = document.getElementById('rt_s_grade');
-  sGrade.innerHTML = secondaryGrades.map(g=>'<option>'+g+'</option>').join('');
+  sGrade.innerHTML = RT_SEC_GRADES.map(g=>'<option value="'+g+'">'+rtGradeLabel('sekondari',g)+'</option>').join('');
 
   if(!ratibaData.msingi.shughuliNyingine) ratibaData.msingi.shughuliNyingine = rtDefaultShughuliNyingine('msingi');
   if(!ratibaData.sekondari.shughuliNyingine) ratibaData.sekondari.shughuliNyingine = rtDefaultShughuliNyingine('sekondari');
@@ -2430,6 +2493,8 @@ function rtInit(){
   if(!ratibaData.sekondari.periodOverrides) ratibaData.sekondari.periodOverrides = {};
   rtMigrateBreaks('msingi');
   rtMigrateBreaks('sekondari');
+  // Majina ya mapumziko ya Sekondari yaliyohifadhiwa kwa Kiswahili (chaguomsingi za zamani) yanakuwa Kiingereza; majina maalum ya mtumiaji hayaguswi.
+  (ratibaData.sekondari.breaks||[]).forEach(b=>{ if(b && RT_BREAK_EN[b.label]) b.label = RT_BREAK_EN[b.label]; });
 
   rtApplyTopFields('msingi');
   rtApplyTopFields('sekondari');
@@ -7905,9 +7970,9 @@ function tableToMatrix(table){
 function downloadRatibaXlsx(ngazi){
   const out = document.getElementById(ngazi==='msingi' ? 'rt_m_output' : 'rt_s_output');
   const tables = out ? Array.from(out.querySelectorAll('table')) : [];
-  if(!tables.length){ alert('Tengeneza ratiba kamili kwanza kwa kubonyeza "⚡ Tengeneza Ratiba Kamili".'); return; }
+  if(!tables.length){ alert(rtL(ngazi,'Tengeneza ratiba kamili kwanza kwa kubonyeza "⚡ Tengeneza Ratiba Kamili".','Generate the full timetable first by clicking "⚡ Generate Full Timetable".')); return; }
   if(typeof ExcelJS === 'undefined'){
-    alert('Maktaba ya kutengeneza Excel (.xlsx) haijapakia — hakikisha una mtandao kisha jaribu tena.');
+    alert(rtL(ngazi,'Maktaba ya kutengeneza Excel (.xlsx) haijapakia — hakikisha una mtandao kisha jaribu tena.','The Excel (.xlsx) library has not loaded — make sure you are online and try again.'));
     return;
   }
   const wb = new ExcelJS.Workbook();
@@ -7922,8 +7987,8 @@ function downloadRatibaXlsx(ngazi){
     const teacherBlock = tbl.closest('.rt-teacher-block');
     const teacherNameEl = teacherBlock && teacherBlock.querySelector('strong');
     const panelHead = tbl.closest('.panel') && tbl.closest('.panel').querySelector('h3');
-    let sheetName = teacherNameEl ? teacherNameEl.textContent : (panelHead ? panelHead.textContent : ('Jedwali_'+(idx+1)));
-    sheetName = String(sheetName).replace(/\s+/g,' ').trim().replace(/[\\\/\?\*\[\]:]/g,'').slice(0,31) || ('Jedwali_'+(idx+1));
+    let sheetName = teacherNameEl ? teacherNameEl.textContent : (panelHead ? panelHead.textContent : (rtL(ngazi,'Jedwali_','Table_')+(idx+1)));
+    sheetName = String(sheetName).replace(/\s+/g,' ').trim().replace(/[\\\/\?\*\[\]:]/g,'').slice(0,31) || (rtL(ngazi,'Jedwali_','Table_')+(idx+1));
     if(usedSheetNames.has(sheetName)){
       let n = 2, base = sheetName.slice(0,28);
       while(usedSheetNames.has(base+'_'+n)) n++;
@@ -7953,14 +8018,14 @@ function downloadRatibaXlsx(ngazi){
       ws.getColumn(c).width = maxLen;
     }
   });
-  if(!sheetsAdded){ alert('Hakuna data ya kupakua.'); return; }
-  const school = (typeof ratibaSchool !== 'undefined' && ratibaSchool) ? ratibaSchool : 'Shule';
-  const label = 'Ratiba_' + (ngazi==='msingi' ? 'Msingi' : 'Sekondari') + '_' + school;
+  if(!sheetsAdded){ alert(rtL(ngazi,'Hakuna data ya kupakua.','There is no data to download.')); return; }
+  const school = (typeof ratibaSchool !== 'undefined' && ratibaSchool) ? ratibaSchool : rtL(ngazi,'Shule','School');
+  const label = (ngazi==='msingi' ? 'Ratiba_Msingi' : 'Timetable_Secondary') + '_' + school;
   wb.xlsx.writeBuffer().then(buf=>{
     const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     triggerBlobDownload(blob, dlSafeName(label, 'xlsx'));
   }).catch(err=>{
-    alert('Samahani, imeshindikana kutengeneza faili la Excel. (' + (err.message||'') + ')');
+    alert(rtL(ngazi,'Samahani, imeshindikana kutengeneza faili la Excel. (','Sorry, the Excel file could not be created. (') + (err.message||'') + ')');
   });
 }
 
@@ -7968,9 +8033,9 @@ function downloadRatibaXlsx(ngazi){
 function downloadRatibaDocx(ngazi){
   const out = document.getElementById(ngazi==='msingi' ? 'rt_m_output' : 'rt_s_output');
   const tables = out ? Array.from(out.querySelectorAll('table')) : [];
-  if(!tables.length){ alert('Tengeneza ratiba kamili kwanza kwa kubonyeza "⚡ Tengeneza Ratiba Kamili".'); return; }
+  if(!tables.length){ alert(rtL(ngazi,'Tengeneza ratiba kamili kwanza kwa kubonyeza "⚡ Tengeneza Ratiba Kamili".','Generate the full timetable first by clicking "⚡ Generate Full Timetable".')); return; }
   if(typeof docx === 'undefined'){
-    alert('Maktaba ya kutengeneza Word (.docx) haijapakia — hakikisha una mtandao kisha jaribu tena.');
+    alert(rtL(ngazi,'Maktaba ya kutengeneza Word (.docx) haijapakia — hakikisha una mtandao kisha jaribu tena.','The Word (.docx) library has not loaded — make sure you are online and try again.'));
     return;
   }
   const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, VerticalAlign, BorderStyle } = docx;
@@ -7992,9 +8057,9 @@ function downloadRatibaDocx(ngazi){
 
   const oneLine = s => String(s==null?'':s).replace(/\s+/g,' ').trim();
   const children = [];
-  const school = (typeof ratibaSchool !== 'undefined' && ratibaSchool) ? ratibaSchool : 'Shule';
+  const school = (typeof ratibaSchool !== 'undefined' && ratibaSchool) ? ratibaSchool : rtL(ngazi,'Shule','School');
   const year = (typeof ratibaYear !== 'undefined' && ratibaYear) ? String(ratibaYear).trim() : '';
-  const docTitleText = 'RATIBA — ' + (ngazi==='msingi' ? 'MSINGI' : 'SEKONDARI') + ' — ' + school + (year ? (' — ' + year) : '');
+  const docTitleText = (ngazi==='msingi' ? 'RATIBA — MSINGI' : 'TIMETABLE — SECONDARY') + ' — ' + school + (year ? (' — ' + year) : '');
   children.push(new Paragraph({ text: docTitleText, heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER, spacing:{after:250} }));
 
   let tablesAdded = 0;
@@ -8006,8 +8071,8 @@ function downloadRatibaDocx(ngazi){
     const teacherNameEl = teacherBlock && teacherBlock.querySelector('strong');
     const panelHead = tbl.closest('.panel') && tbl.closest('.panel').querySelector('h3');
     const tableTitleText = teacherNameEl
-      ? ('Mwalimu: ' + oneLine(teacherNameEl.textContent))
-      : (panelHead ? oneLine(panelHead.textContent) : ('Jedwali ' + (idx+1)));
+      ? (rtL(ngazi,'Mwalimu: ','Teacher: ') + oneLine(teacherNameEl.textContent))
+      : (panelHead ? oneLine(panelHead.textContent) : (rtL(ngazi,'Jedwali ','Table ') + (idx+1)));
     children.push(new Paragraph({ text: tableTitleText, heading: HeadingLevel.HEADING_2, spacing:{before:300, after:120} }));
 
     const colCount = matrix[0].length;
@@ -8034,7 +8099,7 @@ function downloadRatibaDocx(ngazi){
     children.push(new Paragraph({ text:'', spacing:{after:200} }));
   });
 
-  if(!tablesAdded){ alert('Hakuna data ya kupakua.'); return; }
+  if(!tablesAdded){ alert(rtL(ngazi,'Hakuna data ya kupakua.','There is no data to download.')); return; }
 
   const doc = new Document({
     sections: [{
@@ -8043,9 +8108,9 @@ function downloadRatibaDocx(ngazi){
     }]
   });
   Packer.toBlob(doc).then(blob=>{
-    triggerBlobDownload(blob, dlSafeName('Ratiba_' + (ngazi==='msingi'?'Msingi':'Sekondari') + '_' + school, 'docx'));
+    triggerBlobDownload(blob, dlSafeName((ngazi==='msingi'?'Ratiba_Msingi':'Timetable_Secondary') + '_' + school, 'docx'));
   }).catch(err=>{
-    alert('Samahani, imeshindikana kutengeneza faili la Word. (' + (err.message||'') + ')');
+    alert(rtL(ngazi,'Samahani, imeshindikana kutengeneza faili la Word. (','Sorry, the Word file could not be created. (') + (err.message||'') + ')');
   });
 }
 
@@ -13778,3 +13843,4 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 <script src="nukuu-9.js"></script>
 </body>
 </html>
+
